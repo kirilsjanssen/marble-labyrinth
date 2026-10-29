@@ -5,8 +5,10 @@ extends RefCounted
 
 static func definition() -> Dictionary:
 	return {
+		"number": 1,
 		"id": "workshop_01",
 		"title": "THE BRASS WORKSHOP",
+		"style": "workshop",
 		"start": Vector3(-3.25, 0.62, 3.25),
 		"goal": Vector3(3.25, 0.18, -3.20),
 		"walls": [
