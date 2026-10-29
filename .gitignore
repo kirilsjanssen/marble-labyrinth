@@ -1,0 +1,14 @@
+.godot/
+.import/
+.mono/
+build/
+dist/
+*.apk
+*.aab
+*.keystore
+*.jks
+*.p12
+*.log
+*.tmp
+.DS_Store
+
