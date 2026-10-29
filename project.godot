@@ -4,13 +4,13 @@ config_version=5
 [application]
 config/name="Marble Labyrinth — Prototype"
 run/main_scene="res://scenes/main.tscn"
-config/features=PackedStringArray("4.4", "GL Compatibility")
+config/features=PackedStringArray("4.6", "GL Compatibility")
 
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
-window/handheld/orientation=1
+window/handheld/orientation=0
 
 [rendering]
 renderer/rendering_method="gl_compatibility"
@@ -19,6 +19,7 @@ textures/default_filters/use_nearest_mipmap_filter=false
 
 [physics]
 3d/default_gravity=9.8
+common/physics_ticks_per_second=60
 
 [input_devices]
 sensors/enable_gravity=true
