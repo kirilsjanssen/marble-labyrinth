@@ -15,8 +15,7 @@ func _run() -> void:
 	root.add_child(game)
 	await process_frame
 	await physics_frame
-	game.control_mode = game.ControlMode.TOUCH
-	game._update_mode_button()
+	game._cycle_control_mode() # Linux test starts in AUTO; first step is TOUCH
 	game._layout_hud(Vector2(1280.0, 720.0))
 
 	if not _require(game.hud_root.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Full-screen HUD must not intercept touchscreen drags"):
