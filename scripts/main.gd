@@ -678,7 +678,7 @@ func _build_hud() -> void:
 	status_label.add_theme_color_override("font_color", Color("f3dfb6"))
 	text_stack.add_child(status_label)
 	hint_label = Label.new()
-	hint_label.text = "LEFT: TILT THE BOARD  •  RIGHT: MOVE CAMERA"
+	hint_label.text = _ui_text("LEFT: TILT BOARD  •  RIGHT: CAMERA", "СЛЕВА: НАКЛОН ДОСКИ  •  СПРАВА: КАМЕРА", "LINKS: BRETT NEIGEN  •  RECHTS: KAMERA")
 	hint_label.add_theme_font_size_override("font_size", 14)
 	hint_label.add_theme_color_override("font_color", Color("9fb3c9"))
 	text_stack.add_child(hint_label)
@@ -691,7 +691,7 @@ func _build_hud() -> void:
 	touch_help_left.visible = OS.get_name() == "Android"
 	hud_root.add_child(touch_help_left)
 	touch_help_right = Label.new()
-	touch_help_right.text = "CAMERA\nDrag to look around"
+	touch_help_right.text = _ui_text("CAMERA\nDrag to look around", "КАМЕРА\nПроведи для обзора", "KAMERA\nWischen zum Drehen")
 	touch_help_right.add_theme_font_size_override("font_size", 17)
 	touch_help_right.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	touch_help_right.add_theme_color_override("font_color", Color("a6bad1", 0.78))
@@ -723,13 +723,13 @@ func _build_hud() -> void:
 	calibrate_button = _hud_button("CALIBRATE", Vector2(94.0, 44.0))
 	calibrate_button.pressed.connect(_on_calibrate_pressed)
 	button_row.add_child(calibrate_button)
-	view_button = _hud_button("VIEW", Vector2(55.0, 44.0))
+	view_button = _hud_button(_ui_text("VIEW", "ВИД", "ANS."), Vector2(55.0, 44.0))
 	view_button.pressed.connect(_reset_camera_view)
 	button_row.add_child(view_button)
 	help_button = _hud_button("?", Vector2(42.0, 44.0))
 	help_button.pressed.connect(_show_controls_help)
 	button_row.add_child(help_button)
-	var reset_button := _hud_button("RESET", Vector2(80.0, 44.0))
+	var reset_button := _hud_button(_ui_text("RESET", "СБРОС", "NEUSTART"), Vector2(80.0, 44.0))
 	reset_button.pressed.connect(_on_reset_pressed)
 	button_row.add_child(reset_button)
 
@@ -803,17 +803,21 @@ func _build_controls_help(panel_style: StyleBoxFlat) -> void:
 	stack.add_theme_constant_override("separation", 14)
 	panel.add_child(stack)
 	var title := Label.new()
-	title.text = "HOW TO CONTROL THE MARBLE"
+	title.text = _ui_text("HOW TO CONTROL THE MARBLE", "КАК УПРАВЛЯТЬ ШАРИКОМ", "SO STEUERST DU DIE KUGEL")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", Color("ffd28a"))
 	stack.add_child(title)
 	var content := Label.new()
-	content.text = "LEFT SIDE: hold and drag to TILT THE WHOLE BOARD.\nThe ball rolls naturally — you are not pushing it directly.\n\nRIGHT SIDE: drag to ROTATE THE CAMERA only.\n\nBOARD: DRAG = finger control (recommended).\nBOARD: PHONE = motion sensor (press CALIBRATE).\nVIEW = return camera to the starting angle."
+	content.text = _ui_text(
+		"LEFT: drag to TILT THE WHOLE BOARD. The ball rolls by itself.\nRIGHT: drag to rotate the CAMERA only.\nDRAG = finger control (recommended).\nPHONE = phone tilt (calibrate first).\nVIEW = restore the starting camera angle.",
+		"СЛЕВА: веди пальцем — наклоняется ВСЯ ДОСКА.\nШар катится сам, ты не толкаешь его напрямую.\nСПРАВА: веди пальцем — поворачивается только КАМЕРА.\nРЕЖИМ «ПАЛЕЦ» — рекомендуемый.\n«ТЕЛЕФОН» — наклон корпуса после калибровки.\n«ВИД» — вернуть исходную камеру.",
+		"LINKS: Mit dem Finger das BRETT NEIGEN. Die Kugel rollt selbst.\nRECHTS: Nur die KAMERA drehen.\nFINGER = empfohlen.\nHANDY = Neigungssensor (vorher kalibrieren).\nANSICHT = Kamera zurücksetzen."
+	)
 	content.add_theme_font_size_override("font_size", 18)
 	content.add_theme_color_override("font_color", Color("dde5ef"))
 	stack.add_child(content)
-	var close := _hud_button("GOT IT  /  PLAY", Vector2(210.0, 52.0))
+	var close := _hud_button(_ui_text("GOT IT / PLAY", "ПОНЯТНО / ИГРАТЬ", "VERSTANDEN / SPIELEN"), Vector2(210.0, 52.0))
 	close.pressed.connect(_close_controls_help)
 	stack.add_child(close)
 	help_overlay.hide()
@@ -838,9 +842,18 @@ func _reset_camera_view() -> void:
 	orbit_distance = 13.6
 
 
+func _ui_text(english: String, russian: String, german: String) -> String:
+	var locale := TranslationServer.get_locale().left(2).to_lower()
+	if locale == "ru":
+		return russian
+	if locale == "de":
+		return german
+	return english
+
+
 func _update_touch_help() -> void:
 	if touch_help_left:
-		touch_help_left.text = "PHONE TILT\nDrag control off" if control_mode == ControlMode.SENSOR else "TILT THE BOARD\nBall rolls naturally"
+		touch_help_left.text = _ui_text("PHONE TILT\nFinger drag off", "НАКЛОН ТЕЛЕФОНА\nЖест слева отключён", "HANDY NEIGEN\nFingersteuerung aus") if control_mode == ControlMode.SENSOR else _ui_text("TILT THE BOARD\nBall rolls naturally", "НАКЛОН ДОСКИ\nШар катится по уклону", "BRETT NEIGEN\nKugel rollt selbst")
 	if touch_help_right:
 		touch_help_right.text = "CAMERA\nDrag to look around"
 
@@ -952,14 +965,14 @@ func _update_hud() -> void:
 	if transient_message_time > 0.0:
 		hint_label.text = transient_message
 	else:
-		hint_label.text = "BOARD TILT %+.2f / %+.2f  •  BALL ROLLS WITH GRAVITY" % [active_tilt.x, active_tilt.y] if OS.get_name() == "Android" else "Arrows / left drag: tilt the board  •  Right drag: camera"
+		hint_label.text = (_ui_text("BOARD TILT %+.2f / %+.2f", "НАКЛОН ДОСКИ %+.2f / %+.2f", "BRETTNEIGUNG %+.2f / %+.2f") % [active_tilt.x, active_tilt.y]) if OS.get_name() == "Android" else "Arrows / left drag: tilt the board  •  Right drag: camera"
 	if tilt_indicator and tilt_indicator.visible:
 		tilt_indicator.call("set_tilt", active_tilt)
 
 
 func _update_mode_button() -> void:
 	if mode_button:
-		mode_button.text = "BOARD: " + _control_mode_name()
+		mode_button.text = _ui_text("BOARD: ", "ДОСКА: ", "BRETT: ") + _control_mode_name()
 	if calibrate_button:
 		calibrate_button.visible = control_mode != ControlMode.TOUCH
 	if button_row:
@@ -969,11 +982,11 @@ func _update_mode_button() -> void:
 func _control_mode_name() -> String:
 	match control_mode:
 		ControlMode.TOUCH:
-			return "DRAG"
+			return _ui_text("DRAG", "ПАЛЕЦ", "FINGER")
 		ControlMode.SENSOR:
-			return "PHONE"
+			return _ui_text("PHONE", "ТЕЛЕФОН", "HANDY")
 		_:
-			return "AUTO"
+			return _ui_text("AUTO", "АВТО", "AUTO")
 
 
 func _on_goal_entered(body: Node3D) -> void:
