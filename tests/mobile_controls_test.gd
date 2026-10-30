@@ -15,7 +15,25 @@ func _run() -> void:
 	root.add_child(game)
 	await process_frame
 	await physics_frame
+	if not _require(game._default_control_mode("Android") == game.ControlMode.TOUCH, "Android must start in explicit finger-drag mode, not mixed AUTO"):
+		return
 	game._cycle_control_mode() # Linux test starts in AUTO; first step is TOUCH
+	if not _require(game.mode_button.text.find("DRAG") >= 0 or game.mode_button.text.find("ПАЛЕЦ") >= 0 or game.mode_button.text.find("FINGER") >= 0, "Mode button must describe gesture clearly"):
+		return
+	if not _require(game.tilt_indicator != null and game.help_overlay != null, "Gesture pad and help overlay must exist"):
+		return
+	game._show_controls_help()
+	if not _require(game._touch_on_hud(Vector2(350.0, 350.0)), "Tutorial must intercept background touches"):
+		return
+	game._close_controls_help()
+	var tilt_first: Vector2 = game._screen_drag_to_board_tilt(Vector2.RIGHT)
+	game.yaw = deg_to_rad(130.0)
+	game._update_camera()
+	var tilt_rotated: Vector2 = game._screen_drag_to_board_tilt(Vector2.RIGHT)
+	if not _require(tilt_first.distance_to(tilt_rotated) > 0.5, "Board tilt direction must respond to camera orbit"):
+		return
+	game._reset_camera_view()
+	game._update_camera()
 	game._layout_hud(Vector2(1280.0, 720.0))
 
 	if not _require(game.hud_root.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Full-screen HUD must not intercept touchscreen drags"):
