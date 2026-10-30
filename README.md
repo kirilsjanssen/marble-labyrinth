@@ -23,6 +23,30 @@ A multi-stage miniature machine built from steel decks, brass gears, moving shaf
 
 Missing floor sections are actual gaps rather than painted hazards. Falling into the machinery resets the level.
 
+### Level 3 — Vertical Liftworks
+
+One continuous three-tier board (deck tops at 0.02 / 1.42 / 2.82) joined by a physical three-stop lift:
+
+1. **Tier 1:** roll over the lever plate to lower the pit bridge, time the rotating sweeper and gear, cross the narrow bridge, then shove the wooden `PuzzleShapeBody` cube into the pocket on the POWER plate.
+2. Board the lift from the east lane. Once the marble rests on the deck, the lift rises to tier 2 (it stays locked without power).
+3. **Tier 2:** a low corridor runs under tier 3. Pass the rotating paddle shaft, the choke and two cycling shutters (wait for both to drop), then ride the transfer platform across the gap to the open west deck and pull the UPPER RELEASE lever.
+4. Return through the corridor and ride the lift to tier 3.
+5. **Tier 3:** hit the timer pad and pass the gate before it closes, or take the secret gear run along the north wall. Finish in the seated goal socket.
+
+The lift deck is an `AnimatableBody3D` with side lips and deck doors. Each landing has its own gate, and call pads summon the lift. It carries any rigid body, so cubes and pyramids can ride too. Falling into the tier-2 gap returns the marble to the tier-2 landing without undoing solved mechanisms.
+
+### Smart camera
+
+`scripts/camera/smart_camera_controller.gd` owns camera modes, so `main.gd` only supplies the overview orbit pose:
+
+- **OVERVIEW / ORBIT:** the classic tilted overview. Dragging on the right half of the screen orbits it.
+- **CHASE:** behind and slightly above the marble, looking down the corridor.
+- On Level 3 the camera checks every frame, using physics rays against the walls and decks, whether the overview can see the marble. After 0.35 s hidden it blends into CHASE, and after 0.9 s visible again it blends back. Short occlusions never flip the view.
+- The chase camera starts on the board axis that has room behind the marble and is nearest the overview direction, so screen-relative controls stay predictable. It turns at a limited rate, ignores short reverses and stops, is pulled in front of walls and ceilings, and moves closer when a moving part would block the shot.
+- **CAM** (or **V**) cycles AUTO → TOP → CHASE. A manual choice always wins over auto. The HUD shows `CAMERA: OVERVIEW / ORBIT / CHASE`.
+
+Luma (RedDust) generation was not used for this level: no `LUMA_API_KEY` was available in the build environment. All Level 3 visuals are procedural Godot geometry and materials.
+
 ## Physics and presentation
 
 - The marble is always a live `RigidBody3D` with continuous collision detection, tuned friction, damping and inertia.
@@ -70,6 +94,10 @@ scripts/main.gd                                Shared game, input, HUD and level
 scripts/components/clockwork_mechanisms.gd    Reusable moving physical mechanisms
 scripts/levels/level_01.gd                     Brass Workshop data
 scripts/levels/level_02.gd                     Clockwork Factory data
+scripts/levels/level_03.gd                     Vertical Liftworks data and route
+scripts/mechanisms/vertical_lift.gd            Reusable multi-stop physical lift
+scripts/mechanisms/liftworks_mechanisms.gd     Level 3 mechanisms (extends clockwork)
+scripts/camera/smart_camera_controller.gd      Overview/orbit/chase camera manager
 scenes/labs/physics_lab.tscn                   P1 material and force laboratory
 scenes/labs/water_lab.tscn                     P2 conservative hydraulic laboratory
 scenes/labs/shape_lab.tscn                     Reusable cube/pyramid/ball physics laboratory
@@ -78,6 +106,7 @@ scripts/physics/                                Contact profiles and force field
 scripts/water/                                  Reservoir graph, buoyancy and water visual
 tests/smoke_test.gd                            Level 1 regression test
 tests/level_02_smoke_test.gd                   Level 2 and transition test
+tests/level_03_smoke_test.gd                   Level 3 tiers, lift, route and camera test
 tests/physics_lab_test.gd                      P1 physical integration test
 tests/water_network_test.gd                    P2 conservation/valve/pump test
 tests/water_buoyancy_test.gd                   P2 rigid-body water forces test
@@ -103,6 +132,7 @@ godot --headless --path . --editor --quit
 godot --headless --path . --debug --fixed-fps 60 --quit-after 600
 godot --headless --path . --fixed-fps 60 --script res://tests/smoke_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/level_02_smoke_test.gd
+godot --headless --path . --fixed-fps 60 --script res://tests/level_03_smoke_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/physics_lab_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/water_network_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/water_buoyancy_test.gd
