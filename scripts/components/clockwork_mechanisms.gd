@@ -127,7 +127,7 @@ func _build_gears(gears: Array) -> void:
 	for gear_spec: Dictionary in gears:
 		var body := AnimatableBody3D.new()
 		body.name = gear_spec["name"]
-		body.sync_to_physics = true
+		body.sync_to_physics = false
 		body.position = gear_spec["position"]
 		add_child(body)
 		gear_bodies.append(body)
@@ -154,7 +154,7 @@ func _build_shafts(shafts: Array) -> void:
 		var shaft_spec: Dictionary = shafts[index]
 		var body := AnimatableBody3D.new()
 		body.name = "DriveShaft%d" % (index + 1)
-		body.sync_to_physics = true
+		body.sync_to_physics = false
 		body.position = shaft_spec["position"]
 		add_child(body)
 		shaft_bodies.append(body)
@@ -182,7 +182,7 @@ func _build_bridge(bridge: Dictionary, lever: Dictionary) -> void:
 	var size: Vector3 = bridge["size"]
 	bridge_body = AnimatableBody3D.new()
 	bridge_body.name = "LeverBridge"
-	bridge_body.sync_to_physics = true
+	bridge_body.sync_to_physics = false
 	bridge_body.position = bridge["pivot"]
 	bridge_body.rotation.z = bridge_closed_angle
 	add_child(bridge_body)
@@ -217,7 +217,7 @@ func _build_moving_platform(platform: Dictionary) -> void:
 	var size: Vector3 = platform["size"]
 	moving_platform = AnimatableBody3D.new()
 	moving_platform.name = "TransferPlatform"
-	moving_platform.sync_to_physics = true
+	moving_platform.sync_to_physics = false
 	moving_platform.position = platform_origin
 	add_child(moving_platform)
 	_add_box_collision(moving_platform, Vector3.ZERO, size, 0.0, "TransferCollision")
@@ -236,7 +236,7 @@ func _build_elevator(elevator: Dictionary) -> void:
 	var size: Vector3 = elevator["size"]
 	elevator_body = AnimatableBody3D.new()
 	elevator_body.name = "MarbleLift"
-	elevator_body.sync_to_physics = true
+	elevator_body.sync_to_physics = false
 	elevator_body.position = elevator_origin
 	add_child(elevator_body)
 	_add_box_collision(elevator_body, Vector3.ZERO, size, 0.0, "LiftCollision")
@@ -254,7 +254,7 @@ func _build_gate(gate: Dictionary, pad: Dictionary) -> void:
 	var size: Vector3 = gate["size"]
 	gate_body = AnimatableBody3D.new()
 	gate_body.name = "TimerGate"
-	gate_body.sync_to_physics = true
+	gate_body.sync_to_physics = false
 	gate_body.position = gate_origin
 	add_child(gate_body)
 	_add_box_collision(gate_body, Vector3.ZERO, size, 0.0, "GateCollision")

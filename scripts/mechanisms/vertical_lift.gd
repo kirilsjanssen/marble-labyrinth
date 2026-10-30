@@ -29,6 +29,14 @@ var locked: Array[bool] = []
 var speed := 0.85
 var depart_delay := 0.9
 var trigger_bodies: Array[RigidBody3D] = []
+## 0..1 power from an external drive (e.g. a water wheel). Upward travel scales
+## with it and pauses at 0; downward travel is a braked gravity descent at a
+## fixed fraction of speed, so the deck can always come back down.
+var drive_factor := 1.0
+var requires_drive := false
+var gravity_descent_ratio := 0.6
+var winch_drum: MeshInstance3D
+var drive_notice_shown := false
 
 var current_floor := 0
 var target_floor := 0
@@ -80,11 +88,15 @@ func setup(config: Dictionary, materials: Dictionary, triggers: Array[RigidBody3
 func physics_step(delta: float) -> void:
 	if moving:
 		var distance := absf(travel_to_y - travel_from_y)
-		travel_progress = minf(1.0, travel_progress + delta * speed / maxf(distance, 0.01))
+		var previous_y := deck.position.y
+		travel_progress = minf(1.0, travel_progress + delta * _travel_speed() / maxf(distance, 0.01))
 		# Smoothstep keeps the start and stop gentle so the marble is neither
 		# launched upwards nor left behind by a sudden deceleration.
 		var eased := smoothstep(0.0, 1.0, travel_progress)
 		deck.position.y = lerpf(travel_from_y, travel_to_y, eased)
+		if winch_drum:
+			# The drum winds exactly the rope length the deck travelled.
+			winch_drum.rotation.x += (deck.position.y - previous_y) / 0.2
 		if travel_progress >= 1.0:
 			moving = false
 			current_floor = target_floor
@@ -100,6 +112,12 @@ func physics_step(delta: float) -> void:
 func go_to(floor_index: int) -> bool:
 	if moving or floor_index == current_floor or floor_index < 0 or floor_index >= floors.size():
 		return false
+	if floor_index > current_floor and not has_drive():
+		if not drive_notice_shown:
+			drive_notice_shown = true
+			message.emit("LIFT NEEDS POWER — the mill wheel is not driving the winch")
+		return false
+	drive_notice_shown = false
 	if locked[floor_index]:
 		if locked_notice_floor != floor_index:
 			locked_notice_floor = floor_index
@@ -125,6 +143,18 @@ func unlock_floor(floor_index: int) -> void:
 	message.emit("LIFT STOP %d UNLOCKED" % (floor_index + 1))
 
 
+func has_drive() -> bool:
+	return not requires_drive or drive_factor > 0.05
+
+
+func _travel_speed() -> float:
+	if not requires_drive:
+		return speed
+	if target_floor < current_floor:
+		return speed * gravity_descent_ratio
+	return speed * drive_factor
+
+
 func is_powered() -> bool:
 	return locked.size() > 1 and not locked[1]
 
@@ -140,6 +170,7 @@ func reset_lift() -> void:
 	travel_progress = 0.0
 	rider_seconds = 0.0
 	locked_notice_floor = -1
+	drive_notice_shown = false
 	locked = initial_locks.duplicate()
 	deck.position.y = _deck_y(0)
 	_apply_doors(0.0, true)
@@ -208,7 +239,7 @@ func _update_indicator() -> void:
 	if signal_lamp:
 		if moving:
 			signal_lamp.light_color = Color("58e59a")
-		elif is_powered():
+		elif is_powered() and has_drive():
 			signal_lamp.light_color = Color("ffb64d")
 		else:
 			signal_lamp.light_color = Color("ff5c52")
@@ -221,7 +252,7 @@ func _deck_y(floor_index: int) -> float:
 func _build_deck(at: Vector3) -> void:
 	deck = AnimatableBody3D.new()
 	deck.name = "LiftDeck"
-	deck.sync_to_physics = true
+	deck.sync_to_physics = false
 	deck.position = at
 	var deck_physics := PhysicsMaterial.new()
 	deck_physics.friction = 0.9
@@ -262,7 +293,8 @@ func _build_shaft(at: Vector3) -> void:
 			var post_at := Vector3(at.x + corner_x * (deck_size.x * 0.5 + 0.07), bottom + post_height * 0.5, at.z + corner_z * (deck_size.z * 0.5 + 0.07))
 			_add_cylinder_visual(self, post_at, 0.045, post_height, palette["brass_dark"], "LiftShaftPost")
 	_add_box_visual(self, Vector3(at.x, top, at.z), Vector3(deck_size.x + 0.24, 0.10, deck_size.z + 0.24), palette["brass"], "LiftCrown")
-	_add_cylinder_visual(self, Vector3(at.x, top - 0.25, at.z), 0.20, 0.36, palette["copper"], "LiftWinchDrum")
+	winch_drum = _add_cylinder_visual(self, Vector3(at.x, top - 0.25, at.z), 0.20, 0.36, palette["copper"], "LiftWinchDrum")
+	winch_drum.rotation.z = PI * 0.5
 	signal_lamp = OmniLight3D.new()
 	signal_lamp.name = "LiftSignalLamp"
 	signal_lamp.position = Vector3(at.x, top + 0.25, at.z)
@@ -285,7 +317,7 @@ func _build_landing_gate(index: int, spec: Dictionary) -> void:
 	var size: Vector3 = spec["size"]
 	var gate := AnimatableBody3D.new()
 	gate.name = "LandingGate%d" % (index + 1)
-	gate.sync_to_physics = true
+	gate.sync_to_physics = false
 	var closed_y := at.y + size.y * 0.5
 	gate.position = Vector3(at.x, closed_y, at.z)
 	add_child(gate)
