@@ -95,6 +95,8 @@ To download it:
 4. Download **MarbleLabyrinth-debug-apk** and unzip it.
 5. Compare the APK with `MarbleLabyrinth-debug.apk.sha256`, then install `MarbleLabyrinth-debug.apk` on the phone.
 
+Each GitHub Actions run now increases the Android `versionCode` and `versionName` automatically for both debug and stable APK workflows.
+
 **Important:** Debug CI creates an ephemeral signing key on every run. These APKs are for one-off testing, NOT install-over updates. For update-compatible builds, use **Actions → Android Stable APK**, after configuring the owner's permanent keystore via [Russian signing guide](docs/ANDROID_UPDATE_SIGNING_RU.md). That stable workflow increments Android versionCode and uses one consistent signer. A previously installed ephemeral-debug APK must be uninstalled once when switching to stable-signed APKs.
 
 The debug package ID is `com.kirilsjanssen.marblelabyrinth`. The export targets Android SDK 36 and includes ARM64 plus 32-bit ARM libraries. The APK, generated debug keystore and Android SDK are build outputs and are never committed.
