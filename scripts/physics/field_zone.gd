@@ -20,17 +20,17 @@ func _physics_process(_delta: float) -> void:
 	if not enabled:
 		return
 	for candidate in get_overlapping_bodies():
-		if candidate is PhysicsBall:
-			_apply_to_ball(candidate as PhysicsBall)
+		if candidate is PhysicsBall or candidate is PuzzleShapeBody:
+			_apply_to_body(candidate as RigidBody3D)
 
 
-func _apply_to_ball(ball: PhysicsBall) -> void:
+func _apply_to_body(ball: RigidBody3D) -> void:
 	match field_type:
 		FieldType.WIND:
 			var airflow := (global_basis * direction).normalized()
 			ball.apply_central_force(airflow * minf(absf(strength), max_force))
 		FieldType.MAGNETIC:
-			var response := ball.magnetic_response()
+			var response: float = ball.call("magnetic_response")
 			if absf(response) < 0.001:
 				return
 			var offset := global_position - ball.global_position
@@ -42,7 +42,7 @@ func _apply_to_ball(ball: PhysicsBall) -> void:
 			var world_gravity := Vector3.DOWN * float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)) * ball.gravity_scale
 			ball.apply_central_force((desired_acceleration - world_gravity) * ball.mass)
 		FieldType.ADHESION:
-			var response := ball.adhesion_response()
+			var response: float = ball.call("adhesion_response")
 			if response <= 0.0:
 				return
 			var pull := global_position - ball.global_position
