@@ -978,7 +978,13 @@ func _update_hud() -> void:
 	if transient_message_time > 0.0:
 		hint_label.text = transient_message
 	else:
-		hint_label.text = (_ui_text("BOARD TILT %+.2f / %+.2f", "НАКЛОН ДОСКИ %+.2f / %+.2f", "BRETTNEIGUNG %+.2f / %+.2f") % [active_tilt.x, active_tilt.y]) if OS.get_name() == "Android" else "Arrows / left drag: tilt the board  •  Right drag: camera"
+		if OS.get_name() == "Android":
+			if control_mode == ControlMode.SENSOR:
+				hint_label.text = _ui_text("TILT PHONE = ROLL BALL  •  RIGHT = CAMERA", "НАКЛОНИ ТЕЛЕФОН — ШАР ПОКАТИТСЯ  •  СПРАВА КАМЕРА", "HANDY NEIGEN = KUGEL ROLLT  •  RECHTS KAMERA")
+			else:
+				hint_label.text = _ui_text("LEFT = TILT BOARD  •  RIGHT = CAMERA", "СЛЕВА НАКЛОН ДОСКИ  •  СПРАВА КАМЕРА", "LINKS = BRETT NEIGEN  •  RECHTS = KAMERA")
+		else:
+			hint_label.text = "Arrows / left drag: tilt the board  •  Right drag: camera"
 	if tilt_indicator and tilt_indicator.visible:
 		tilt_indicator.call("set_tilt", _board_tilt_to_screen(active_tilt))
 
