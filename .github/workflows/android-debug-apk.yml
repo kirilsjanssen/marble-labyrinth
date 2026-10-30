@@ -10,6 +10,7 @@ on:
       - feature/p1-physics-lab
       - feature/p2-water-lab
       - feature/p2-mobile-control-ux
+      - feature/p2-goal-shapes-control
       - feature/p6-rewards
 
 permissions:
