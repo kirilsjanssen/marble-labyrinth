@@ -15,7 +15,7 @@ func _run() -> void:
 	root.add_child(game)
 	await process_frame
 	await physics_frame
-	if not _require(game._default_control_mode("Android") == game.ControlMode.TOUCH, "Android must start in explicit finger-drag mode, not mixed AUTO"):
+	if not _require(game._default_control_mode("Android") == 1, "Android must start in explicit finger-drag mode, not mixed AUTO"):
 		return
 	game._cycle_control_mode() # Linux test starts in AUTO; first step is TOUCH
 	if not _require(game.mode_button.text.find("DRAG") >= 0 or game.mode_button.text.find("ПАЛЕЦ") >= 0 or game.mode_button.text.find("FINGER") >= 0, "Mode button must describe gesture clearly"):
