@@ -2,6 +2,7 @@
 .import/
 .mono/
 build/
+builds/
 dist/
 *.apk
 *.aab

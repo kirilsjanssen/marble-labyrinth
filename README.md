@@ -83,6 +83,26 @@ godot --headless --path . --fixed-fps 60 --script res://tests/level_02_smoke_tes
 
 The tests cover both level definitions, scene loading, the rigid marble, static floor and wall collisions, tilt and movement, Level 1 forces and hazards, gear teeth, rotating shafts, a platform carrying the marble, bridge, lift, timer gate, mechanism reset, completion UI and Level 1 → Level 2 transition.
 
+## Android debug APK
+
+The repository includes an **Android Debug APK** GitHub Actions workflow. It installs Android SDK 36, downloads Godot 4.6.3 and its official export templates, verifies the Godot downloads against the published SHA-512 values, runs both level tests, builds and verifies a signed debug APK, and publishes it as a workflow artifact.
+
+To download it:
+
+1. Open **Actions → Android Debug APK** in this GitHub repository.
+2. Open the latest successful run for `main` or the Android build branch.
+3. Find **Artifacts** at the bottom of the run summary.
+4. Download **MarbleLabyrinth-debug-apk** and unzip it.
+5. Compare the APK with `MarbleLabyrinth-debug.apk.sha256`, then install `MarbleLabyrinth-debug.apk` on the phone.
+
+The debug package ID is `com.kirilsjanssen.marblelabyrinth`. The export targets Android SDK 36 and includes ARM64 plus 32-bit ARM libraries. The APK, generated debug keystore and Android SDK are build outputs and are never committed.
+
+For a configured local machine, the same validation and export can be run with:
+
+```bash
+tools/build_android_debug.sh
+```
+
 ## Android work still requiring physical devices
 
 - Confirm gravity-axis direction and calibration feel in landscape orientation.

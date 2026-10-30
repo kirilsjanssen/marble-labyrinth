@@ -1,0 +1,121 @@
+name: Android Debug APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - feature/stage-3-android-debug-apk
+
+permissions:
+  contents: read
+
+jobs:
+  build-android-debug:
+    name: Build installable debug APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Download verified Godot 4.6.3 and export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot_dir="$RUNNER_TEMP/godot-4.6.3"
+          mkdir -p "$godot_dir"
+          cd "$godot_dir"
+          curl -fL --retry 3 -O https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip
+          curl -fL --retry 3 -O https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_export_templates.tpz
+          printf '%s  %s\n' \
+            'a035258da32b77f966a5376f9fa29c30a6adde826a85ba918e1605bd1fc9823eba7d85f1dd5e748956bd2ba72827c0025ffa11bb82aec91128c407a2e723c99c' \
+            'Godot_v4.6.3-stable_linux.x86_64.zip' \
+            'da606b61c10157844f8300172df374472665f95015495cb1a7cd132c40ede404faa96cc1016a4b9662db9909ddea69632c4948b2cd11163438dad4808881fb68' \
+            'Godot_v4.6.3-stable_export_templates.tpz' | sha512sum --check
+          unzip -q Godot_v4.6.3-stable_linux.x86_64.zip
+          chmod +x Godot_v4.6.3-stable_linux.x86_64
+          template_dir="$HOME/.local/share/godot/export_templates/4.6.3.stable"
+          mkdir -p "$template_dir"
+          unzip -jq Godot_v4.6.3-stable_export_templates.tpz \
+            templates/android_debug.apk \
+            templates/android_release.apk \
+            templates/version.txt \
+            -d "$template_dir"
+          echo "GODOT_BIN=$godot_dir/Godot_v4.6.3-stable_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Configure ephemeral Android debug signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          keystore_dir="$HOME/.local/share/godot/keystores"
+          keystore="$keystore_dir/debug.keystore"
+          mkdir -p "$keystore_dir" "$HOME/.config/godot"
+          keytool -genkeypair \
+            -keystore "$keystore" \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storetype JKS
+          "$GODOT_BIN" --headless --path . --editor --quit
+          settings="$HOME/.config/godot/editor_settings-4.6.tres"
+          set_setting() {
+            local key="$1"
+            local value="$2"
+            if grep -Fq "$key = " "$settings"; then
+              sed -i "s#^$key = .*#$key = \"$value\"#" "$settings"
+            else
+              printf '%s = "%s"\n' "$key" "$value" >> "$settings"
+            fi
+          }
+          set_setting export/android/android_sdk_path "$ANDROID_HOME"
+          set_setting export/android/java_sdk_path "$JAVA_HOME"
+          set_setting export/android/debug_keystore "$keystore"
+          set_setting export/android/debug_keystore_user androiddebugkey
+          set_setting export/android/debug_keystore_pass android
+
+      - name: Test both levels and build APK
+        shell: bash
+        run: tools/build_android_debug.sh
+
+      - name: Add build details to summary
+        if: success()
+        shell: bash
+        run: |
+          echo '## Marble Labyrinth Android Debug APK' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Download the **MarbleLabyrinth-debug-apk** artifact below this workflow run.' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          cat builds/MarbleLabyrinth-debug.apk.sha256 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload installable APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MarbleLabyrinth-debug-apk
+          path: |
+            builds/MarbleLabyrinth-debug.apk
+            builds/MarbleLabyrinth-debug.apk.sha256
+            builds/MarbleLabyrinth-debug.badging.txt
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
