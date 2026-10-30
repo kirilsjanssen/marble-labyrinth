@@ -7,6 +7,7 @@ on:
       - main
       - feature/stage-3-android-debug-apk
       - feature/stage-4-mobile-controls
+      - feature/p1-physics-lab
 
 permissions:
   contents: read
@@ -100,13 +101,15 @@ jobs:
         run: |
           set -euo pipefail
           version_code=$((10000 + GITHUB_RUN_NUMBER))
-          sed -i "s#^version/code=3$#version/code=$version_code#" export_presets.cfg
-          sed -i "s#^version/name=\"0.3.0-debug\"$#version/name=\"0.3.0-debug.$GITHUB_RUN_NUMBER\"#" export_presets.cfg
+          export MARBLE_VERSION_CODE="$version_code"
+          export MARBLE_VERSION_NAME="0.3.0-debug.$GITHUB_RUN_NUMBER"
+          perl -0pi -e 's/(name="Android Debug".*?version\/code=)\d+/${1}$ENV{MARBLE_VERSION_CODE}/s; s/(name="Android Debug".*?version\/name=")[^"]+/${1}$ENV{MARBLE_VERSION_NAME}/s' export_presets.cfg
           grep -Fqx "version/code=$version_code" export_presets.cfg
+          grep -Fqx "version/name=\"$MARBLE_VERSION_NAME\"" export_presets.cfg
           echo "Android Debug versionCode=$version_code"
           echo "Android Debug versionName=0.3.0-debug.$GITHUB_RUN_NUMBER"
 
-      - name: Test both levels and build APK
+      - name: Test both levels, Physics Lab and build APK
         shell: bash
         run: tools/build_android_debug.sh
 
