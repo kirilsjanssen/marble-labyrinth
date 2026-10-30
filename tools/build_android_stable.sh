@@ -24,6 +24,7 @@ cd "$project_root"
 "$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/smoke_test.gd
 "$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/level_02_smoke_test.gd
 "$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/mobile_controls_test.gd
+"$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/physics_lab_test.gd
 "$godot_bin" --headless --path . --export-release "Android Stable" builds/MarbleLabyrinth-stable.apk
 
 apk="$project_root/builds/MarbleLabyrinth-stable.apk"

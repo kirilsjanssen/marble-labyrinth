@@ -58,8 +58,12 @@ scripts/main.gd                                Shared game, input, HUD and level
 scripts/components/clockwork_mechanisms.gd    Reusable moving physical mechanisms
 scripts/levels/level_01.gd                     Brass Workshop data
 scripts/levels/level_02.gd                     Clockwork Factory data
+scenes/labs/physics_lab.tscn                   P1 material and force laboratory
+scripts/balls/physics_ball.gd                   Reusable material-driven RigidBody3D
+scripts/physics/                                Contact profiles and force fields
 tests/smoke_test.gd                            Level 1 regression test
 tests/level_02_smoke_test.gd                   Level 2 and transition test
+tests/physics_lab_test.gd                      P1 physical integration test
 ```
 
 Both levels use the same controller and marble. Level files contain layout and tuning data; the mechanism component owns reusable physical behavior. Adding a later clockwork level does not require copying `main.gd`.
@@ -79,13 +83,14 @@ godot --headless --path . --editor --quit
 godot --headless --path . --debug --fixed-fps 60 --quit-after 600
 godot --headless --path . --fixed-fps 60 --script res://tests/smoke_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/level_02_smoke_test.gd
+godot --headless --path . --fixed-fps 60 --script res://tests/physics_lab_test.gd
 ```
 
-The tests cover both level definitions, scene loading, the rigid marble, static floor and wall collisions, tilt and movement, Level 1 forces and hazards, gear teeth, rotating shafts, a platform carrying the marble, bridge, lift, timer gate, mechanism reset, completion UI and Level 1 → Level 2 transition.
+The tests cover both level definitions, scene loading, the rigid marble, static floor and wall collisions, tilt and movement, Level 1 forces and hazards, gear teeth, rotating shafts, a platform carrying the marble, bridge, lift, timer gate, mechanism reset, completion UI and Level 1 → Level 2 transition. P1 additionally checks seven ball profiles, nine surfaces, pair-dependent stopping and bounce, wind, selective magnetism and zero gravity using real rigid bodies.
 
 ## Android debug APK
 
-The repository includes an **Android Debug APK** GitHub Actions workflow. It installs Android SDK 36, downloads Godot 4.6.3 and its official export templates, verifies the Godot downloads against the published SHA-512 values, runs both level tests, builds and verifies a signed debug APK, and publishes it as a workflow artifact.
+The repository includes an **Android Debug APK** GitHub Actions workflow. It installs Android SDK 36, downloads Godot 4.6.3 and its official export templates, verifies the Godot downloads against the published SHA-512 values, runs both level tests plus Physics Lab, builds and verifies a signed debug APK, and publishes it as a workflow artifact.
 
 To download it:
 
