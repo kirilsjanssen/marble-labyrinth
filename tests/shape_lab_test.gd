@@ -50,7 +50,38 @@ func _run() -> void:
 		"Cube and pyramid must collide with floor instead of falling through"):
 		return
 
-	print("SHAPE LAB PASS: dynamic cube, convex pyramid and sphere have colliders, materials and gravity")
+	# Both shapes are still real rigid bodies, so the existing P1 magnet field
+	# can act on magnetic steel while the non-magnetic wooden pyramid stays put.
+	var magnet := FieldZone.new()
+	magnet.field_type = FieldZone.FieldType.MAGNETIC
+	magnet.strength = 42.0
+	magnet.max_force = 20.0
+	magnet.position = Vector3(0.0, 6.0, 0.0)
+	var field_collision := CollisionShape3D.new()
+	var field_shape := SphereShape3D.new()
+	field_shape.radius = 5.0
+	field_collision.shape = field_shape
+	magnet.add_child(field_collision)
+	lab.add_child(magnet)
+	lab.cube.gravity_scale = 0.0
+	lab.pyramid.gravity_scale = 0.0
+	lab.cube.global_position = Vector3(-2.0, 6.0, 0.0)
+	lab.pyramid.global_position = Vector3(2.0, 6.0, 0.0)
+	lab.cube.linear_velocity = Vector3.ZERO
+	lab.pyramid.linear_velocity = Vector3.ZERO
+	lab.cube.angular_velocity = Vector3.ZERO
+	lab.pyramid.angular_velocity = Vector3.ZERO
+	lab.cube.sleeping = false
+	lab.pyramid.sleeping = false
+	await _wait_physics_frames(25)
+	if not _require(lab.cube.linear_velocity.x > 0.08,
+		"Magnetic cube must physically accelerate toward field"):
+		return
+	if not _require(absf(lab.pyramid.linear_velocity.x) < 0.08,
+		"Non-magnetic wooden pyramid must ignore magnetic field"):
+		return
+
+	print("SHAPE LAB PASS: dynamic cube, convex pyramid and sphere have colliders, gravity and selective magnetism")
 	quit(0)
 
 
