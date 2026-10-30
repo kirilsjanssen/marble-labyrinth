@@ -101,8 +101,12 @@ func _run() -> void:
 
 	game._load_level(0)
 	await process_frame
-	game._on_goal_entered(game.ball)
-	if not _require(game.game_won and game.completion_overlay.visible, "Level 1 completion screen must appear"):
+	await physics_frame
+	var goal_position: Vector3 = game.level_data["goal"]
+	game.ball.freeze = true
+	game.ball.global_position = game.board.to_global(goal_position + Vector3(0.0, 0.20, 0.0))
+	await _wait_physics_frames(40)
+	if not _require(game.game_won and game.completion_overlay.visible, "Level 1 seated goal must show completion screen"):
 		return
 	game._advance_level()
 	if not _require(game.current_level_index == 1 and game.level_data["id"] == "clockwork_factory_02", "Completion must transition from level 1 to level 2"):

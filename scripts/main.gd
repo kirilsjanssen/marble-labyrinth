@@ -6,6 +6,7 @@ const Level01 = preload("res://scripts/levels/level_01.gd")
 const Level02 = preload("res://scripts/levels/level_02.gd")
 const ClockworkMechanismsScript = preload("res://scripts/components/clockwork_mechanisms.gd")
 const TiltStickIndicatorScript = preload("res://scripts/components/tilt_stick_indicator.gd")
+const GoalSocketDetectorScript = preload("res://scripts/components/goal_socket_detector.gd")
 const LEVEL_SOURCES := [Level01, Level02]
 
 const MAX_TILT := deg_to_rad(15.0)
@@ -49,6 +50,7 @@ var magnet_light: OmniLight3D
 var magnet_ring: MeshInstance3D
 var trap_ring: MeshInstance3D
 var goal_ring: MeshInstance3D
+var goal_detector: GoalSocketDetector
 var clockwork: ClockworkMechanisms
 
 var materials: Dictionary = {}
@@ -369,6 +371,7 @@ func _load_level(index: int) -> void:
 	magnet_ring = null
 	trap_ring = null
 	goal_ring = null
+	goal_detector = null
 	game_won = false
 	respawn_queued = false
 	elapsed = 0.0
@@ -381,6 +384,7 @@ func _load_level(index: int) -> void:
 
 	_build_board()
 	_build_ball()
+	goal_detector.target_body = ball
 	if level_data.has("mechanics"):
 		clockwork = ClockworkMechanismsScript.new()
 		clockwork.name = "ClockworkMechanisms"
@@ -594,16 +598,18 @@ func _build_goal(origin: Vector3) -> void:
 	_add_torus_visual(board, origin + Vector3(0.0, 0.055, 0.0), 0.38, 0.62, materials.brass, "GoalBrassRing")
 	goal_ring = _add_torus_visual(board, origin + Vector3(0.0, 0.085, 0.0), 0.27, 0.36, materials.goal, "GoalGlow")
 
-	var goal_area := Area3D.new()
-	goal_area.name = "GoalTrigger"
-	goal_area.position = origin + Vector3(0.0, 0.28, 0.0)
+	# Proximity detection is intentionally broad, but does NOT complete a level.
+	# The reusable socket requires the ball CENTRE to be inside and held steady.
+	goal_detector = GoalSocketDetectorScript.new()
+	goal_detector.name = "GoalTrigger"
+	goal_detector.position = origin + Vector3(0.0, 0.28, 0.0)
 	var goal_shape := CollisionShape3D.new()
 	var goal_sphere := SphereShape3D.new()
 	goal_sphere.radius = 0.68
 	goal_shape.shape = goal_sphere
-	goal_area.add_child(goal_shape)
-	goal_area.body_entered.connect(_on_goal_entered)
-	board.add_child(goal_area)
+	goal_detector.add_child(goal_shape)
+	goal_detector.body_captured.connect(_on_goal_entered)
+	board.add_child(goal_detector)
 
 
 func _build_ball() -> void:
@@ -713,7 +719,7 @@ func _build_hud() -> void:
 	tilt_indicator = TiltStickIndicatorScript.new()
 	tilt_indicator.name = "TiltThumbIndicator"
 	tilt_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tilt_indicator.size = Vector2(120.0, 120.0)
+	tilt_indicator.size = Vector2(180.0, 180.0)
 	tilt_indicator.visible = OS.get_name() == "Android"
 	hud_root.add_child(tilt_indicator)
 
@@ -900,12 +906,16 @@ func _layout_hud(override_size := Vector2.ZERO) -> void:
 		info_panel.position = Vector2(left, top)
 		info_panel.size = Vector2(available_width, 76.0)
 		button_row.position = Vector2(left, top + 84.0)
-	if touch_help_left:
-		touch_help_left.position = Vector2(left + 134.0, view_size.y - margins.w - 96.0)
-	if touch_help_right:
-		touch_help_right.position = Vector2(view_size.x - right - 235.0, view_size.y - margins.w - 96.0)
+	# Scale the touch indicator to 150% of the original 120 px on ordinary
+	# landscape displays, but keep it inside short screens and safe areas.
+	var thumb_diameter := minf(180.0, maxf(118.0, view_size.y * 0.275))
 	if tilt_indicator:
-		tilt_indicator.position = Vector2(left + 6.0, view_size.y - margins.w - 145.0)
+		tilt_indicator.size = Vector2.ONE * thumb_diameter
+		tilt_indicator.position = Vector2(left + 6.0, view_size.y - margins.w - thumb_diameter - 18.0)
+	if touch_help_left:
+		touch_help_left.position = Vector2(left + thumb_diameter + 18.0, view_size.y - margins.w - 83.0)
+	if touch_help_right:
+		touch_help_right.position = Vector2(view_size.x - right - 235.0, view_size.y - margins.w - 83.0)
 
 
 func _safe_viewport_margins(view_size: Vector2) -> Vector4:
@@ -1008,8 +1018,10 @@ func _control_mode_name() -> String:
 			return _ui_text("AUTO", "АВТО", "AUTO")
 
 
-func _on_goal_entered(body: Node3D) -> void:
-	if body == ball and not game_won:
+func _on_goal_entered(body: RigidBody3D) -> void:
+	# Never trust an Area3D body_entered signal: its wide collision can overlap
+	# a sphere that is still visibly OUTSIDE the goal socket.
+	if body == ball and goal_detector and goal_detector.capture_complete and not game_won:
 		game_won = true
 		ball.linear_damp = 2.8
 		ball.angular_damp = 1.6
@@ -1062,6 +1074,8 @@ func _reset_level() -> void:
 	tilt_touch_index = -1
 	touch_start.clear()
 	board.rotation = Vector3.ZERO
+	if goal_detector:
+		goal_detector.reset_capture()
 	if clockwork:
 		clockwork.reset_state()
 	ball.linear_damp = BALL_LINEAR_DAMP

@@ -30,6 +30,8 @@ cd "$project_root"
 "$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/water_network_test.gd
 "$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/water_buoyancy_test.gd
 "$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/water_lab_test.gd
+"$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/goal_socket_test.gd
+"$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/shape_lab_test.gd
 "$godot_bin" --headless --path . --export-debug "Android Debug" builds/MarbleLabyrinth-debug.apk
 
 apk="$project_root/builds/MarbleLabyrinth-debug.apk"

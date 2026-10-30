@@ -32,6 +32,14 @@ Missing floor sections are actual gaps rather than painted hazards. Falling into
 - Geometry and materials are procedural: layered steel decks, brass rails, fasteners, gear teeth, shafts, lamps, emissive controls, warm lighting and shadows.
 - No paid or third-party art assets are used.
 
+## Goal confirmation and puzzle object shapes
+
+Reaching the goal requires more than clipping the side of the glowing ring. The centred rigid marble must remain inside the socket within a tight horizontal and vertical tolerance, with low enough speed, for a short dwell time. A broad `Area3D` overlap alone cannot finish a level. Restart/level switching clears the socket state; regressions cover both L01/L02.
+
+The board-tilt thumb now has a **180 px diameter** on standard landscape devices (150% of its previous 120 px size) with responsive scaling on shorter viewports.
+
+For later puzzle levels, `PuzzleShapeBody` supports real **cube** and **pyramid** `RigidBody3D` bodies. Cubes have `BoxShape3D` colliders; pyramids use real convex colliders. They reuse P1 material profiles and the existing wind/magnetic/gravity/adhesion fields. `scenes/labs/shape_lab.tscn` demonstrates a magnetic steel cube, wooden pyramid and existing sphere. Water forces for non-spherical shapes and authoring full cube/pyramid gameplay levels remain future tasks.
+
 ## Controls
 
 | Platform | Action | Control |
@@ -64,6 +72,7 @@ scripts/levels/level_01.gd                     Brass Workshop data
 scripts/levels/level_02.gd                     Clockwork Factory data
 scenes/labs/physics_lab.tscn                   P1 material and force laboratory
 scenes/labs/water_lab.tscn                     P2 conservative hydraulic laboratory
+scenes/labs/shape_lab.tscn                     Reusable cube/pyramid/ball physics laboratory
 scripts/balls/physics_ball.gd                   Reusable material-driven RigidBody3D
 scripts/physics/                                Contact profiles and force fields
 scripts/water/                                  Reservoir graph, buoyancy and water visual
@@ -74,6 +83,8 @@ tests/water_network_test.gd                    P2 conservation/valve/pump test
 tests/water_buoyancy_test.gd                   P2 rigid-body water forces test
 tests/water_lab_test.gd                        P2 scene and reset test
 ```
+
+Goal and shape-regression tests run in Android CI: `tests/goal_socket_test.gd` and `tests/shape_lab_test.gd`.
 
 Both levels use the same controller and marble. Level files contain layout and tuning data; the mechanism component owns reusable physical behavior. Adding a later clockwork level does not require copying `main.gd`.
 

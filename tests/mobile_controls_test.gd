@@ -37,6 +37,9 @@ func _run() -> void:
 	game._reset_camera_view()
 	game._update_camera()
 	game._layout_hud(Vector2(1280.0, 720.0))
+	if not _require(game.tilt_indicator.size.x >= 179.0 and game.tilt_indicator.size.y >= 179.0,
+		"On a normal landscape phone the board tilt thumb must be 1.5x the original 120px"):
+		return
 
 	if not _require(game.hud_root.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Full-screen HUD must not intercept touchscreen drags"):
 		return
