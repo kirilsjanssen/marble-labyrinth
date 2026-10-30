@@ -1,0 +1,132 @@
+name: Android Stable APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android-debug:
+    name: Build update-compatible signed APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Download verified Godot 4.6.3 and export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot_dir="$RUNNER_TEMP/godot-4.6.3"
+          mkdir -p "$godot_dir"
+          cd "$godot_dir"
+          curl -fL --retry 3 -O https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip
+          curl -fL --retry 3 -O https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_export_templates.tpz
+          printf '%s  %s\n' \
+            'a035258da32b77f966a5376f9fa29c30a6adde826a85ba918e1605bd1fc9823eba7d85f1dd5e748956bd2ba72827c0025ffa11bb82aec91128c407a2e723c99c' \
+            'Godot_v4.6.3-stable_linux.x86_64.zip' \
+            'da606b61c10157844f8300172df374472665f95015495cb1a7cd132c40ede404faa96cc1016a4b9662db9909ddea69632c4948b2cd11163438dad4808881fb68' \
+            'Godot_v4.6.3-stable_export_templates.tpz' | sha512sum --check
+          unzip -q Godot_v4.6.3-stable_linux.x86_64.zip
+          chmod +x Godot_v4.6.3-stable_linux.x86_64
+          template_dir="$HOME/.local/share/godot/export_templates/4.6.3.stable"
+          mkdir -p "$template_dir"
+          unzip -jq Godot_v4.6.3-stable_export_templates.tpz \
+            templates/android_debug.apk \
+            templates/android_release.apk \
+            templates/version.txt \
+            -d "$template_dir"
+          echo "GODOT_BIN=$godot_dir/Godot_v4.6.3-stable_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Check signing secrets and restore the owner's keystore
+        shell: bash
+        env:
+          MARBLE_KEYSTORE_BASE64: ${{ secrets.MARBLE_STABLE_KEYSTORE_BASE64 }}
+          MARBLE_KEY_ALIAS: ${{ secrets.MARBLE_STABLE_KEY_ALIAS }}
+          MARBLE_KEY_PASSWORD: ${{ secrets.MARBLE_STABLE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$MARBLE_KEYSTORE_BASE64" || -z "$MARBLE_KEY_ALIAS" || -z "$MARBLE_KEY_PASSWORD" ]]; then
+            echo "::error::Stable signing not configured. See docs/ANDROID_UPDATE_SIGNING_RU.md and set the three repository Actions secrets."
+            exit 1
+          fi
+          printf '%s' "$MARBLE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/MarbleLabyrinth-stable.p12"
+          chmod 600 "$RUNNER_TEMP/MarbleLabyrinth-stable.p12"
+          keytool -list -keystore "$RUNNER_TEMP/MarbleLabyrinth-stable.p12" -storepass "$MARBLE_KEY_PASSWORD" -alias "$MARBLE_KEY_ALIAS" > /dev/null
+
+      - name: Configure Godot SDK locations and version code
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.config/godot"
+          "$GODOT_BIN" --headless --path . --editor --quit
+          settings="$HOME/.config/godot/editor_settings-4.6.tres"
+          set_setting() {
+            local key="$1"
+            local value="$2"
+            if grep -Fq "$key = " "$settings"; then
+              sed -i "s#^$key = .*#$key = \"$value\"#" "$settings"
+            else
+              printf '%s = "%s"\n' "$key" "$value" >> "$settings"
+            fi
+          }
+          set_setting export/android/android_sdk_path "$ANDROID_HOME"
+          set_setting export/android/java_sdk_path "$JAVA_HOME"
+          version_code=$((10000 + GITHUB_RUN_NUMBER))
+          sed -i "s#^version/code=10000$#version/code=$version_code#" export_presets.cfg
+          sed -i "s#^version/name=\"0.4.0-test\"$#version/name=\"0.4.0-test.$GITHUB_RUN_NUMBER\"#" export_presets.cfg
+          grep -Fqx "version/code=$version_code" export_presets.cfg
+          echo "Android versionCode=$version_code"
+
+      - name: Test both levels and build signed stable APK
+        shell: bash
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ runner.temp }}/MarbleLabyrinth-stable.p12
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.MARBLE_STABLE_KEY_ALIAS }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.MARBLE_STABLE_KEY_PASSWORD }}
+        run: bash tools/build_android_stable.sh
+
+      - name: Add build details to summary
+        if: success()
+        shell: bash
+        run: |
+          echo '## Marble Labyrinth Android stable update APK' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Download **MarbleLabyrinth-stable-apk**. Its signer must match previously installed stable versions.' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          cat builds/MarbleLabyrinth-stable.apk.sha256 >> "$GITHUB_STEP_SUMMARY"
+          cat builds/MarbleLabyrinth-signing-certificate.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload stable-signed APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MarbleLabyrinth-stable-apk
+          path: |
+            builds/MarbleLabyrinth-stable.apk
+            builds/MarbleLabyrinth-stable.apk.sha256
+            builds/MarbleLabyrinth-stable.badging.txt
+            builds/MarbleLabyrinth-signing-certificate.txt
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
