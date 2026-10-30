@@ -9,6 +9,7 @@ Play floors: LOWER z=0.0, MIDDLE z=1.4, UPPER z=2.8 (deck tops). Every lane is
 at least 1.0 m wide for a 0.33 m marble. Mechanisms are separate objects with
 their pivot at the rotation axis so Godot can drive them.
 """
+import json
 import math
 import os
 import random
@@ -27,6 +28,14 @@ DECK_T = 0.24          # floor + joists thickness below the walking surface
 CURB_H = 0.22          # timber curb above the floor
 RAIL_H = 0.62          # handrail height above the floor
 RNG = random.Random(5005)
+# v3: UV offsets and per-piece colour jitter draw from their own stream, so the
+# layout RNG (board lengths, stone sizes, splash) is exactly the v2 sequence.
+UV_RNG = random.Random(5150)
+TEX_DIR = os.path.join(ROOT, "assets", "luma", "level05")
+TEX_L04 = os.path.join(ROOT, "assets", "luma", "level04")
+BOARD_MATS = {"Wood_Plank", "Deck_Board"}
+BOARD_BANDS = 8        # single-board bands stacked in wood_board_albedo.jpg
+BOARD_LEN = 2.0        # metres of board per texture repeat along the grain
 
 
 # ----------------------------------------------------------------------------
@@ -65,6 +74,7 @@ def collection(path):
 # ----------------------------------------------------------------------------
 
 MATS = {}
+IMAGES = {}
 
 
 def _new_material(name):
@@ -118,111 +128,135 @@ def _bump(mat, height_socket, strength, bsdf, distance=0.02):
     mat.node_tree.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
 
 
-def mat_wood(name, light, dark, rough=0.62, grain_scale=(1.0, 1.0, 9.0)):
+def _image(path, data=False):
+    if path not in IMAGES:
+        img = bpy.data.images.load(path, check_existing=True)
+        if data:
+            img.colorspace_settings.name = "Non-Color"
+        IMAGES[path] = img
+    return IMAGES[path]
+
+
+def _tex(mat, path, vector, data=False, location=(-800, 0)):
+    node = mat.node_tree.nodes.new("ShaderNodeTexImage")
+    node.location = location
+    node.image = _image(path, data)
+    mat.node_tree.links.new(vector, node.inputs["Vector"])
+    return node
+
+
+def _math(mat, op, a, b=None, c=None, clamp=False, location=(-300, -500)):
+    node = mat.node_tree.nodes.new("ShaderNodeMath")
+    node.operation = op
+    node.use_clamp = clamp
+    node.location = location
+    for i, v in enumerate((a, b, c)):
+        if v is None:
+            continue
+        if isinstance(v, (int, float)):
+            node.inputs[i].default_value = v
+        else:
+            mat.node_tree.links.new(v, node.inputs[i])
+    return node.outputs[0]
+
+
+def _sock(sockets, identifier):
+    return next(x for x in sockets if x.identifier == identifier)
+
+
+def _mix(mat, factor, a, b, blend="MIX", location=(-150, 250)):
+    """RGBA Mix node; factor/a/b are sockets or constants."""
+    node = mat.node_tree.nodes.new("ShaderNodeMix")
+    node.data_type = "RGBA"
+    node.blend_type = blend
+    node.location = location
+    for ident, v in (("Factor_Float", factor), ("A_Color", a), ("B_Color", b)):
+        sock = _sock(node.inputs, ident)
+        if isinstance(v, (int, float)):
+            sock.default_value = v
+        elif isinstance(v, tuple):
+            sock.default_value = (*v[:3], 1.0)
+        else:
+            mat.node_tree.links.new(v, sock)
+    return _sock(node.outputs, "Result_Color")
+
+
+def _map_range(mat, value, f0, f1, t0=0.0, t1=1.0, location=(-500, -600)):
+    node = mat.node_tree.nodes.new("ShaderNodeMapRange")
+    node.location = location
+    node.clamp = True
+    mat.node_tree.links.new(value, node.inputs["Value"])
+    for name, v in (("From Min", f0), ("From Max", f1), ("To Min", t0), ("To Max", t1)):
+        node.inputs[name].default_value = v
+    return node.outputs["Result"]
+
+
+def _uv_mapping(mat, scale=(1.0, 1.0), location=(-1100, 0)):
+    nodes = mat.node_tree.nodes
+    uv = nodes.new("ShaderNodeUVMap")
+    uv.uv_map = "UVMap"
+    uv.location = (location[0] - 200, location[1])
+    mapping = nodes.new("ShaderNodeMapping")
+    mapping.location = location
+    mapping.inputs["Scale"].default_value = (scale[0], scale[1], 1.0)
+    mat.node_tree.links.new(uv.outputs["UV"], mapping.inputs["Vector"])
+    return mapping
+
+
+def _scroll(mapping, axis, speed):
+    """Animates a Mapping location (texture units per second at 24 fps) with a
+    `frame` driver: cheap, deterministic and mirrored 1:1 by a Godot UV offset."""
+    fcurve = mapping.inputs["Location"].driver_add("default_value", axis)
+    fcurve.driver.type = "SCRIPTED"
+    fcurve.driver.expression = "frame*%.6f" % (speed / 24.0)
+
+
+def mat_pbr(name, key, tile=1.0, hue=0.0, sat=1.0, val=1.0, jitter=(0.015, 0.1, 0.2), rough=(1.0, 0.0), metal=0.0,
+            normal=1.0, board=False, up=None):
+    """Image PBR from the Level 05 Luma set (assets/luma/level05: albedo from
+    Luma, normal/roughness derived - see PROVENANCE.json). Builder UVs are
+    metres per piece with U along its longest side, so `tile` is the repeat in
+    metres (boards use the board atlas instead). l05_rand (one value per
+    piece) jitters hue/saturation/value so beams, boards and stones differ."""
     mat, bsdf = _new_material(name)
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
-    mapping = _coords(mat, grain_scale)
-    wave = nodes.new("ShaderNodeTexWave")
-    wave.location = (-500, 100)
-    wave.wave_type = "RINGS"
-    wave.inputs["Scale"].default_value = 3.2
-    wave.inputs["Distortion"].default_value = 6.0
-    wave.inputs["Detail"].default_value = 3.0
-    links.new(mapping.outputs["Vector"], wave.inputs["Vector"])
-    grain = nodes.new("ShaderNodeTexNoise")
-    grain.location = (-500, -150)
-    grain.inputs["Scale"].default_value = 28.0
-    grain.inputs["Detail"].default_value = 6.0
-    links.new(mapping.outputs["Vector"], grain.inputs["Vector"])
-    mix = nodes.new("ShaderNodeMath")
-    mix.operation = "MULTIPLY_ADD"
-    mix.location = (-320, 0)
-    links.new(wave.outputs["Fac"], mix.inputs[0])
-    mix.inputs[1].default_value = 0.7
-    links.new(grain.outputs["Fac"], mix.inputs[2])
-    ramp = _ramp(mat, [(0.25, dark), (0.65, light), (1.0, tuple(min(1.0, c * 1.15) for c in light))])
-    links.new(mix.outputs[0], ramp.inputs["Fac"])
-    links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
-    _set(bsdf, "Roughness", rough)
-    _bump(mat, mix.outputs[0], 0.25, bsdf, 0.01)
-    MATS[name] = mat
-    return mat
-
-
-def mat_stone(name, light, dark, rough=0.78, scale=3.0, wet=0.0):
-    mat, bsdf = _new_material(name)
-    nodes, links = mat.node_tree.nodes, mat.node_tree.links
-    mapping = _coords(mat, (scale, scale, scale))
-    noise_tex = nodes.new("ShaderNodeTexNoise")
-    noise_tex.location = (-500, 100)
-    noise_tex.inputs["Scale"].default_value = 2.5
-    noise_tex.inputs["Detail"].default_value = 10.0
-    noise_tex.inputs["Roughness"].default_value = 0.62
-    links.new(mapping.outputs["Vector"], noise_tex.inputs["Vector"])
-    voronoi = nodes.new("ShaderNodeTexVoronoi")
-    voronoi.location = (-500, -180)
-    voronoi.inputs["Scale"].default_value = 6.0
-    links.new(mapping.outputs["Vector"], voronoi.inputs["Vector"])
-    # Per-block tint from object-space position keeps blocks individual.
-    ramp = _ramp(mat, [(0.3, dark), (0.55, tuple((a + b) * 0.5 for a, b in zip(light, dark))), (0.8, light)])
-    links.new(noise_tex.outputs["Fac"], ramp.inputs["Fac"])
-    links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
-    _set(bsdf, "Roughness", rough - wet * 0.45)
-    height = nodes.new("ShaderNodeMath")
-    height.operation = "ADD"
-    height.location = (-150, -250)
-    links.new(noise_tex.outputs["Fac"], height.inputs[0])
-    links.new(voronoi.outputs["Distance"], height.inputs[1])
-    _bump(mat, height.outputs[0], 0.35, bsdf, 0.03)
-    MATS[name] = mat
-    return mat
-
-
-def mat_rock(name):
-    """Granite cliffs with moss and grass on upward faces (normal.z)."""
-    mat, bsdf = _new_material(name)
-    nodes, links = mat.node_tree.nodes, mat.node_tree.links
-    mapping = _coords(mat, (0.9, 0.9, 1.6), coord="Object")
-    strata = nodes.new("ShaderNodeTexNoise")
-    strata.location = (-500, 150)
-    strata.inputs["Scale"].default_value = 2.2
-    strata.inputs["Detail"].default_value = 12.0
-    strata.inputs["Roughness"].default_value = 0.66
-    links.new(mapping.outputs["Vector"], strata.inputs["Vector"])
-    rock_ramp = _ramp(mat, [(0.32, (0.035, 0.033, 0.03)), (0.5, (0.10, 0.095, 0.085)), (0.72, (0.22, 0.21, 0.19))], (-250, 200))
-    links.new(strata.outputs["Fac"], rock_ramp.inputs["Fac"])
-    geo = nodes.new("ShaderNodeNewGeometry")
-    geo.location = (-700, -300)
-    sep = nodes.new("ShaderNodeSeparateXYZ")
-    sep.location = (-520, -300)
-    links.new(geo.outputs["Normal"], sep.inputs["Vector"])
-    moss_noise = nodes.new("ShaderNodeTexNoise")
-    moss_noise.location = (-520, -480)
-    moss_noise.inputs["Scale"].default_value = 4.0
-    links.new(mapping.outputs["Vector"], moss_noise.inputs["Vector"])
-    add = nodes.new("ShaderNodeMath")
-    add.operation = "ADD"
-    add.location = (-340, -380)
-    links.new(sep.outputs["Z"], add.inputs[0])
-    sub = nodes.new("ShaderNodeMath")
-    sub.operation = "SUBTRACT"
-    sub.location = (-420, -480)
-    links.new(moss_noise.outputs["Fac"], sub.inputs[0])
-    sub.inputs[1].default_value = 0.5
-    links.new(sub.outputs[0], add.inputs[1])
-    moss_mask = _ramp(mat, [(0.55, (0, 0, 0)), (0.72, (1, 1, 1))], (-200, -380))
-    links.new(add.outputs[0], moss_mask.inputs["Fac"])
-    moss_color = _ramp(mat, [(0.3, (0.018, 0.04, 0.01)), (0.7, (0.05, 0.10, 0.02))], (-200, -600))
-    links.new(moss_noise.outputs["Fac"], moss_color.inputs["Fac"])
-    mix = nodes.new("ShaderNodeMix")
-    mix.data_type = "RGBA"
-    mix.location = (80, 0)
-    links.new(moss_mask.outputs["Color"], mix.inputs["Factor"])
-    links.new(rock_ramp.outputs["Color"], mix.inputs["A"])
-    links.new(moss_color.outputs["Color"], mix.inputs["B"])
-    links.new(mix.outputs["Result"], bsdf.inputs["Base Color"])
-    _set(bsdf, "Roughness", 0.85)
-    _bump(mat, strata.outputs["Fac"], 0.6, bsdf, 0.08)
+    mapping = _uv_mapping(mat, (1.0, 1.0) if board else (1.0 / tile, 1.0 / tile))
+    vec = mapping.outputs["Vector"]
+    base = os.path.join(TEX_DIR, key)
+    albedo = _tex(mat, base + "_albedo.jpg", vec, location=(-800, 300))
+    rough_t = _tex(mat, base + "_rough.jpg", vec, True, (-800, 0))
+    normal_t = _tex(mat, base + "_normal.png", vec, True, (-800, -300))
+    rnd = nodes.new("ShaderNodeAttribute")
+    rnd.attribute_type = "GEOMETRY"
+    rnd.attribute_name = "l05_rand"
+    rnd.location = (-800, 600)
+    hsv = nodes.new("ShaderNodeHueSaturation")
+    hsv.location = (-450, 300)
+    for socket, centre, amount in (("Hue", 0.5 + hue, jitter[0]), ("Saturation", sat, jitter[1]), ("Value", val, jitter[2])):
+        links.new(_math(mat, "MULTIPLY_ADD", rnd.outputs["Fac"], 2.0 * amount, centre - amount), hsv.inputs[socket])
+    links.new(albedo.outputs["Color"], hsv.inputs["Color"])
+    color = hsv.outputs["Color"]
+    if up:
+        # Moss/grass on up-facing surfaces, broken up by noise.
+        up_color, lo, hi = up
+        geo = nodes.new("ShaderNodeNewGeometry")
+        sep = nodes.new("ShaderNodeSeparateXYZ")
+        links.new(geo.outputs["Normal"], sep.inputs["Vector"])
+        breakup = nodes.new("ShaderNodeTexNoise")
+        breakup.inputs["Scale"].default_value = 0.45
+        breakup.inputs["Detail"].default_value = 6.0
+        links.new(geo.outputs["Position"], breakup.inputs["Vector"])
+        f = _math(mat, "MULTIPLY_ADD", breakup.outputs["Fac"], 0.7, sep.outputs["Z"])
+        color = _mix(mat, _map_range(mat, f, lo + 0.35, hi + 0.35), color, _mix(mat, 1.0, color, up_color, "MULTIPLY"))
+    links.new(color, bsdf.inputs["Base Color"])
+    links.new(_math(mat, "MULTIPLY_ADD", rough_t.outputs["Color"], rough[0], rough[1], clamp=True), bsdf.inputs["Roughness"])
+    nmap = nodes.new("ShaderNodeNormalMap")
+    nmap.uv_map = "UVMap"
+    nmap.location = (-300, -300)
+    nmap.inputs["Strength"].default_value = normal
+    links.new(normal_t.outputs["Color"], nmap.inputs["Color"])
+    links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
+    _set(bsdf, "Metallic", metal)
     MATS[name] = mat
     return mat
 
@@ -259,115 +293,253 @@ def mat_metal(name, color, rough=0.3):
     return mat
 
 
-def mat_water(name, color=(0.01, 0.2, 0.55), foam=False):
+# Water: every layer scrolls along +U (downstream) / -V (down a fall) at its
+# own speed; the same numbers go to assets/luma/level05/level05_water_params.json.
+WATER_LAYERS = {
+    "channel": {"tile_a": 1.6, "speed_a": 0.45, "tile_b": 0.9, "speed_b": 0.75, "ripple_speed": 0.5},
+    "still": {"tile_a": 2.4, "speed_a": 0.04, "tile_b": 1.3, "speed_b": 0.07, "ripple_speed": 0.15},
+    "fall_body": {"tile_u": 0.6, "tile_v": 1.2, "speed_a": 1.7, "speed_b": 2.4},
+    "fall_foam": {"tile_u": 0.5, "tile_v": 0.9, "speed_a": 2.8, "speed_b": 2.1},
+}
+WATER_COLOR = (0.02, 0.36, 0.40)
+
+
+def mat_water_surface(name, layers):
+    """Translucent turquoise water: two scrolling samples of the Level 04
+    Luma water/foam texture (different scale and speed, so the repeat never
+    lines up), foam from their brightness, animated 4D-noise ripples."""
+    p = WATER_LAYERS[layers]
     mat, bsdf = _new_material(name)
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
-    mapping = _coords(mat, (1.0, 4.0, 1.0) if not foam else (2.0, 2.0, 0.4))
+    foam_path = os.path.join(TEX_L04, "water_foam.jpg")
+    map_a = _uv_mapping(mat, (1.0 / p["tile_a"], 1.0 / p["tile_a"]), (-1100, 200))
+    map_b = _uv_mapping(mat, (1.0 / p["tile_b"], 1.0 / p["tile_b"]), (-1100, -200))
+    map_b.inputs["Rotation"].default_value = (0.0, 0.0, 0.35)
+    _scroll(map_a, 0, -p["speed_a"] / p["tile_a"])
+    _scroll(map_b, 0, -p["speed_b"] / p["tile_b"])
+    tex_a = _tex(mat, foam_path, map_a.outputs["Vector"], location=(-800, 200))
+    tex_b = _tex(mat, foam_path, map_b.outputs["Vector"], location=(-800, -200))
+    both = _mix(mat, 0.5, tex_a.outputs["Color"], tex_b.outputs["Color"])
+    bw = nodes.new("ShaderNodeRGBToBW")
+    links.new(both, bw.inputs["Color"])
+    foam = _map_range(mat, bw.outputs["Val"], 0.62, 0.9)
+    body = _mix(mat, 0.45, WATER_COLOR, both, "MULTIPLY")
+    body = _mix(mat, 0.5, body, WATER_COLOR)
+    color = _mix(mat, foam, body, (0.9, 0.96, 1.0))
+    links.new(color, bsdf.inputs["Base Color"])
+    links.new(_math(mat, "MULTIPLY_ADD", foam, 0.45, 0.03), bsdf.inputs["Roughness"])
+    links.new(_math(mat, "MULTIPLY_ADD", foam, -0.7, 0.85), bsdf.inputs["Transmission Weight"])
+    _set(bsdf, "IOR", 1.333)
+    # Self-glow keeps shallow channels turquoise from above (dark beds behind).
+    links.new(body, bsdf.inputs["Emission Color"])
+    _set(bsdf, "Emission Strength", 0.55)
     ripples = nodes.new("ShaderNodeTexNoise")
-    ripples.location = (-500, -200)
-    ripples.inputs["Scale"].default_value = 3.5 if not foam else 6.0
-    ripples.inputs["Detail"].default_value = 6.0
-    links.new(mapping.outputs["Vector"], ripples.inputs["Vector"])
-    if foam:
-        ramp = _ramp(mat, [(0.38, (0.55, 0.78, 0.95)), (0.62, (0.96, 0.98, 1.0))])
-        links.new(ripples.outputs["Fac"], ramp.inputs["Fac"])
-        links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
-        _set(bsdf, "Roughness", 0.25)
-        _set(bsdf, "Transmission Weight", 0.35)
-        _set(bsdf, "Emission Color", (0.7, 0.85, 1.0, 1.0))
-        _set(bsdf, "Emission Strength", 0.15)
+    ripples.noise_dimensions = "4D"
+    ripples.inputs["Scale"].default_value = 5.0
+    ripples.inputs["Detail"].default_value = 4.0
+    fc = ripples.inputs["W"].driver_add("default_value")
+    fc.driver.type = "SCRIPTED"
+    fc.driver.expression = "frame*%.6f" % (p["ripple_speed"] / 24.0)
+    links.new(map_a.outputs["Vector"], ripples.inputs["Vector"])
+    _bump(mat, ripples.outputs["Fac"], 0.18, bsdf, 0.02)
+    MATS[name] = mat
+    return mat
+
+
+def mat_waterfall(name, layer):
+    """Falling water layer. body: Luma waterfall streaks (RGBA) twice at two
+    speeds; foam: the derived foam mask as alpha, faster, in front."""
+    p = WATER_LAYERS[layer]
+    mat, bsdf = _new_material(name)
+    links = mat.node_tree.links
+    if layer == "fall_body":
+        img, data = os.path.join(TEX_DIR, "waterfall_streaks.png"), False
     else:
-        _set(bsdf, "Base Color", (*color, 1.0))
-        _set(bsdf, "Roughness", 0.05)
-        _set(bsdf, "Transmission Weight", 0.55)
-        _set(bsdf, "IOR", 1.333)
-        # A blue glow keeps shallow channels saturated and readable from above.
-        _set(bsdf, "Emission Color", (0.02, 0.28, 0.75, 1.0))
-        _set(bsdf, "Emission Strength", 0.9)
-    _bump(mat, ripples.outputs["Fac"], 0.22, bsdf, 0.02)
+        img, data = os.path.join(TEX_DIR, "waterfall_foam_mask.png"), True
+    map_a = _uv_mapping(mat, (1.0 / p["tile_u"], 1.0 / p["tile_v"]), (-1100, 200))
+    map_b = _uv_mapping(mat, (1.0 / (p["tile_u"] * 1.6), 1.0 / (p["tile_v"] * 1.5)), (-1100, -200))
+    map_b.inputs["Location"].default_value = (0.37, 0.0, 0.0)
+    _scroll(map_a, 1, p["speed_a"] / p["tile_v"])
+    _scroll(map_b, 1, p["speed_b"] / (p["tile_v"] * 1.5))
+    tex_a = _tex(mat, img, map_a.outputs["Vector"], data, (-800, 200))
+    tex_b = _tex(mat, img, map_b.outputs["Vector"], data, (-800, -200))
+    if layer == "fall_body":
+        color = _mix(mat, 0.5, tex_a.outputs["Color"], tex_b.outputs["Color"])
+        color = _mix(mat, 0.25, color, WATER_COLOR)
+        alpha = _math(mat, "MULTIPLY", _math(mat, "MAXIMUM", tex_a.outputs["Alpha"], tex_b.outputs["Alpha"]), 0.88)
+        links.new(color, bsdf.inputs["Base Color"])
+        links.new(color, bsdf.inputs["Emission Color"])
+        _set(bsdf, "Emission Strength", 0.4)
+        _set(bsdf, "Roughness", 0.12)
+        _set(bsdf, "Transmission Weight", 0.35)
+    else:
+        alpha = _math(mat, "MULTIPLY", _math(mat, "MAXIMUM", tex_a.outputs["Color"], tex_b.outputs["Color"]), 0.95, clamp=True)
+        _set(bsdf, "Base Color", (0.92, 0.97, 1.0, 1.0))
+        _set(bsdf, "Emission Color", (0.85, 0.95, 1.0, 1.0))
+        _set(bsdf, "Emission Strength", 0.45)
+        _set(bsdf, "Roughness", 0.45)
+    links.new(alpha, bsdf.inputs["Alpha"])
+    _set(bsdf, "IOR", 1.333)
     MATS[name] = mat
     return mat
 
 
-def mat_needles(name, color):
+def mat_spray(name, alpha_scale, mist=False):
+    """White water: churned foam blobs, flat foam patches, soft spray cards."""
     mat, bsdf = _new_material(name)
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
-    info = nodes.new("ShaderNodeObjectInfo")
-    info.location = (-600, 0)
-    ramp = _ramp(mat, [(0.0, tuple(c * 0.7 for c in color)), (1.0, tuple(min(1, c * 1.3) for c in color))])
-    links.new(info.outputs["Random"], ramp.inputs["Fac"])
-    links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
-    _set(bsdf, "Roughness", 0.8)
-    _set(bsdf, "Subsurface Weight", 0.08)
-    MATS[name] = mat
-    return mat
-
-
-def mat_snow_mountain(name):
-    mat, bsdf = _new_material(name)
-    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    noise_t = nodes.new("ShaderNodeTexNoise")
+    noise_t.noise_dimensions = "4D"
+    noise_t.inputs["Scale"].default_value = 9.0 if not mist else 3.5
+    noise_t.inputs["Detail"].default_value = 6.0
+    fc = noise_t.inputs["W"].driver_add("default_value")
+    fc.driver.type = "SCRIPTED"
+    fc.driver.expression = "frame*0.05"
     geo = nodes.new("ShaderNodeNewGeometry")
-    geo.location = (-800, 0)
+    links.new(geo.outputs["Position"], noise_t.inputs["Vector"])
+    alpha = _map_range(mat, noise_t.outputs["Fac"], 0.35, 0.7, 0.25, 1.0)
+    if mist:
+        # Radial falloff on the card's 0..1 UVs.
+        uv = nodes.new("ShaderNodeUVMap")
+        uv.uv_map = "UVMap"
+        sep = nodes.new("ShaderNodeSeparateXYZ")
+        links.new(uv.outputs["UV"], sep.inputs["Vector"])
+        dx = _math(mat, "SUBTRACT", sep.outputs["X"], 0.5)
+        dy = _math(mat, "SUBTRACT", sep.outputs["Y"], 0.35)
+        d = _math(mat, "SQRT", _math(mat, "ADD", _math(mat, "MULTIPLY", dx, dx), _math(mat, "MULTIPLY", dy, dy)))
+        alpha = _math(mat, "MULTIPLY", alpha, _map_range(mat, d, 0.5, 0.1))
+    links.new(_math(mat, "MULTIPLY", alpha, alpha_scale), bsdf.inputs["Alpha"])
+    _set(bsdf, "Base Color", (0.9, 0.96, 1.0, 1.0))
+    _set(bsdf, "Roughness", 0.5)
+    _set(bsdf, "Emission Color", (0.85, 0.95, 1.0, 1.0))
+    _set(bsdf, "Emission Strength", 0.35)
+    _set(bsdf, "Subsurface Weight", 0.2 if not mist else 0.0)
+    MATS[name] = mat
+    return mat
+
+
+def mat_mountain(name):
+    """Distant peaks: granite (rock texture, 22 m repeat, greyed), snow only
+    on high and gentle slopes (altitude + steepness + noise), forest-dark
+    lower flanks, and aerial haze by camera distance."""
+    mat, bsdf = _new_material(name)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    mapping = _uv_mapping(mat, (1.0 / 22.0, 1.0 / 22.0))
+    albedo = _tex(mat, os.path.join(TEX_DIR, "rock_moss_albedo.jpg"), mapping.outputs["Vector"], location=(-800, 300))
+    normal_t = _tex(mat, os.path.join(TEX_DIR, "rock_moss_normal.png"), mapping.outputs["Vector"], True, (-800, -300))
+    hsv = nodes.new("ShaderNodeHueSaturation")
+    hsv.inputs["Saturation"].default_value = 0.55
+    hsv.inputs["Value"].default_value = 0.42
+    links.new(albedo.outputs["Color"], hsv.inputs["Color"])
+    geo = nodes.new("ShaderNodeNewGeometry")
     sep_n = nodes.new("ShaderNodeSeparateXYZ")
-    sep_n.location = (-600, 0)
     links.new(geo.outputs["Normal"], sep_n.inputs["Vector"])
     sep_p = nodes.new("ShaderNodeSeparateXYZ")
-    sep_p.location = (-600, -200)
     links.new(geo.outputs["Position"], sep_p.inputs["Vector"])
-    height = nodes.new("ShaderNodeMapRange")
-    height.location = (-420, -200)
-    height.inputs["From Min"].default_value = -60.0
-    height.inputs["From Max"].default_value = 5.0
-    links.new(sep_p.outputs["Z"], height.inputs["Value"])
-    combine = nodes.new("ShaderNodeMath")
-    combine.operation = "MULTIPLY_ADD"
-    combine.location = (-250, -100)
-    links.new(sep_n.outputs["Z"], combine.inputs[0])
-    combine.inputs[1].default_value = 0.8
-    links.new(height.outputs["Result"], combine.inputs[2])
-    ramp = _ramp(mat, [(0.85, (0.035, 0.04, 0.05)), (1.05 / 1.8, (0.12, 0.13, 0.16)), (1.0, (0.92, 0.95, 1.0))])
-    ramp.color_ramp.elements[0].position = 0.62
-    ramp.color_ramp.elements[1].position = 0.78
-    ramp.color_ramp.elements[2].position = 0.86
-    links.new(combine.outputs[0], ramp.inputs["Fac"])
-    # Aerial perspective: distant peaks take on the sky's blue.
-    haze = nodes.new("ShaderNodeMix")
-    haze.data_type = "RGBA"
-    haze.inputs["Factor"].default_value = 0.32
-    haze.inputs["B"].default_value = (0.32, 0.45, 0.68, 1.0)
-    links.new(ramp.outputs["Color"], haze.inputs["A"])
-    links.new(haze.outputs["Result"], bsdf.inputs["Base Color"])
-    _set(bsdf, "Roughness", 0.7)
+    breakup = nodes.new("ShaderNodeTexNoise")
+    breakup.inputs["Scale"].default_value = 0.035
+    breakup.inputs["Detail"].default_value = 8.0
+    links.new(geo.outputs["Position"], breakup.inputs["Vector"])
+    alt = _map_range(mat, sep_p.outputs["Z"], -74.0, -28.0)
+    s1 = _math(mat, "MULTIPLY_ADD", alt, 0.95, sep_n.outputs["Z"])
+    s2 = _math(mat, "MULTIPLY_ADD", breakup.outputs["Fac"], 0.8, s1)
+    snow = _map_range(mat, s2, 1.95, 2.12)
+    forest = _math(mat, "MULTIPLY", _map_range(mat, sep_p.outputs["Z"], -70.0, -84.0), _map_range(mat, sep_n.outputs["Z"], 0.45, 0.75))
+    color = _mix(mat, forest, hsv.outputs["Color"], (0.02, 0.045, 0.025))
+    color = _mix(mat, snow, color, (0.86, 0.9, 0.97))
+    cam = nodes.new("ShaderNodeCameraData")
+    haze = _map_range(mat, cam.outputs["View Distance"], 80.0, 330.0, 0.06, 0.45)
+    haze_color = (0.56, 0.68, 0.86)
+    color = _mix(mat, haze, color, haze_color)
+    links.new(color, bsdf.inputs["Base Color"])
+    _set(bsdf, "Emission Color", (*haze_color, 1.0))
+    links.new(_math(mat, "MULTIPLY", haze, 0.25), bsdf.inputs["Emission Strength"])
+    links.new(_math(mat, "MULTIPLY_ADD", snow, -0.4, 0.88), bsdf.inputs["Roughness"])
+    nmap = nodes.new("ShaderNodeNormalMap")
+    nmap.uv_map = "UVMap"
+    nmap.inputs["Strength"].default_value = 1.5
+    links.new(normal_t.outputs["Color"], nmap.inputs["Color"])
+    links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
+    MATS[name] = mat
+    return mat
+
+
+def mat_card(name, image, strength, haze=0.0, haze_color=(0.56, 0.68, 0.86)):
+    """Unlit painted backdrop layer (Luma parallax image with alpha): the same
+    images become Godot's parallax planes later."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    for node in list(nodes):
+        nodes.remove(node)
+    out = nodes.new("ShaderNodeOutputMaterial")
+    uv = nodes.new("ShaderNodeUVMap")
+    uv.uv_map = "UVMap"
+    tex = nodes.new("ShaderNodeTexImage")
+    tex.image = _image(image)
+    tex.extension = "CLIP"
+    links.new(uv.outputs["UV"], tex.inputs["Vector"])
+    color = _mix(mat, haze, tex.outputs["Color"], haze_color)
+    # Fade the card's sides and bottom so no hard quad edge ever shows.
+    sep = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(uv.outputs["UV"], sep.inputs["Vector"])
+    side = _math(mat, "MINIMUM", sep.outputs["X"], _math(mat, "SUBTRACT", 1.0, sep.outputs["X"]))
+    fade = _math(mat, "MULTIPLY", _map_range(mat, side, 0.0, 0.12), _map_range(mat, sep.outputs["Y"], 0.0, 0.15))
+    alpha = _math(mat, "MULTIPLY", tex.outputs["Alpha"], fade)
+    emit = nodes.new("ShaderNodeEmission")
+    emit.inputs["Strength"].default_value = strength
+    links.new(color, emit.inputs["Color"])
+    clear = nodes.new("ShaderNodeBsdfTransparent")
+    mix = nodes.new("ShaderNodeMixShader")
+    links.new(alpha, mix.inputs["Fac"])
+    links.new(clear.outputs["BSDF"], mix.inputs[1])
+    links.new(emit.outputs["Emission"], mix.inputs[2])
+    links.new(mix.outputs["Shader"], out.inputs["Surface"])
     MATS[name] = mat
     return mat
 
 
 def build_materials():
-    mat_wood("Wood_Frame", (0.42, 0.15, 0.035), (0.16, 0.05, 0.012), 0.5)
-    mat_wood("Wood_Plank", (0.26, 0.11, 0.035), (0.08, 0.035, 0.012), 0.62)
-    mat_wood("Wood_Dark", (0.10, 0.045, 0.018), (0.03, 0.015, 0.006), 0.7)
-    mat_wood("Wood_Weathered", (0.20, 0.12, 0.06), (0.07, 0.04, 0.02), 0.75)
-    mat_stone("Slate_Floor", (0.035, 0.037, 0.045), (0.012, 0.013, 0.016), 0.55, 2.0)
-    mat_stone("Stone_Masonry", (0.20, 0.19, 0.17), (0.06, 0.058, 0.055), 0.8, 2.5)
-    mat_stone("Stone_Wet", (0.11, 0.11, 0.105), (0.03, 0.03, 0.03), 0.8, 2.5, wet=0.8)
-    mat_rock("Rock_Moss")
-    mat_metal("Brass", (0.95, 0.6, 0.16), 0.34)
+    # Timber: aged dark oak (Luma) graded per role; decks use the board atlas.
+    mat_pbr("Wood_Frame", "wood_beam", 1.4, hue=0.008, sat=1.2, val=1.75, jitter=(0.012, 0.12, 0.3), normal=0.9)
+    mat_pbr("Wood_Plank", "wood_board", board=True, sat=1.05, val=0.95, jitter=(0.012, 0.1, 0.25), normal=0.8)
+    mat_pbr("Deck_Board", "wood_board", board=True, sat=1.0, val=0.92, jitter=(0.015, 0.12, 0.3), normal=0.8)
+    mat_pbr("Wood_Dark", "wood_beam", 1.4, sat=1.0, val=0.85, jitter=(0.01, 0.1, 0.2))
+    mat_pbr("Wood_Weathered", "wood_beam", 1.2, hue=-0.01, sat=0.8, val=1.45, jitter=(0.01, 0.12, 0.3), rough=(1.0, 0.06))
+    # Stone: wet granite masonry with mossy joints; corridor flags polished darker.
+    mat_pbr("Slate_Floor", "stone_masonry", 1.6, sat=0.7, val=0.55, jitter=(0.01, 0.1, 0.2), rough=(0.75, 0.0))
+    mat_pbr("Stone_Masonry", "stone_masonry", 2.2, sat=1.0, val=0.95, jitter=(0.015, 0.15, 0.3))
+    mat_pbr("Stone_Wet", "stone_masonry", 2.2, sat=1.15, val=0.62, jitter=(0.01, 0.1, 0.2), rough=(0.55, 0.0))
+    mat_pbr("Rock_Moss", "rock_moss", 3.0, val=0.85, jitter=(0.01, 0.1, 0.15), normal=1.3, up=((0.42, 0.72, 0.2), 0.55, 0.85))
+    # Metals: brass is fully metallic with the golden albedo as its F0.
+    mat_pbr("Brass", "brass", 0.8, val=1.0, jitter=(0.008, 0.08, 0.12), rough=(0.85, 0.0), metal=1.0, normal=0.5)
     mat_metal("Iron", (0.20, 0.20, 0.21), 0.45)
     mat_simple("Red_Paint", (0.55, 0.05, 0.03), 0.35)
-    mat_simple("Roof_Slate", (0.035, 0.033, 0.035), 0.55)
-    mat_wood("Roof_Shingle", (0.08, 0.055, 0.04), (0.025, 0.018, 0.014), 0.8, (1.0, 6.0, 1.0))
-    mat_simple("Window_Glow", (1.0, 0.62, 0.25), 0.3, emission=(1.0, 0.55, 0.18), strength=6.0)
-    mat_simple("Lantern_Glow", (1.0, 0.7, 0.3), 0.2, emission=(1.0, 0.6, 0.2), strength=18.0)
-    mat_simple("Goal_Gold", (1.0, 0.72, 0.22), 0.2, metal=1.0, emission=(1.0, 0.66, 0.2), strength=0.6)
+    mat_pbr("Roof_Slate", "roof_slate", 2.4, sat=0.9, val=0.36, jitter=(0.03, 0.2, 0.25))
+    mat_pbr("Roof_Shingle", "roof_slate", 2.4, hue=0.03, sat=1.5, val=0.32, jitter=(0.03, 0.2, 0.2))
+    mat_simple("Window_Glow", (1.0, 0.62, 0.25), 0.3, emission=(1.0, 0.55, 0.18), strength=9.0)
+    mat_simple("Lantern_Glow", (1.0, 0.7, 0.3), 0.2, emission=(1.0, 0.52, 0.16), strength=9.0)
+    gold = mat_pbr("Goal_Gold", "brass", 0.6, val=1.08, jitter=(0.0, 0.0, 0.0), rough=(0.6, 0.0), metal=1.0, normal=0.4)
+    bsdf = gold.node_tree.nodes["Principled BSDF"]
+    _set(bsdf, "Emission Color", (1.0, 0.66, 0.2, 1.0))
+    _set(bsdf, "Emission Strength", 0.6)
     mat_simple("Plate_White", (0.85, 0.82, 0.78), 0.4)
     mat_simple("Banner_Red", (0.45, 0.03, 0.03), 0.7)
-    mat_simple("Grass", (0.05, 0.14, 0.02), 0.85)
-    mat_simple("Bark", (0.16, 0.10, 0.06), 0.9)
-    mat_needles("Fir_Needles", (0.015, 0.06, 0.02))
-    mat_needles("Fir_Needles_Far", (0.03, 0.07, 0.05))
-    mat_water("Water")
-    mat_water("Water_Foam", foam=True)
-    mat_snow_mountain("Mountain_Snow")
+    grass = mat_simple("Grass", (0.07, 0.17, 0.03), 0.85)
+    _set(grass.node_tree.nodes["Principled BSDF"], "Subsurface Weight", 0.1)
+    mat_pbr("Bark", "wood_beam", 0.7, sat=0.9, val=0.7)
+    mat_pbr("Fir_Needles", "fir_needles", 0.3, sat=1.15, val=1.1, jitter=(0.025, 0.15, 0.35))
+    mat_pbr("Fir_Needles_Far", "fir_needles", 0.5, hue=0.03, sat=0.8, val=1.15, jitter=(0.02, 0.1, 0.3))
+    mat_water_surface("Water", "channel")
+    mat_water_surface("Water_Still", "still")
+    mat_waterfall("Waterfall_Body", "fall_body")
+    mat_waterfall("Waterfall_Foam", "fall_foam")
+    mat_spray("Water_Spray", 0.9)
+    mat_spray("Water_FoamPatch", 0.8)
+    mat_spray("Water_Mist", 0.45, mist=True)
+    mat_mountain("Mountain_Snow")
+    mat_card("Cloud_Card", os.path.join(TEX_DIR, "parallax", "cloud_bank.png"), 2.0, haze=0.05)
+    mat_card("Forest_Card", os.path.join(TEX_DIR, "parallax", "mid_forest_slopes.png"), 0.55, haze=0.4)
     mat_simple("Marble_Steel", (0.8, 0.82, 0.85), 0.08, metal=1.0)
 
 
@@ -383,6 +555,9 @@ class Builder:
         self.coll = coll
         self.bm = bmesh.new()
         self.materials = []
+        self.uv = self.bm.loops.layers.uv.new("UVMap")
+        self.rand = self.bm.faces.layers.float.new("l05_rand")
+        self.has_uv = self.bm.faces.layers.int.new("l05_uv")
 
     def _mi(self, mat_name):
         mat = MATS[mat_name]
@@ -407,7 +582,49 @@ class Builder:
             offset = min(bevel, min(size) * 0.45)
             bev = bmesh.ops.bevel(self.bm, geom=edges + verts, offset=offset, segments=1, profile=0.5, affect="EDGES", clamp_overlap=True)
             faces = list({f for v in bev["verts"] for f in v.link_faces} | set(bev["faces"]) | set(f for f in faces if f.is_valid))
-        self._finish_faces([f for f in faces if f.is_valid], mat, smooth)
+        faces = [f for f in faces if f.is_valid]
+        self._finish_faces(faces, mat, smooth)
+        self.box_uv(faces, _euler(rot).to_3x3(), Vector(center), size, mat)
+
+    def box_uv(self, faces, rot, center, size, mat):
+        """Per-piece UVs in metres: U runs along the piece's longest in-face
+        axis (grain along beams and boards), each piece gets its own random
+        texture offset and l05_rand value. Boards map across onto one band of
+        the board atlas, so no fake gap ever crosses a real board."""
+        inv = rot.transposed()
+        off_u, off_v = UV_RNG.uniform(0.0, 8.0), UV_RNG.uniform(0.0, 8.0)
+        rnd = UV_RNG.random()
+        band = UV_RNG.randrange(BOARD_BANDS)
+        for f in faces:
+            f.normal_update()
+            n = inv @ f.normal
+            k = max(range(3), key=lambda i: abs(n[i]))
+            a, c = [i for i in range(3) if i != k]
+            ua, va = (a, c) if size[a] >= size[c] else (c, a)
+            for loop in f.loops:
+                p = inv @ (loop.vert.co - center)
+                if mat in BOARD_MATS:
+                    across = max(size[va], 1e-4)
+                    count = max(1, round(across / 0.3))
+                    loop[self.uv].uv = (p[ua] / BOARD_LEN + off_u, ((p[va] / across + 0.5) * count + band) / BOARD_BANDS)
+                else:
+                    loop[self.uv].uv = (p[ua] + off_u, p[va] + off_v)
+            f[self.rand] = rnd
+            f[self.has_uv] = 1
+
+    def _face_uv(self, f):
+        """Fallback for non-box faces: planar projection on the dominant axis,
+        U along the face's longest edge; l05_rand varies smoothly in space."""
+        n = f.normal
+        k = max(range(3), key=lambda i: abs(n[i]))
+        a, c = [i for i in range(3) if i != k]
+        edge = max(f.edges, key=lambda e: e.calc_length())
+        d = edge.verts[1].co - edge.verts[0].co
+        if abs(d[c]) > abs(d[a]):
+            a, c = c, a
+        for loop in f.loops:
+            loop[self.uv].uv = (loop.vert.co[a], loop.vert.co[c])
+        f[self.rand] = noise.noise(f.calc_center_median() * 0.9 + Vector((0.31, 0.77, 0.13))) * 0.5 + 0.5
 
     def cylinder(self, center, radius, depth, mat, axis="Z", segments=16, radius2=None, rot=None, smooth=True, caps=True):
         matrix = Matrix.Translation(Vector(center)) @ (_euler(rot) if rot else _axis_matrix(axis))
@@ -449,19 +666,31 @@ class Builder:
             faces.append(self.bm.faces.new((bottom[i], bottom[(i + 1) % n], top[(i + 1) % n], top[i])))
         self._finish_faces(faces, mat, smooth)
 
-    def raw(self, verts, faces, mat, smooth=True):
+    def raw(self, verts, faces, mat, smooth=True, uvs=None):
         bverts = [self.bm.verts.new(v) for v in verts]
         made = [self.bm.faces.new([bverts[i] for i in f]) for f in faces]
         self._finish_faces(made, mat, smooth)
+        if uvs is not None:
+            rnd = UV_RNG.random()
+            for face, idx in zip(made, faces):
+                for loop, i in zip(face.loops, idx):
+                    loop[self.uv].uv = uvs[i]
+                face[self.rand] = rnd
+                face[self.has_uv] = 1
 
     def finish(self, origin=(0.0, 0.0, 0.0)):
         origin = Vector(origin)
         if origin.length > 0.0:
             bmesh.ops.translate(self.bm, verts=self.bm.verts, vec=-origin)
         bmesh.ops.recalc_face_normals(self.bm, faces=self.bm.faces)
+        for face in self.bm.faces:
+            if not face[self.has_uv]:
+                self._face_uv(face)
         mesh = bpy.data.meshes.new(self.name)
         self.bm.to_mesh(mesh)
         self.bm.free()
+        if "l05_uv" in mesh.attributes:
+            mesh.attributes.remove(mesh.attributes["l05_uv"])
         for mat in self.materials:
             mesh.materials.append(mat)
         obj = bpy.data.objects.new(self.name, mesh)
@@ -522,18 +751,18 @@ DECKS = [
     # name, x0, x1, y0, y1, z, floor material, openings {side: [(a, b)]}, zone
     # v2 (audit fixes): bridges and openings widened to >= 1.1-1.4 m clear;
     # railing posts stand outside every opening; the corridor is 1.6 m wide.
-    ("L_Start", 0.0, 6.0, 3.0, 5.0, Z0, "Slate_Floor", {"S": [(3.9, 5.3)], "E": [(3.25, 4.75)]}, "Lower"),
-    ("L_Front", 3.5, 6.0, 0.0, 2.0, Z0, "Slate_Floor", {"N": [(3.9, 5.3)], "E": [(0.3, 1.7)]}, "Lower"),
-    ("L_FrontEast", 6.8, 9.0, 0.0, 2.0, Z0, "Slate_Floor", {"W": [(0.3, 1.7)], "E": [(0.25, 1.75)]}, "Lower"),
+    ("L_Start", 0.0, 6.0, 3.0, 5.0, Z0, "Deck_Board", {"S": [(3.9, 5.3)], "E": [(3.25, 4.75)]}, "Lower"),
+    ("L_Front", 3.5, 6.0, 0.0, 2.0, Z0, "Deck_Board", {"N": [(3.9, 5.3)], "E": [(0.3, 1.7)]}, "Lower"),
+    ("L_FrontEast", 6.8, 9.0, 0.0, 2.0, Z0, "Deck_Board", {"W": [(0.3, 1.7)], "E": [(0.25, 1.75)]}, "Lower"),
     ("L_HiddenCorridor", 6.0, 9.0, 3.2, 4.8, Z0, "Slate_Floor", {"W": [(3.25, 4.75)], "E": [(3.25, 4.75)]}, "Lower"),
     ("L_SecretAlcove", 9.0, 10.4, 2.9, 5.0, Z0, "Slate_Floor", {"W": [(3.25, 4.75)]}, "Lower"),
-    ("M_Workshop", 5.5, 11.2, 2.4, 6.8, Z1, "Slate_Floor", {"S": [(9.1, 10.5)], "W": [(5.25, 6.45)]}, "Middle"),
-    ("M_GearTerrace", 3.2, 5.5, 5.2, 7.4, Z1, "Slate_Floor", {"E": [(5.25, 6.45)]}, "Middle"),
-    ("U_LiftWalk", 9.35, 10.85, 1.8, 5.6, Z2, "Slate_Floor", {"S": [(9.4, 10.8)], "N": [(9.4, 10.8)]}, "Upper"),
+    ("M_Workshop", 5.5, 11.2, 2.4, 6.8, Z1, "Deck_Board", {"S": [(9.1, 10.5)], "W": [(5.25, 6.45)]}, "Middle"),
+    ("M_GearTerrace", 3.2, 5.5, 5.2, 7.4, Z1, "Deck_Board", {"E": [(5.25, 6.45)]}, "Middle"),
+    ("U_LiftWalk", 9.35, 10.85, 1.8, 5.6, Z2, "Deck_Board", {"S": [(9.4, 10.8)], "N": [(9.4, 10.8)]}, "Upper"),
     # The pool/valve link runs north of the front channel and under the pond aqueduct.
-    ("U_PoolDeck", 9.4, 12.0, 5.6, 9.3, Z2, "Slate_Floor", {"S": [(9.4, 10.8)], "W": [(8.05, 9.15)]}, "Upper"),
-    ("U_ValveDeck", 4.5, 9.4, 7.4, 9.8, Z2, "Slate_Floor", {"E": [(8.05, 9.15)], "W": [(7.6, 9.4)]}, "Upper"),
-    ("U_GoalDeck", 1.0, 4.5, 7.0, 10.0, Z2, "Slate_Floor", {"E": [(7.6, 9.4)]}, "Upper"),
+    ("U_PoolDeck", 9.4, 12.0, 5.6, 9.3, Z2, "Deck_Board", {"S": [(9.4, 10.8)], "W": [(8.05, 9.15)]}, "Upper"),
+    ("U_ValveDeck", 4.5, 9.4, 7.4, 9.8, Z2, "Deck_Board", {"E": [(8.05, 9.15)], "W": [(7.6, 9.4)]}, "Upper"),
+    ("U_GoalDeck", 1.0, 4.5, 7.0, 10.0, Z2, "Deck_Board", {"E": [(7.6, 9.4)]}, "Upper"),
 ]
 
 # Spill notches in railings over a channel: water leaves the deck there, the
@@ -834,8 +1063,9 @@ def _box_matrix(b, matrix, size, mat, bevel=0.03):
     faces = list({f for v in verts for f in v.link_faces})
     edges = list({e for f in faces for e in f.edges})
     bev = bmesh.ops.bevel(b.bm, geom=edges + verts, offset=min(bevel, min(size) * 0.45), segments=1, profile=0.5, affect="EDGES", clamp_overlap=True)
-    faces = list({f for v in bev["verts"] for f in v.link_faces} | set(bev["faces"]) | set(f for f in faces if f.is_valid))
-    b._finish_faces([f for f in faces if f.is_valid], mat, False)
+    faces = [f for f in {f for v in bev["verts"] for f in v.link_faces} | set(bev["faces"]) | set(f for f in faces if f.is_valid) if f.is_valid]
+    b._finish_faces(faces, mat, False)
+    b.box_uv(faces, matrix.to_3x3().normalized(), matrix.to_translation(), Vector(size), mat)
 
 
 def stone_pier(b, x, y, z0, z1, size=0.5, mat="Stone_Masonry"):
@@ -1029,23 +1259,42 @@ def build_cliffs():
 # Water: channels, surfaces, waterfalls, spray
 # ----------------------------------------------------------------------------
 
-def water_surface(name, x0, x1, y0, y1, z):
+def water_surface(name, x0, x1, y0, y1, z, flow=(0, 1), mat="Water"):
+    """Water sheet. UVs are metres with +U pointing downstream (`flow` =
+    (axis 0=X / 1=Y, sign)), so one scrolling offset animates every channel
+    in its own direction; a Wave modifier gives the surface live ripples."""
     b = Builder(name, collection("L05/Water"))
     # Slightly subdivided so the glTF importer and shaders get UVs per metre.
     nx, ny = max(2, int((x1 - x0) * 3)), max(2, int((y1 - y0) * 3))
     verts = []
     faces = []
+    uvs = []
+    axis, sign = flow
     for j in range(ny + 1):
         for i in range(nx + 1):
             x = x0 + (x1 - x0) * i / nx
             y = y0 + (y1 - y0) * j / ny
             verts.append((x, y, z + noise.noise(Vector((x * 2.0, y * 2.0, 3.0))) * 0.008))
+            uvs.append((sign * x, y) if axis == 0 else (sign * y, x))
     for j in range(ny):
         for i in range(nx):
             a = j * (nx + 1) + i
             faces.append((a, a + 1, a + nx + 2, a + nx + 1))
-    b.raw(verts, faces, "Water")
-    return b.finish()
+    b.raw(verts, faces, mat, uvs=uvs)
+    obj = b.finish()
+    _wave(obj, 0.006 if mat == "Water" else 0.003, 0.3)
+    return obj
+
+
+def _wave(obj, height, width):
+    mod = obj.modifiers.new("Flow_Wave", "WAVE")
+    mod.height = height
+    mod.width = width
+    mod.narrowness = 1.2
+    mod.speed = 0.03
+    mod.use_normal = True
+    mod.use_cyclic = True
+    return mod
 
 
 def flume(b, x0, x1, y0, y1, z_bed, depth=0.28, mat="Wood_Plank", posts_to=None, notches=(), spill_depth=0.2, posts_from=None, caps=()):
@@ -1089,43 +1338,73 @@ def flume(b, x0, x1, y0, y1, z_bed, depth=0.28, mat="Wood_Plank", posts_to=None,
             b.box(((x0 + x1) / 2, y, z_bed + depth / 2), (x1 - x0, 0.08, depth), mat, bevel=0.01)
 
 
-def waterfall(name, a0, a1, edge, z_top, z_bottom, outward, axis="X", thickness=0.05):
-    """Curved falling sheet leaving an edge; `axis` is the lip direction."""
+def waterfall(name, a0, a1, edge, z_top, z_bottom, outward, axis="X", thickness=0.05, rng=None, pool=True):
+    """Layered falling water leaving an edge (`axis` = lip direction):
+    a translucent streaked body sheet, a faster foam sheet peeling off in
+    front of it, churned-foam blobs where it lands, a flat foam patch and a
+    soft spray card. UVs: U across the lip, V = -metres fallen, so the
+    materials' scrolling offsets move the streaks down the fall."""
+    rng = rng or RNG
     b = Builder(name, collection("L05/Water/Waterfalls"))
     cols, rows = max(3, int((a1 - a0) * 6)), max(6, int((z_top - z_bottom) * 5))
-    verts, faces = [], []
-    for j in range(rows + 1):
-        t = j / rows
-        z = z_top - (z_top - z_bottom) * t
-        out = outward * (0.12 + 0.55 * math.sqrt(t)) * min(1.0, (z_top - z_bottom) / 1.5)
-        for i in range(cols + 1):
-            a = a0 + (a1 - a0) * i / cols
-            wob = noise.noise(Vector((a * 3.0, z * 2.0, 7.0))) * 0.04
-            if axis == "X":
-                verts.append((a, edge + out + wob, z))
-            else:
-                verts.append((edge + out + wob, a, z))
-    for j in range(rows):
-        for i in range(cols):
-            p = j * (cols + 1) + i
-            faces.append((p, p + 1, p + cols + 2, p + cols + 1))
-    b.raw(verts, faces, "Water_Foam")
+    scale = min(1.0, (z_top - z_bottom) / 1.5)
+    side = 1.0 if outward >= 0 else -1.0
+
+    def sheet(widen, push, mat):
+        verts, faces, uvs = [], [], []
+        fallen, prev = 0.0, None
+        for j in range(rows + 1):
+            t = j / rows
+            z = z_top - (z_top - z_bottom) * t
+            out = outward * (0.12 + 0.55 * math.sqrt(t)) * scale
+            if prev is not None:
+                fallen += math.hypot(z - prev[0], out - prev[1])
+            prev = (z, out)
+            for i in range(cols + 1):
+                a = a0 - widen + (a1 - a0 + 2 * widen) * i / cols
+                wob = noise.noise(Vector((a * 3.0, z * 2.0, 7.0))) * 0.04
+                o = out + wob + side * (0.008 + push * min(1.0, t * 4.0))
+                verts.append((a, edge + o, z) if axis == "X" else (edge + o, a, z))
+                uvs.append((a, -fallen))
+        for j in range(rows):
+            for i in range(cols):
+                p = j * (cols + 1) + i
+                faces.append((p, p + 1, p + cols + 2, p + cols + 1))
+        b.raw(verts, faces, mat, uvs=uvs)
+
+    sheet(0.0, 0.0, "Waterfall_Body")
+    sheet(0.02, 0.035, "Waterfall_Foam")
     # Splash: foam blobs and churned water where the sheet lands.
     for k in range(int((a1 - a0) * 9) + 4):
-        a = RNG.uniform(a0, a1)
-        r = RNG.uniform(0.06, 0.16)
-        out = outward * (0.67 + RNG.uniform(-0.06, 0.06)) * min(1.0, (z_top - z_bottom) / 1.5)
+        a = rng.uniform(a0, a1)
+        r = rng.uniform(0.06, 0.16)
+        out = outward * (0.67 + rng.uniform(-0.06, 0.06)) * scale
         c = (a, edge + out, z_bottom + r * 0.4) if axis == "X" else (edge + out, a, z_bottom + r * 0.4)
         tmp = bmesh.new()
         bmesh.ops.create_icosphere(tmp, subdivisions=1, radius=r)
         mapping = {v: b.bm.verts.new(v.co + Vector(c)) for v in tmp.verts}
-        index = b._mi("Water_Foam")
+        index = b._mi("Water_Spray")
         for f in tmp.faces:
             nf = b.bm.faces.new([mapping[v] for v in f.verts])
             nf.material_index = index
             nf.smooth = True
         tmp.free()
-    return b.finish()
+    # Flat foam patch where the fall lands in water, and a soft spray card.
+    land = outward * 0.67 * scale
+    mid = (a0 + a1) / 2
+    if pool:
+        radius = (a1 - a0) * 0.6 + 0.15
+        ring = [(mid + math.cos(t) * radius, land + math.sin(t) * radius * 0.7) for t in (k / 16 * math.tau for k in range(16))]
+        pts = [((a, edge + o, z_bottom + 0.015) if axis == "X" else (edge + o, a, z_bottom + 0.015)) for a, o in ring]
+        b.raw(pts, [tuple(range(16))], "Water_FoamPatch", uvs=[(p[0], p[1]) for p in pts])
+    h = min(1.2, 0.35 + (z_top - z_bottom) * 0.15)
+    w = (a1 - a0) + 0.5
+    quad = [(-w / 2, 0.0), (w / 2, 0.0), (w / 2, h), (-w / 2, h)]
+    verts = [((mid + u, edge + land, z_bottom + v) if axis == "X" else (edge + land, mid + u, z_bottom + v)) for u, v in quad]
+    b.raw(verts, [(0, 1, 2, 3)], "Water_Mist", uvs=[(0, 0), (1, 0), (1, 1), (0, 1)])
+    obj = b.finish()
+    _wave(obj, 0.012, 0.25)
+    return obj
 
 
 def build_water():
@@ -1146,6 +1425,21 @@ def build_water():
         for y in (7.97, 9.75):
             ch.box((x, y, Z2 + 0.45), (0.12, 0.12, 0.9), "Wood_Frame", bevel=0.02)
             ch.box((x, y, Z2 + 0.02), (0.18, 0.18, 0.05), "Iron", bevel=0.01)
+    # v3: the upper pool is fed by gravity from the aqueduct (water +3.90):
+    # sluiced take-off in the aqueduct's east wall -> branch flume north of the
+    # pool deck (y > 9.3, water +3.87) -> down-flume outside the deck's east
+    # wall (x > 12.16, water +3.82) -> iron spout over the rim into the basin
+    # (+3.12). No part of it crosses a lane or stands on a deck.
+    flume(ch, 9.35, 12.65, 9.38, 9.72, Z2 + 1.0, depth=0.2, mat="Wood_Plank", posts_to=-1.5, posts_from=10.0,
+          notches=[(12.25, 12.65)], spill_depth=0.02, caps=("end",))
+    flume(ch, 12.25, 12.65, 6.7, 9.42, Z2 + 0.95, depth=0.2, mat="Wood_Plank", posts_to=-1.5, caps=("start",))
+    ch.box((9.3, 9.55, Z2 + 1.12), (0.06, 0.4, 0.2), "Wood_Dark", bevel=0.008)
+    ch.box((9.3, 9.55, Z2 + 1.24), (0.1, 0.46, 0.04), "Iron", bevel=0.005)
+    ch.cylinder((9.3, 9.55, Z2 + 1.34), 0.012, 0.2, "Iron", segments=8)
+    ch.torus((9.3, 9.55, Z2 + 1.44), 0.07, 0.012, "Red_Paint", axis="Z", seg_major=16, seg_minor=6)
+    spout_from, spout_to = Vector((12.45, 6.9, Z2 + 0.99)), Vector((11.62, 6.9, Z2 + 0.86))
+    sd = spout_to - spout_from
+    ch.cylinder(((spout_from + spout_to) / 2), 0.06, sd.length, "Iron", rot=Vector((0, 0, 1)).rotation_difference(sd.normalized()).to_euler(), segments=12)
     # Middle workshop channel: starts east of the terrace link, ends 0.28 m
     # before the wheel rim (breastshot spout); walls 0.25 m above the floor.
     # Starts at x 6.5: the terrace link beside it keeps a 0.6 m buffer.
@@ -1159,16 +1453,18 @@ def build_water():
     ch.cylinder(((pipe_from + pipe_to) / 2), 0.07, d.length, "Iron", rot=Vector((0, 0, 1)).rotation_difference(d.normalized()).to_euler(), segments=12)
     ch.finish()
 
-    water_surface("Water_UpperChannel", 4.66, 9.24, 7.51, 7.89, Z2 + 0.05)
-    water_surface("Water_PondFeed", 8.91, 9.29, 7.95, 9.85, Z2 + 1.1)
-    water_surface("Water_PondLink", 9.21, 9.49, 9.75, 12.25, Z2 + 1.2)
-    water_surface("Water_MiddleChannel", 6.58, 7.96, 6.03, 6.37, Z1 + 0.03)
-    water_surface("Water_EastFlume", 11.99, 12.33, 2.75, 5.5, Z2 - 0.1)
-    water_surface("Water_Stream", 0.0, 6.0, 2.06, 2.94, -0.18)
-    water_surface("Water_Spillway", 6.06, 6.74, 0.0, 2.94, -0.2)
-    water_surface("Water_UpperPool", 10.84, 11.81, 6.04, 7.76, Z2 + 0.32)
-    water_surface("Water_MillPond", 6.6, 9.0, 12.15, 13.4, Z2 + 1.25)
-    water_surface("Water_WheelPit", 8.1, 10.5, 5.7, 6.55, -0.45)
+    water_surface("Water_UpperChannel", 4.66, 9.24, 7.51, 7.89, Z2 + 0.05, (0, -1))
+    water_surface("Water_PondFeed", 8.91, 9.29, 7.95, 9.85, Z2 + 1.1, (1, -1))
+    water_surface("Water_PondLink", 9.21, 9.49, 9.75, 12.25, Z2 + 1.2, (1, -1))
+    water_surface("Water_MiddleChannel", 6.58, 7.96, 6.03, 6.37, Z1 + 0.03, (0, 1))
+    water_surface("Water_EastFlume", 11.99, 12.33, 2.75, 5.5, Z2 - 0.1, (1, -1))
+    water_surface("Water_Stream", 0.0, 6.0, 2.06, 2.94, -0.18, (0, 1))
+    water_surface("Water_Spillway", 6.06, 6.74, 0.0, 2.94, -0.2, (1, -1))
+    water_surface("Water_UpperPool", 10.84, 11.81, 6.04, 7.76, Z2 + 0.32, (1, -1), "Water_Still")
+    water_surface("Water_MillPond", 6.6, 9.0, 12.15, 13.4, Z2 + 1.25, (1, -1), "Water_Still")
+    water_surface("Water_WheelPit", 8.1, 10.5, 5.7, 6.55, -0.45, (0, 1), "Water_Still")
+    water_surface("Water_PoolBranch", 9.41, 12.6, 9.44, 9.66, Z2 + 1.07, (0, 1))
+    water_surface("Water_PoolDownFlume", 12.31, 12.59, 6.76, 9.42, Z2 + 1.02, (1, -1))
 
     # Waterfalls: upper channel spills twice into the middle channel; the
     # spillway drops off the front cliff; the east wheel tail falls far below.
@@ -1177,12 +1473,14 @@ def build_water():
     # Spill notches -> middle channel (lands at y ~6.2, inside 6.03-6.37).
     waterfall("Waterfall_UpperWest", 6.62, 7.03, 7.45, Z2 + 0.03, Z1 + 0.05, -1.85)
     waterfall("Waterfall_UpperEast", 7.32, 7.73, 7.45, Z2 + 0.03, Z1 + 0.05, -1.85)
-    waterfall("Waterfall_Spillway", 6.06, 6.74, 0.0, -0.2, -5.5, -1.0)
-    waterfall("Waterfall_EastFeed", 11.99, 12.33, 2.75, Z2 - 0.1, Z1 + 0.6, -0.6)
-    waterfall("Waterfall_EastWheel", 2.0, 3.2, 12.65, Z1 + 0.4, -7.0, 1.0, axis="Y")
-    waterfall("Waterfall_PoolOverflow", 6.4, 7.6, 12.0, Z2 + 0.15, Z1 - 1.0, 1.0, axis="Y")
+    waterfall("Waterfall_Spillway", 6.06, 6.74, 0.0, -0.2, -5.5, -1.0, pool=False)
+    waterfall("Waterfall_EastFeed", 11.99, 12.33, 2.75, Z2 - 0.1, Z1 + 0.6, -0.6, pool=False)
+    waterfall("Waterfall_EastWheel", 2.0, 3.2, 12.65, Z1 + 0.4, -7.0, 1.0, axis="Y", pool=False)
+    waterfall("Waterfall_PoolOverflow", 6.4, 7.6, 12.0, Z2 + 0.15, Z1 - 1.0, 1.0, axis="Y", pool=False)
     waterfall("Waterfall_Spring", 2.1, 2.9, -0.15, 0.9, -0.18, 1.0, axis="Y")
-    waterfall("Waterfall_WheelFeed", 6.05, 6.35, 8.0, Z1 + 0.03, Z0 + 0.3, 0.45, axis="Y")
+    waterfall("Waterfall_WheelFeed", 6.05, 6.35, 8.0, Z1 + 0.03, Z0 + 0.3, 0.45, axis="Y", pool=False)
+    # Own RNG: adding this fall must not shift the layout sequence.
+    waterfall("Waterfall_PoolFeed", 6.85, 6.95, 11.6, Z2 + 0.82, Z2 + 0.33, -0.12, axis="Y", rng=random.Random(5151))
 
     # Upper pool basin and mill pond walls.
     pool = Builder("Basins", col)
@@ -1453,7 +1751,7 @@ def build_corridor_dressing():
         b.box((x, y, 0.72), (0.14, 0.14, 0.2), "Lantern_Glow", bevel=0.01)
         b.box((x, y, 0.84), (0.18, 0.18, 0.04), "Brass", bevel=0.008)
         light = bpy.data.lights.new("Corridor_Lantern", "POINT")
-        light.energy = 25
+        light.energy = 45
         light.color = (1.0, 0.6, 0.28)
         light.shadow_soft_size = 0.08
         lo = bpy.data.objects.new("Corridor_Lantern", light)
@@ -1665,6 +1963,50 @@ def build_lift():
 # ----------------------------------------------------------------------------
 # Summit millhouse: timber frame, plank walls, door, glowing windows, tile roof
 # ----------------------------------------------------------------------------
+
+LANTERN_DECKS = ("L_Start", "L_Front", "L_FrontEast", "M_Workshop", "M_GearTerrace", "U_PoolDeck", "U_ValveDeck", "U_GoalDeck")
+
+
+def build_lanterns():
+    """Warm lanterns on the outer corner posts of the decks (reference: glowing
+    lamps on every tier). They sit on the post caps, outside every lane, in a
+    dressing collection that is not solid for the lane audit."""
+    b = Builder("Railing_Lanterns", collection("L05/Dressing/Lanterns"))
+    count = 0
+    for name, x0, x1, y0, y1, z, _m, openings, _zone in DECKS:
+        if name not in LANTERN_DECKS:
+            continue
+        notches = SPILL_NOTCHES.get(name, {})
+        for cx, cy, sides in ((x0, y0, "SW"), (x1, y0, "SE"), (x0, y1, "NW"), (x1, y1, "NE")):
+            free = True
+            for side in sides:
+                a = cx if side in "SN" else cy
+                for s0, s1 in list(openings.get(side, [])) + list(notches.get(side, [])):
+                    if s0 - 0.3 <= a <= s1 + 0.3:
+                        free = False
+            if not free:
+                continue
+            px = cx + (0.085 if cx == x0 else -0.085)
+            py = cy + (0.08 if cy == y0 else -0.08)
+            zt = z + RAIL_H + 0.125
+            b.box((px, py, zt + 0.015), (0.13, 0.13, 0.03), "Iron", bevel=0.005)
+            b.box((px, py, zt + 0.11), (0.1, 0.1, 0.16), "Lantern_Glow", bevel=0.008)
+            for dx in (-0.055, 0.055):
+                for dy in (-0.055, 0.055):
+                    b.box((px + dx, py + dy, zt + 0.11), (0.018, 0.018, 0.17), "Brass", bevel=0.003)
+            b.box((px, py, zt + 0.21), (0.16, 0.16, 0.04), "Brass", bevel=0.01)
+            b.box((px, py, zt + 0.25), (0.05, 0.05, 0.05), "Brass", bevel=0.01)
+            light = bpy.data.lights.new("Railing_Lantern", "POINT")
+            light.energy = 14
+            light.color = (1.0, 0.62, 0.3)
+            light.shadow_soft_size = 0.05
+            lo = bpy.data.objects.new("Railing_Lantern", light)
+            lo.location = (px, py, zt + 0.11)
+            collection("L05/Lights_Cameras").objects.link(lo)
+            count += 1
+    b.finish()
+    return count
+
 
 def build_millhouse():
     col = collection("L05/Static_Architecture/Millhouse")
@@ -1955,6 +2297,7 @@ def build_mountains():
         # centre (x, y), radius, height, seed
         ((150, 120), 55, 70, 1), ((210, 40), 60, 78, 2), ((60, 200), 55, 58, 3), ((230, -40), 55, 66, 4), ((180, 190), 50, 62, 5), ((-60, 210), 60, 48, 6), ((260, 120), 60, 74, 7),
     ]
+    peaks = []
     for k, (c, radius, height, seed) in enumerate(specs):
         bm = bmesh.new()
         res = 70
@@ -1985,6 +2328,63 @@ def build_mountains():
         mesh.materials.append(MATS["Mountain_Snow"])
         obj = bpy.data.objects.new("Alps_Peak_%d" % k, mesh)
         col.objects.link(obj)
+        _box_uv(obj)
+        peaks.append(obj)
+    _mountain_forests(peaks)
+    _backdrop_cards()
+
+
+def _mountain_forests(peaks):
+    """Conifer forest on the lower, gentler flanks of the peaks (instanced
+    far-fir meshes, own RNG): rock shows above the tree line, snow above that."""
+    col = collection("L05/Background/Forests")
+    rng = random.Random(6262)
+    far = [bpy.data.objects["Fir_Far_Variant_%d" % i].data for i in range(3)]
+    count = 0
+    for peak in peaks:
+        for v in peak.data.vertices:
+            if not (-93.0 < v.co.z < -64.0) or v.normal.z < 0.6 or rng.random() > 0.11:
+                continue
+            obj = bpy.data.objects.new("Fir_Mountain", rng.choice(far))
+            h = rng.uniform(7.0, 12.0) * (1.0 - (v.co.z + 93.0) / 60.0)
+            obj.location = (v.co.x + rng.uniform(-0.8, 0.8), v.co.y + rng.uniform(-0.8, 0.8), v.co.z - 0.4)
+            obj.rotation_euler = (0.0, 0.0, rng.random() * math.tau)
+            obj.scale = (h * rng.uniform(0.8, 1.1), h * rng.uniform(0.8, 1.1), h)
+            col.objects.link(obj)
+            count += 1
+    return count
+
+
+def _card(name, mat, center, width, height, facing=(6.0, 6.0)):
+    """Vertical backdrop quad facing the board centre (0..1 UVs)."""
+    c = Vector(center)
+    d = Vector((facing[0] - c.x, facing[1] - c.y, 0.0)).normalized()
+    right = Vector((-d.y, d.x, 0.0)) * (width / 2)
+    verts = [c - right, c + right, c + right + Vector((0, 0, height)), c - right + Vector((0, 0, height))]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata([tuple(v) for v in verts], [], [(0, 1, 2, 3)])
+    uv = mesh.uv_layers.new(name="UVMap")
+    for li, co in zip(range(4), ((0, 0), (1, 0), (1, 1), (0, 1))):
+        uv.data[li].uv = co
+    mesh.materials.append(MATS[mat])
+    obj = bpy.data.objects.new(name, mesh)
+    collection("L05/Background/Parallax_Cards").objects.link(obj)
+    obj.visible_shadow = False
+    return obj
+
+
+def _backdrop_cards():
+    """Mid forest slopes and low cloud banks between the summit and the peaks,
+    from the Level 05 Luma parallax images (Godot uses the same images)."""
+    rng = random.Random(7373)
+    for k, deg in enumerate((-15, 10, 32, 55, 78, 100, 125, 150)):
+        a = math.radians(deg)
+        r = rng.uniform(64.0, 74.0)
+        _card("Forest_Card_%d" % k, "Forest_Card", (6 + math.cos(a) * r, 6 + math.sin(a) * r, -50.0), 150.0, 50.0)
+    for k, deg in enumerate((-5, 20, 42, 66, 90, 115, 140)):
+        a = math.radians(deg + rng.uniform(-6, 6))
+        r = rng.uniform(100.0, 140.0)
+        _card("Cloud_Card_%d" % k, "Cloud_Card", (6 + math.cos(a) * r, 6 + math.sin(a) * r, rng.uniform(-60.0, -50.0)), 95.0, 30.0)
 
 
 def build_world_and_lights():
@@ -2004,34 +2404,81 @@ def build_world_and_lights():
             break
         except TypeError:
             continue
-    for attr, value in (("sun_elevation", math.radians(38)), ("sun_rotation", math.radians(-115)), ("altitude", 2200.0), ("air_density", 1.0), ("dust_density", 0.6), ("sun_intensity", 0.7)):
+    for attr, value in (("sun_elevation", math.radians(30)), ("sun_rotation", math.radians(-115)), ("altitude", 2200.0), ("air_density", 1.0), ("dust_density", 0.8), ("sun_intensity", 0.7)):
         if hasattr(sky, attr):
             try:
                 setattr(sky, attr, value)
             except Exception:
                 pass
-    bg.inputs["Strength"].default_value = 0.32
+    bg.inputs["Strength"].default_value = 0.3
     links.new(sky.outputs["Color"], bg.inputs["Color"])
-    links.new(bg.outputs["Background"], out.inputs["Surface"])
+    # Camera rays see the painted Luma sky (wrapped twice around the horizon,
+    # golden glow at the horizon); lighting still comes from the physical sky.
+    coord = nodes.new("ShaderNodeTexCoord")
+    sep = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(coord.outputs["Generated"], sep.inputs["Vector"])
+    atan = nodes.new("ShaderNodeMath")
+    atan.operation = "ARCTAN2"
+    links.new(sep.outputs["Y"], atan.inputs[0])
+    links.new(sep.outputs["X"], atan.inputs[1])
+    u = nodes.new("ShaderNodeMath")
+    u.operation = "MULTIPLY_ADD"
+    links.new(atan.outputs[0], u.inputs[0])
+    u.inputs[1].default_value = 2.0 / math.tau
+    u.inputs[2].default_value = 0.5
+    v = nodes.new("ShaderNodeMapRange")
+    links.new(sep.outputs["Z"], v.inputs["Value"])
+    # The board cameras look down: the frame top is ~10 deg below the horizon,
+    # so the painted horizon band is mapped down to -27 deg.
+    v.inputs["From Min"].default_value = -0.45
+    v.inputs["From Max"].default_value = 0.5
+    v.inputs["To Min"].default_value = 0.0
+    v.inputs["To Max"].default_value = 0.98
+    uvw = nodes.new("ShaderNodeCombineXYZ")
+    links.new(u.outputs[0], uvw.inputs["X"])
+    links.new(v.outputs["Result"], uvw.inputs["Y"])
+    painted = nodes.new("ShaderNodeTexImage")
+    painted.image = _image(os.path.join(TEX_DIR, "parallax", "sky_clouds.jpg"))
+    links.new(uvw.outputs["Vector"], painted.inputs["Vector"])
+    bg_cam = nodes.new("ShaderNodeBackground")
+    bg_cam.inputs["Strength"].default_value = 0.85
+    links.new(painted.outputs["Color"], bg_cam.inputs["Color"])
+    path = nodes.new("ShaderNodeLightPath")
+    mix = nodes.new("ShaderNodeMixShader")
+    links.new(path.outputs["Is Camera Ray"], mix.inputs["Fac"])
+    links.new(bg.outputs["Background"], mix.inputs[1])
+    links.new(bg_cam.outputs["Background"], mix.inputs[2])
+    links.new(mix.outputs["Shader"], out.inputs["Surface"])
 
+    # Low golden sun (warm key) ...
     sun = bpy.data.lights.new("Alpine_Sun", "SUN")
-    sun.energy = 3.4
-    sun.color = (1.0, 0.95, 0.86)
+    sun.energy = 4.2
+    sun.color = (1.0, 0.84, 0.62)
     sun.angle = math.radians(1.5)
     so = bpy.data.objects.new("Alpine_Sun", sun)
-    so.rotation_euler = (math.radians(52), 0, math.radians(-145))
+    so.rotation_euler = (math.radians(58), 0, math.radians(-145))
     collection("L05/Lights_Cameras").objects.link(so)
+    # ... cold bounce from the snowfields behind the summit ...
+    cold = bpy.data.lights.new("Mountain_Cold_Fill", "AREA")
+    cold.energy = 1800
+    cold.size = 30
+    cold.color = (0.6, 0.74, 1.0)
+    co = bpy.data.objects.new("Mountain_Cold_Fill", cold)
+    co.location = (28, 30, 18)
+    co.rotation_euler = (Vector((6, 6, 0)) - Vector(co.location)).to_track_quat("-Z", "Y").to_euler()
+    collection("L05/Lights_Cameras").objects.link(co)
+    # ... and a soft neutral sky fill on the camera side.
     fill = bpy.data.lights.new("Sky_Fill", "AREA")
-    fill.energy = 400
+    fill.energy = 260
     fill.size = 20
-    fill.color = (0.75, 0.85, 1.0)
+    fill.color = (0.82, 0.88, 1.0)
     fo = bpy.data.objects.new("Sky_Fill", fill)
     fo.location = (-8, -10, 14)
     fo.rotation_euler = (math.radians(50), 0, math.radians(-45))
     collection("L05/Lights_Cameras").objects.link(fo)
     # Warm glow inside the mill so the windows light the deck.
     inner = bpy.data.lights.new("Mill_Interior", "POINT")
-    inner.energy = 120
+    inner.energy = 160
     inner.color = (1.0, 0.6, 0.25)
     io = bpy.data.objects.new("Mill_Interior", inner)
     io.location = (7.8, 11.0, Z2 + 1.4)
@@ -2121,16 +2568,64 @@ def configure_render(samples):
     scene.view_settings.exposure = -0.85
 
 
-def render_all(cameras, only=None):
-    os.makedirs(RENDER_DIR, exist_ok=True)
+def render_all(cameras, only=None, out_dir=RENDER_DIR):
+    os.makedirs(out_dir, exist_ok=True)
     scene = bpy.context.scene
     for key, cam in cameras.items():
         if only and key not in only:
             continue
         scene.camera = cam
-        scene.render.filepath = os.path.join(RENDER_DIR, "L05_%s.png" % key)
+        scene.render.filepath = os.path.join(out_dir, "L05_%s.png" % key)
         bpy.ops.render.render(write_still=True)
         print("L05 rendered", scene.render.filepath)
+
+
+def export_water_params():
+    """Godot hand-off (not wired yet): the same layer tiles/speeds the Blender
+    drivers use, flow direction per water body and the texture set, so a
+    Godot water shader reproduces the Blender look without a fluid sim."""
+    flows = {}
+    for obj in bpy.data.objects:
+        if obj.type == "MESH" and obj.name.startswith(("Water_", "Waterfall_")):
+            mat = obj.data.materials[0].name if obj.data.materials else ""
+            flows[obj.name] = {"material": mat}
+    for obj in bpy.data.objects:
+        if obj.name.startswith("Water_") and obj.name in flows and obj.data.uv_layers:
+            uv = obj.data.uv_layers[0].data
+            loops = obj.data.loops
+            verts = obj.data.vertices
+            # Downstream = direction in which U grows (UVs are metres).
+            if len(uv) >= 2:
+                d = verts[loops[1].vertex_index].co - verts[loops[0].vertex_index].co
+                du = uv[1].uv[0] - uv[0].uv[0]
+                if abs(du) > 1e-6:
+                    v = d * (1.0 / du)
+                    flows[obj.name]["downstream_xy"] = [round(v.x, 3), round(v.y, 3)]
+    data = {
+        "note": "Blender 5 v3 water look for Godot 4 (StandardMaterial3D / ShaderMaterial). UV units are metres; "
+                "scroll = speed / tile texture units per second along +U (surfaces) or +V offset (falls, V = -metres fallen).",
+        "colour_linear": list(WATER_COLOR),
+        "ior": 1.333,
+        "layers": WATER_LAYERS,
+        "textures": {
+            "surface_colour_foam": "res://assets/luma/level04/water_foam.jpg",
+            "fall_body_rgba": "res://assets/luma/level05/waterfall_streaks.png",
+            "fall_foam_mask": "res://assets/luma/level05/waterfall_foam_mask.png",
+            "fall_normal": "res://assets/luma/level05/waterfall_normal.png",
+        },
+        "parallax_layers_far_to_near": [
+            "res://assets/luma/level05/parallax/sky_clouds.jpg",
+            "res://assets/luma/level04/alps_far.jpg",
+            "res://assets/luma/level05/parallax/cloud_bank.png",
+            "res://assets/luma/level05/parallax/mid_forest_slopes.png",
+            "res://assets/luma/level05/parallax/near_rocks_plants.png",
+        ],
+        "bodies": flows,
+    }
+    path = os.path.join(TEX_DIR, "level05_water_params.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    print("L05 water params", path)
 
 
 def validate_layout():
@@ -2164,6 +2659,7 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     samples = int(argv[argv.index("--samples") + 1]) if "--samples" in argv else 160
     only = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
+    out_dir = argv[argv.index("--out") + 1] if "--out" in argv else RENDER_DIR
     reset_scene()
     build_materials()
     for spec in DECKS:
@@ -2176,6 +2672,7 @@ def main():
     build_mechanisms()
     build_lift()
     build_millhouse()
+    build_lanterns()
     build_ground()
     build_cliffs()
     scatter_firs()
@@ -2189,9 +2686,13 @@ def main():
     if "--save" in argv:
         os.makedirs(os.path.dirname(BLEND_PATH), exist_ok=True)
         bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH, compress=True)
+        # Textures are referenced relative to the .blend (//../luma/level05/...).
+        bpy.ops.file.make_paths_relative()
+        bpy.ops.wm.save_mainfile(compress=True)
         print("L05 saved", BLEND_PATH)
+        export_water_params()
     if "--render" in argv:
-        render_all(cameras, only)
+        render_all(cameras, only, out_dir)
     stats = {"objects": len(bpy.data.objects), "meshes": len(bpy.data.meshes),
              "triangles": sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in bpy.data.objects if o.type == "MESH" and not o.hide_render)}
     print("L05 stats", stats)

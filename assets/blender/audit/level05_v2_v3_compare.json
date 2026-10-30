@@ -1,0 +1,598 @@
+{
+ "geometry": {
+  "common_meshes": 533,
+  "identical": 522,
+  "changed": {
+   "Flumes_And_Channels": {
+    "v2_verts": 2160,
+    "v3_verts": 3304,
+    "v2_bbox": [
+     4.6,
+     12.47,
+     2.75,
+     12.25,
+     -0.6,
+     4.22
+    ],
+    "v3_bbox": [
+     4.6,
+     12.73,
+     2.75,
+     12.25,
+     -1.5,
+     4.2504
+    ]
+   },
+   "Waterfall_EastFeed": {
+    "v2_verts": 112,
+    "v3_verts": 144,
+    "v2_bbox": [
+     11.9294,
+     12.33,
+     2.4354,
+     2.7172,
+     1.9174,
+     2.7
+    ],
+    "v3_bbox": [
+     11.74,
+     12.58,
+     2.4354,
+     2.7092,
+     1.9174,
+     2.7
+    ]
+   },
+   "Waterfall_EastWheel": {
+    "v2_verts": 528,
+    "v3_verts": 892,
+    "v2_bbox": [
+     12.7526,
+     13.4896,
+     1.9674,
+     3.2315,
+     -7.0951,
+     1.8
+    ],
+    "v3_bbox": [
+     12.7603,
+     13.4896,
+     1.75,
+     3.45,
+     -7.0951,
+     1.8
+    ]
+   },
+   "Waterfall_PondDrop": {
+    "v2_verts": 112,
+    "v3_verts": 160,
+    "v2_bbox": [
+     8.7919,
+     9.3731,
+     7.7339,
+     8.0056,
+     2.7842,
+     3.9
+    ],
+    "v3_bbox": [
+     8.67,
+     9.53,
+     7.6099,
+     8.1223,
+     2.7842,
+     3.9
+    ]
+   },
+   "Waterfall_PondLink": {
+    "v2_verts": 88,
+    "v3_verts": 136,
+    "v2_bbox": [
+     9.0622,
+     9.4401,
+     9.6395,
+     9.9117,
+     3.804,
+     4.124
+    ],
+    "v3_bbox": [
+     8.95,
+     9.59,
+     9.6117,
+     9.9393,
+     3.804,
+     4.265
+    ]
+   },
+   "Waterfall_PoolOverflow": {
+    "v2_verts": 272,
+    "v3_verts": 380,
+    "v2_bbox": [
+     12.1114,
+     12.8126,
+     6.3075,
+     7.7095,
+     0.3043,
+     2.95
+    ],
+    "v3_bbox": [
+     12.1194,
+     12.8126,
+     6.15,
+     7.85,
+     0.3043,
+     2.95
+    ]
+   },
+   "Waterfall_Spillway": {
+    "v2_verts": 255,
+    "v3_verts": 394,
+    "v2_bbox": [
+     5.9792,
+     6.804,
+     -0.8186,
+     -0.0945,
+     -5.5944,
+     -0.2
+    ],
+    "v3_bbox": [
+     5.81,
+     6.99,
+     -0.8186,
+     -0.1025,
+     -5.5944,
+     -0.2
+    ]
+   },
+   "Waterfall_Spring": {
+    "v2_verts": 167,
+    "v3_verts": 222,
+    "v2_bbox": [
+     -0.0821,
+     0.4993,
+     2.058,
+     2.9051,
+     -0.271,
+     0.9
+    ],
+    "v3_bbox": [
+     -0.1086,
+     0.7734,
+     1.85,
+     3.15,
+     -0.271,
+     0.9
+    ]
+   },
+   "Waterfall_UpperEast": {
+    "v2_verts": 112,
+    "v3_verts": 160,
+    "v2_bbox": [
+     7.2602,
+     7.8118,
+     6.1039,
+     7.2485,
+     1.3603,
+     2.83
+    ],
+    "v3_bbox": [
+     7.07,
+     7.98,
+     6.0325,
+     7.2407,
+     1.3603,
+     2.83
+    ]
+   },
+   "Waterfall_UpperWest": {
+    "v2_verts": 112,
+    "v3_verts": 160,
+    "v2_bbox": [
+     6.5593,
+     7.0941,
+     6.1498,
+     7.2724,
+     1.3542,
+     2.83
+    ],
+    "v3_bbox": [
+     6.37,
+     7.28,
+     6.0325,
+     7.2644,
+     1.3542,
+     2.83
+    ]
+   },
+   "Waterfall_WheelFeed": {
+    "v2_verts": 100,
+    "v3_verts": 132,
+    "v2_bbox": [
+     8.0457,
+     8.3691,
+     6.0434,
+     6.3994,
+     0.205,
+     1.43
+    ],
+    "v3_bbox": [
+     8.0536,
+     8.3691,
+     5.8,
+     6.6,
+     0.205,
+     1.43
+    ]
+   }
+  },
+  "added": {
+   "Cloud_Card": 7,
+   "Fir_Mountain": 1915,
+   "Forest_Card": 8,
+   "Railing_Lanterns": 1,
+   "Water_PoolBranch": 1,
+   "Water_PoolDownFlume": 1,
+   "Waterfall_PoolFeed": 1
+  },
+  "removed": []
+ },
+ "floors_identical": true,
+ "gear_pairs_identical": true,
+ "lift_travel_identical": true,
+ "lift_cage_identical": true,
+ "mechanism_interference_unintended": [
+  0,
+  0
+ ],
+ "mechanism_interference_total": [
+  29,
+  29
+ ],
+ "routes_v2_v3": {
+  "main_lower": {
+   "samples": [
+    236,
+    236
+   ],
+   "floor_gap_count": [
+    0,
+    0
+   ],
+   "min_free_width_m": [
+    1.13,
+    1.13
+   ],
+   "min_headroom_m": [
+    0.938,
+    0.938
+   ],
+   "min_centre_clearance_m": [
+    0.327,
+    0.327
+   ]
+  },
+  "main_middle": {
+   "samples": [
+    171,
+    171
+   ],
+   "floor_gap_count": [
+    15,
+    15
+   ],
+   "min_free_width_m": [
+    1.085,
+    1.085
+   ],
+   "min_headroom_m": [
+    0.988,
+    0.988
+   ],
+   "min_centre_clearance_m": [
+    0.342,
+    0.342
+   ]
+  },
+  "middle_under_walk": {
+   "samples": [
+    66,
+    66
+   ],
+   "floor_gap_count": [
+    0,
+    0
+   ],
+   "min_free_width_m": [
+    1.22,
+    1.22
+   ],
+   "min_headroom_m": [
+    0.958,
+    0.958
+   ],
+   "min_centre_clearance_m": [
+    0.342,
+    0.342
+   ]
+  },
+  "main_upper": {
+   "samples": [
+    304,
+    304
+   ],
+   "floor_gap_count": [
+    16,
+    16
+   ],
+   "min_free_width_m": [
+    1.083,
+    1.083
+   ],
+   "min_headroom_m": [
+    0.808,
+    0.808
+   ],
+   "min_centre_clearance_m": [
+    0.334,
+    0.334
+   ]
+  },
+  "secret_corridor": {
+   "samples": [
+    91,
+    91
+   ],
+   "floor_gap_count": [
+    0,
+    0
+   ],
+   "min_free_width_m": [
+    1.27,
+    1.27
+   ],
+   "min_headroom_m": [
+    0.998,
+    0.998
+   ],
+   "min_centre_clearance_m": [
+    0.327,
+    0.327
+   ]
+  }
+ },
+ "routes_identical": true,
+ "camera_occlusion_iso": [
+  {
+   "main_lower": {
+    "samples": 44,
+    "fully_hidden": 0,
+    "hidden_pct": 0,
+    "top_blockers": []
+   },
+   "main_middle": {
+    "samples": 28,
+    "fully_hidden": 1,
+    "hidden_pct": 4,
+    "top_blockers": [
+     [
+      "M_Workshop",
+      4
+     ],
+     [
+      "Lift_Tower",
+      2
+     ],
+     [
+      "M_GearTerrace",
+      2
+     ],
+     [
+      "Bridge_LiftMiddle",
+      1
+     ]
+    ]
+   },
+   "middle_under_walk": {
+    "samples": 13,
+    "fully_hidden": 2,
+    "hidden_pct": 15,
+    "top_blockers": [
+     [
+      "Timber_WalkSupports",
+      3
+     ],
+     [
+      "Lift_Tower",
+      2
+     ],
+     [
+      "Bridge_LiftMiddle",
+      1
+     ]
+    ]
+   },
+   "main_upper": {
+    "samples": 54,
+    "fully_hidden": 4,
+    "hidden_pct": 7,
+    "top_blockers": [
+     [
+      "U_PoolDeck",
+      6
+     ],
+     [
+      "U_LiftWalk",
+      4
+     ],
+     [
+      "Lift_Tower",
+      4
+     ],
+     [
+      "Flumes_And_Channels",
+      4
+     ],
+     [
+      "U_ValveDeck",
+      3
+     ]
+    ]
+   },
+   "secret_corridor": {
+    "samples": 17,
+    "fully_hidden": 14,
+    "hidden_pct": 82,
+    "top_blockers": [
+     [
+      "M_Workshop",
+      23
+     ],
+     [
+      "Masonry_MiddleArcade",
+      5
+     ]
+    ]
+   }
+  },
+  {
+   "main_lower": {
+    "samples": 44,
+    "fully_hidden": 0,
+    "hidden_pct": 0,
+    "top_blockers": []
+   },
+   "main_middle": {
+    "samples": 28,
+    "fully_hidden": 1,
+    "hidden_pct": 4,
+    "top_blockers": [
+     [
+      "M_Workshop",
+      4
+     ],
+     [
+      "Lift_Tower",
+      2
+     ],
+     [
+      "M_GearTerrace",
+      2
+     ],
+     [
+      "Bridge_LiftMiddle",
+      1
+     ]
+    ]
+   },
+   "middle_under_walk": {
+    "samples": 13,
+    "fully_hidden": 2,
+    "hidden_pct": 15,
+    "top_blockers": [
+     [
+      "Timber_WalkSupports",
+      3
+     ],
+     [
+      "Lift_Tower",
+      2
+     ],
+     [
+      "Bridge_LiftMiddle",
+      1
+     ]
+    ]
+   },
+   "main_upper": {
+    "samples": 54,
+    "fully_hidden": 4,
+    "hidden_pct": 7,
+    "top_blockers": [
+     [
+      "U_PoolDeck",
+      6
+     ],
+     [
+      "U_LiftWalk",
+      4
+     ],
+     [
+      "Lift_Tower",
+      4
+     ],
+     [
+      "Flumes_And_Channels",
+      4
+     ],
+     [
+      "U_ValveDeck",
+      3
+     ]
+    ]
+   },
+   "secret_corridor": {
+    "samples": 17,
+    "fully_hidden": 14,
+    "hidden_pct": 82,
+    "top_blockers": [
+     [
+      "M_Workshop",
+      23
+     ],
+     [
+      "Masonry_MiddleArcade",
+      5
+     ]
+    ]
+   }
+  }
+ ],
+ "water_bodies": [
+  [
+   "Water_EastFlume",
+   "Water_MiddleChannel",
+   "Water_MillPond",
+   "Water_PondFeed",
+   "Water_PondLink",
+   "Water_Spillway",
+   "Water_Stream",
+   "Water_UpperChannel",
+   "Water_UpperPool",
+   "Water_WheelPit",
+   "Waterfall_EastFeed",
+   "Waterfall_EastWheel",
+   "Waterfall_PondDrop",
+   "Waterfall_PondLink",
+   "Waterfall_PoolOverflow",
+   "Waterfall_Spillway",
+   "Waterfall_Spring",
+   "Waterfall_UpperEast",
+   "Waterfall_UpperWest",
+   "Waterfall_WheelFeed"
+  ],
+  [
+   "Water_EastFlume",
+   "Water_MiddleChannel",
+   "Water_MillPond",
+   "Water_PondFeed",
+   "Water_PondLink",
+   "Water_PoolBranch",
+   "Water_PoolDownFlume",
+   "Water_Spillway",
+   "Water_Stream",
+   "Water_UpperChannel",
+   "Water_UpperPool",
+   "Water_WheelPit",
+   "Waterfall_EastFeed",
+   "Waterfall_EastWheel",
+   "Waterfall_PondDrop",
+   "Waterfall_PondLink",
+   "Waterfall_PoolFeed",
+   "Waterfall_PoolOverflow",
+   "Waterfall_Spillway",
+   "Waterfall_Spring",
+   "Waterfall_UpperEast",
+   "Waterfall_UpperWest",
+   "Waterfall_WheelFeed"
+  ]
+ ]
+}
