@@ -2,7 +2,7 @@
 
 An original Android-first Godot 4.6.3 physics puzzle. The player tilts detailed miniature labyrinths and guides a real `RigidBody3D` marble through physical hazards and linked mechanical puzzles.
 
-This repository contains two playable development levels. It is not a signed Android build and has not been published to Google Play.
+This repository contains two playable development levels and CI pipelines for Android test APKs. It has not been published to Google Play.
 
 ## Levels
 
@@ -95,6 +95,8 @@ To download it:
 4. Download **MarbleLabyrinth-debug-apk** and unzip it.
 5. Compare the APK with `MarbleLabyrinth-debug.apk.sha256`, then install `MarbleLabyrinth-debug.apk` on the phone.
 
+**Important:** Debug CI creates an ephemeral signing key on every run. These APKs are for one-off testing, NOT install-over updates. For update-compatible builds, use **Actions → Android Stable APK**, after configuring the owner's permanent keystore via [Russian signing guide](docs/ANDROID_UPDATE_SIGNING_RU.md). That stable workflow increments Android versionCode and uses one consistent signer. A previously installed ephemeral-debug APK must be uninstalled once when switching to stable-signed APKs.
+
 The debug package ID is `com.kirilsjanssen.marblelabyrinth`. The export targets Android SDK 36 and includes ARM64 plus 32-bit ARM libraries. The APK, generated debug keystore and Android SDK are build outputs and are never committed.
 
 For a configured local machine, the same validation and export can be run with:
@@ -111,6 +113,6 @@ tools/build_android_debug.sh
 - Tune touch sensitivity, moving-platform timing and gate duration using real play sessions.
 - Measure frame rate, thermals, battery use and shadow cost on low/mid-range hardware.
 - Test pause/resume, focus loss and device rotation behavior.
-- Configure Android export templates, API level, final package ID and a debug export preset.
+- Verify real-phone behavior, persistent-signing setup and compatibility of updates.
 
 Do not use an Android emulator for this project, commit signing keys, or publish to Google Play without the owner's explicit approval.
