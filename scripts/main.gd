@@ -281,6 +281,17 @@ func _screen_drag_to_board_tilt(screen_drag: Vector2) -> Vector2:
 	return Vector2(board_local.x, board_local.z) * minf(screen_drag.length(), 1.0)
 
 
+func _board_tilt_to_screen(tilt: Vector2) -> Vector2:
+	# The on-screen thumb should follow the gesture, not board-local axes.
+	if camera == null or board == null or tilt.length_squared() < 0.0001:
+		return tilt
+	var world_direction := board.global_basis * Vector3(tilt.x, 0.0, tilt.y)
+	var screen_direction := Vector2(world_direction.dot(camera.global_basis.x), world_direction.dot(-camera.global_basis.y))
+	if screen_direction.length_squared() < 0.0001:
+		return Vector2.ZERO
+	return screen_direction.normalized() * minf(tilt.length(), 1.0)
+
+
 func _build_materials() -> void:
 	materials = {
 		"frame": _metal(Color("171d26"), 0.88, 0.20),
@@ -969,7 +980,7 @@ func _update_hud() -> void:
 	else:
 		hint_label.text = (_ui_text("BOARD TILT %+.2f / %+.2f", "НАКЛОН ДОСКИ %+.2f / %+.2f", "BRETTNEIGUNG %+.2f / %+.2f") % [active_tilt.x, active_tilt.y]) if OS.get_name() == "Android" else "Arrows / left drag: tilt the board  •  Right drag: camera"
 	if tilt_indicator and tilt_indicator.visible:
-		tilt_indicator.call("set_tilt", active_tilt)
+		tilt_indicator.call("set_tilt", _board_tilt_to_screen(active_tilt))
 
 
 func _update_mode_button() -> void:
