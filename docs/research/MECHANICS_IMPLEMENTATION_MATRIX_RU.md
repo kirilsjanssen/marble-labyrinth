@@ -12,7 +12,9 @@
 | P1 | Локальная/нулевая гравитация | Godot 4.6 силы и project gravity; официальный API | `FieldZone.LOCAL_GRAVITY` | тело в 0g не падает, контрольное падает | Реализовано, headless |
 | P1 | Адгезионное поле | Godot 4.6 силы; оригинальная реализация | `FieldZone.ADHESION` | отдельная калибровка силы отрыва | Прототип API, тест P1.1 |
 | P1 | Температурный предел шара | Требования `MATERIAL_TRANSFORMATIONS_AND_FIELDS_RU.md` | данные `BallMaterialProfile` | тепловая зона и урон | Данные готовы, логика P5 |
-| P2 | Объём воды, клапаны, насосы, реверс | собственная сеть резервуаров; WaterBox/GDWaterKart MIT только как изученные ссылки | `WaterHydraulics`, `WaterBodyForces`, `WaterSurfaceVisual` | сохранение объёма, плавучесть, обратный поток | Следующий этап |
+| P2 | Объём воды, клапаны, насосы, реверс | собственная сеть резервуаров; WaterBox/GDWaterKart MIT только как изученные ссылки | `WaterNetwork`, `WaterValve`, `WaterPump`, `WaterConnection` | 2000+ ticks, overflow, pump, reverse flow | Реализовано, headless |
+| P2 | Плавучесть, drag, течение | Godot 4.6 `RigidBody3D`; оригинальная реализация | `WaterVolume`, `WaterBallForces` | дерево/пустотелый плавают, сталь тонет, течение переносит | Реализовано, headless |
+| P2 | Мобильный визуал воды | Godot 4.6 Compatibility `BoxMesh`; оригинальная реализация | `WaterSurfaceVisual`, `water_lab.tscn` | высота mesh совпадает с fill ratio | Реализовано, headless; телефон не проверен |
 | P3 | Лифт, мост, шестерни, платформы | Godot `AnimatableBody3D`; MIT moving-platform demo как справочник | существующий `ClockworkMechanisms` + новые модули | старый L02 smoke + новые механизмы | Частично уже в L02 |
 | P4 | Несколько шаров и Magnetic Relay | оригинальная архитектура | `BallRegistry`, `BallSwitcher`, puzzle graph | алюминий не поднимается, сталь поднимается силой | Запланировано |
 | P5 | Cooling Crucible, лава/вода/корка | оригинальная state machine | thermal/material state, lava network | оба маршрута, урон, временная коллизия | Запланировано |
