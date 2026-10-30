@@ -9,6 +9,9 @@ const LEVEL_SOURCES := [Level01, Level02]
 
 const MAX_TILT := deg_to_rad(15.0)
 const TILT_RESPONSE := 5.5
+# A tilted AnimatableBody3D alone is not guaranteed to wake or drive a rigid marble.
+# Apply a board-local gravitational component to the real RigidBody3D every tick.
+const TILT_FORCE_MULTIPLIER := 2.5
 const BALL_RADIUS := 0.33
 const BALL_MASS := 0.34
 const BALL_LINEAR_DAMP := 0.12
@@ -48,9 +51,10 @@ var tilt_touch_index := -1
 var mouse_tilt_active := false
 var mouse_tilt_origin := Vector2.ZERO
 var drag_tilt := Vector2.ZERO
+var active_tilt := Vector2.ZERO
 var sensor_zero := Vector2.ZERO
 var sensor_calibrated := false
-var control_mode := ControlMode.TOUCH if OS.get_name() == "Android" else ControlMode.AUTO
+var control_mode := ControlMode.AUTO
 var yaw := deg_to_rad(32.0)
 var pitch := deg_to_rad(52.0)
 var orbit_distance := 13.6
@@ -78,10 +82,13 @@ func _physics_process(delta: float) -> void:
 		_reset_level()
 
 	var tilt := _read_tilt_input()
+	active_tilt = tilt
 	var target_rotation := Vector3(-tilt.y * MAX_TILT, 0.0, -tilt.x * MAX_TILT)
 	var weight := clampf(delta * TILT_RESPONSE, 0.0, 1.0)
 	board.rotation.x = lerp_angle(board.rotation.x, target_rotation.x, weight)
 	board.rotation.z = lerp_angle(board.rotation.z, target_rotation.z, weight)
+	if not game_won:
+		_apply_marble_tilt_force(tilt)
 	if clockwork:
 		clockwork.physics_step(delta)
 
@@ -166,6 +173,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_LEFT and OS.get_name() != "Android" and not _touch_on_hud(event.position):
 			mouse_tilt_origin = event.position
 			mouse_tilt_active = true
+
+
+func _apply_marble_tilt_force(tilt: Vector2) -> void:
+	# Physical force: the marble still uses mass, real collisions, friction and inertia.
+	# Multiplying by sin(MAX_TILT) approximates the downhill gravity component.
+	# Boost compensates for the short mobile tilt range and high-friction steel deck.
+	if not ball or tilt.length_squared() < 0.0004:
+		return
+	ball.sleeping = false
+	var tangent := board.global_basis * Vector3(tilt.x, 0.0, tilt.y)
+	var gravity_strength: float = float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8))
+	ball.apply_central_force(tangent * ball.mass * gravity_strength * sin(MAX_TILT) * TILT_FORCE_MULTIPLIER)
 
 
 func _read_tilt_input() -> Vector2:
@@ -817,7 +836,7 @@ func _update_hud() -> void:
 	if transient_message_time > 0.0:
 		hint_label.text = transient_message
 	else:
-		hint_label.text = "LEFT: TILT  •  RIGHT: CAMERA" if OS.get_name() == "Android" else "Arrows / left drag: tilt  •  Right drag: orbit"
+		hint_label.text = "TILT %+.2f / %+.2f  •  PHONE OR LEFT DRAG" % [active_tilt.x, active_tilt.y] if OS.get_name() == "Android" else "Arrows / left drag: tilt  •  Right drag: orbit"
 
 
 func _update_mode_button() -> void:
