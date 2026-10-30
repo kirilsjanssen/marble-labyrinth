@@ -4,10 +4,13 @@ extends Node3D
 
 const Level01 = preload("res://scripts/levels/level_01.gd")
 const Level02 = preload("res://scripts/levels/level_02.gd")
+const Level03 = preload("res://scripts/levels/level_03.gd")
 const ClockworkMechanismsScript = preload("res://scripts/components/clockwork_mechanisms.gd")
+const LiftworksMechanismsScript = preload("res://scripts/mechanisms/liftworks_mechanisms.gd")
+const SmartCameraControllerScript = preload("res://scripts/camera/smart_camera_controller.gd")
 const TiltStickIndicatorScript = preload("res://scripts/components/tilt_stick_indicator.gd")
 const GoalSocketDetectorScript = preload("res://scripts/components/goal_socket_detector.gd")
-const LEVEL_SOURCES := [Level01, Level02]
+const LEVEL_SOURCES := [Level01, Level02, Level03]
 
 const MAX_TILT := deg_to_rad(15.0)
 const TILT_RESPONSE := 5.5
@@ -20,6 +23,9 @@ const BALL_LINEAR_DAMP := 0.12
 const BALL_ANGULAR_DAMP := 0.08
 const TOUCH_TILT_DISTANCE := 140.0
 const SENSOR_RANGE := 5.5
+const DEFAULT_CAMERA_YAW := deg_to_rad(32.0)
+const DEFAULT_CAMERA_PITCH := deg_to_rad(52.0)
+const DEFAULT_CAMERA_DISTANCE := 13.6
 
 enum ControlMode { AUTO, TOUCH, SENSOR }
 
@@ -27,6 +33,9 @@ var level_data: Dictionary = Level01.definition()
 var board: AnimatableBody3D
 var ball: RigidBody3D
 var camera: Camera3D
+var smart_camera: SmartCameraController
+var camera_label: Label
+var camera_button: Button
 var status_label: Label
 var hint_label: Label
 var mode_button: Button
@@ -111,7 +120,7 @@ func _physics_process(delta: float) -> void:
 func _process(delta: float) -> void:
 	visual_time += delta
 	transient_message_time = maxf(0.0, transient_message_time - delta)
-	_update_camera()
+	_update_camera(delta)
 	_animate_obstacles(delta)
 	_update_hud()
 
@@ -163,6 +172,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_load_level(0)
 			KEY_2:
 				_load_level(1)
+			KEY_3:
+				_load_level(2)
+			KEY_V:
+				_cycle_camera_preference()
 			KEY_L:
 				_load_level((current_level_index + 1) % LEVEL_SOURCES.size())
 			KEY_N, KEY_ENTER:
@@ -266,6 +279,8 @@ func _cycle_control_mode() -> void:
 func _orbit_camera(relative: Vector2, sensitivity: float) -> void:
 	yaw -= relative.x * sensitivity
 	pitch = clampf(pitch + relative.y * sensitivity * 0.75, deg_to_rad(24.0), deg_to_rad(74.0))
+	if smart_camera:
+		smart_camera.orbit_active = true
 
 
 func _screen_drag_to_board_tilt(screen_drag: Vector2) -> Vector2:
@@ -378,14 +393,19 @@ func _load_level(index: int) -> void:
 	drag_tilt = Vector2.ZERO
 	tilt_touch_index = -1
 	touch_start.clear()
-	yaw = deg_to_rad(32.0)
-	pitch = deg_to_rad(52.0)
-	orbit_distance = 13.6
+	_reset_camera_view()
 
 	_build_board()
 	_build_ball()
 	goal_detector.target_body = ball
-	if level_data.has("mechanics"):
+	if level_data.has("liftworks"):
+		var liftworks := LiftworksMechanismsScript.new() as LiftworksMechanisms
+		liftworks.name = "LiftworksMechanisms"
+		board.add_child(liftworks)
+		liftworks.setup_liftworks(level_data["liftworks"], materials, ball, self)
+		liftworks.state_changed.connect(_on_mechanism_message)
+		clockwork = liftworks
+	elif level_data.has("mechanics"):
 		clockwork = ClockworkMechanismsScript.new()
 		clockwork.name = "ClockworkMechanisms"
 		board.add_child(clockwork)
@@ -395,7 +415,15 @@ func _load_level(index: int) -> void:
 		level_selector.select(index)
 	if completion_overlay:
 		completion_overlay.hide()
+	if smart_camera:
+		smart_camera.target = ball
+		smart_camera.static_geometry = board
+		smart_camera.auto_enabled = level_data.get("smart_camera", false)
+		smart_camera.reset_state()
+	if level_data.has("hint"):
+		_show_message(level_data["hint"], 7.0)
 	_update_level_lighting()
+	_update_camera()
 	_update_hud()
 
 
@@ -509,7 +537,10 @@ func _build_hole(spec: Dictionary) -> void:
 	shape.size = size
 	collision.shape = shape
 	hole_area.add_child(collision)
-	hole_area.body_entered.connect(_on_trap_entered)
+	if spec.has("respawn"):
+		hole_area.body_entered.connect(_on_checkpoint_hazard_entered.bind(spec["respawn"]))
+	else:
+		hole_area.body_entered.connect(_on_trap_entered)
 	board.add_child(hole_area)
 
 
@@ -658,7 +689,12 @@ func _build_camera() -> void:
 	camera.name = "OrbitCamera"
 	camera.current = true
 	camera.fov = 43.0
+	camera.near = 0.04
 	add_child(camera)
+	smart_camera = SmartCameraControllerScript.new()
+	smart_camera.name = "SmartCameraController"
+	smart_camera.camera = camera
+	add_child(smart_camera)
 
 
 func _build_hud() -> void:
@@ -732,6 +768,7 @@ func _build_hud() -> void:
 	level_selector.focus_mode = Control.FOCUS_NONE
 	level_selector.add_item("LEVEL 1 — WORKSHOP")
 	level_selector.add_item("LEVEL 2 — FACTORY")
+	level_selector.add_item("LEVEL 3 — LIFTWORKS")
 	level_selector.item_selected.connect(_on_level_selected)
 	button_row.add_child(level_selector)
 	mode_button = _hud_button("BOARD: DRAG", Vector2(155.0, 44.0))
@@ -743,12 +780,26 @@ func _build_hud() -> void:
 	view_button = _hud_button(_ui_text("VIEW", "ВИД", "ANS."), Vector2(55.0, 44.0))
 	view_button.pressed.connect(_reset_camera_view)
 	button_row.add_child(view_button)
+	camera_button = _hud_button("CAM: AUTO", Vector2(96.0, 44.0))
+	camera_button.pressed.connect(_cycle_camera_preference)
+	button_row.add_child(camera_button)
 	help_button = _hud_button("?", Vector2(42.0, 44.0))
 	help_button.pressed.connect(_show_controls_help)
 	button_row.add_child(help_button)
 	var reset_button := _hud_button(_ui_text("RESET", "СБРОС", "NEUSTART"), Vector2(80.0, 44.0))
 	reset_button.pressed.connect(_on_reset_pressed)
 	button_row.add_child(reset_button)
+
+	camera_label = Label.new()
+	camera_label.name = "CameraModeLabel"
+	camera_label.add_theme_font_size_override("font_size", 15)
+	camera_label.add_theme_color_override("font_color", Color("ffd28a", 0.92))
+	camera_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.85))
+	camera_label.add_theme_constant_override("outline_size", 5)
+	camera_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	camera_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	camera_label.size = Vector2(260.0, 24.0)
+	hud_root.add_child(camera_label)
 
 	completion_overlay = CenterContainer.new()
 	completion_overlay.name = "CompletionOverlay"
@@ -856,9 +907,19 @@ func _close_controls_help() -> void:
 
 
 func _reset_camera_view() -> void:
-	yaw = deg_to_rad(32.0)
-	pitch = deg_to_rad(52.0)
-	orbit_distance = 13.6
+	yaw = DEFAULT_CAMERA_YAW
+	pitch = DEFAULT_CAMERA_PITCH
+	orbit_distance = level_data.get("camera_distance", DEFAULT_CAMERA_DISTANCE)
+	if smart_camera:
+		smart_camera.orbit_active = false
+
+
+func _cycle_camera_preference() -> void:
+	if not smart_camera:
+		return
+	smart_camera.cycle_preference()
+	_show_message("CAMERA PREFERENCE: %s" % smart_camera.preference_name(), 2.5)
+	_update_hud()
 
 
 func _ui_text(english: String, russian: String, german: String) -> String:
@@ -916,6 +977,8 @@ func _layout_hud(override_size := Vector2.ZERO) -> void:
 		touch_help_left.position = Vector2(left + thumb_diameter + 18.0, view_size.y - margins.w - 83.0)
 	if touch_help_right:
 		touch_help_right.position = Vector2(view_size.x - right - 235.0, view_size.y - margins.w - 83.0)
+	if camera_label:
+		camera_label.position = Vector2((view_size.x - camera_label.size.x) * 0.5, view_size.y - margins.w - 40.0)
 
 
 func _safe_viewport_margins(view_size: Vector2) -> Vector4:
@@ -931,12 +994,19 @@ func _safe_viewport_margins(view_size: Vector2) -> Vector4:
 	return Vector4(left, top, right, bottom)
 
 
-func _update_camera() -> void:
+func _update_camera(delta := 0.0) -> void:
 	if not camera:
 		return
+	var pivot: Vector3 = level_data.get("camera_pivot", Vector3.ZERO)
 	var direction := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
-	camera.global_position = direction * orbit_distance
-	camera.look_at(Vector3(0.0, 0.0, 0.0), Vector3.UP)
+	var overview_position := pivot + direction * orbit_distance
+	if smart_camera:
+		# Overview/orbit math stays here; the controller decides when that view
+		# cannot see the marble and blends to the chase camera.
+		smart_camera.update(delta, overview_position, pivot)
+	else:
+		camera.global_position = overview_position
+		camera.look_at(pivot, Vector3.UP)
 
 
 func _animate_obstacles(delta: float) -> void:
@@ -997,6 +1067,11 @@ func _update_hud() -> void:
 			hint_label.text = "Arrows / left drag: tilt the board  •  Right drag: camera"
 	if tilt_indicator and tilt_indicator.visible:
 		tilt_indicator.call("set_tilt", _board_tilt_to_screen(active_tilt))
+	if smart_camera and camera_label:
+		var suffix := "" if smart_camera.preference == SmartCameraController.Preference.AUTO else "  (LOCKED)"
+		camera_label.text = "CAMERA: %s%s" % [smart_camera.mode_name(), suffix]
+		if camera_button:
+			camera_button.text = "CAM: %s" % smart_camera.preference_name()
 
 
 func _update_mode_button() -> void:
@@ -1027,13 +1102,31 @@ func _on_goal_entered(body: RigidBody3D) -> void:
 		ball.angular_damp = 1.6
 		completion_title.text = "LEVEL %02d COMPLETE" % level_data["number"]
 		completion_detail.text = "%s\nTime: %0.1f seconds" % [level_data["title"], elapsed]
-		next_level_button.text = "NEXT: CLOCKWORK FACTORY" if current_level_index + 1 < LEVEL_SOURCES.size() else "REPLAY FACTORY"
+		if current_level_index + 1 < LEVEL_SOURCES.size():
+			next_level_button.text = "NEXT: " + String(LEVEL_SOURCES[current_level_index + 1].definition()["title"]).replace("THE ", "")
+		else:
+			next_level_button.text = "REPLAY " + String(level_data["title"]).replace("THE ", "")
 		completion_overlay.show()
 
 
 func _on_trap_entered(body: Node3D) -> void:
 	if body == ball:
 		respawn_queued = true
+
+
+func _on_checkpoint_hazard_entered(body: Node3D, local_respawn: Vector3) -> void:
+	if body == ball and not game_won:
+		call_deferred("_respawn_at_checkpoint", local_respawn)
+
+
+## Fall hazards on upper tiers return the marble to that tier's landing without
+## undoing the mechanisms the player already solved.
+func _respawn_at_checkpoint(local_respawn: Vector3) -> void:
+	ball.linear_velocity = Vector3.ZERO
+	ball.angular_velocity = Vector3.ZERO
+	ball.global_position = board.to_global(local_respawn)
+	ball.sleeping = false
+	_show_message("MARBLE RECOVERED AT LAST LANDING", 2.5)
 
 
 func _on_reset_pressed() -> void:

@@ -25,6 +25,7 @@ cd "$project_root"
 "$godot_bin" --headless --path . --editor --quit
 "$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/smoke_test.gd
 "$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/level_02_smoke_test.gd
+"$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/level_03_smoke_test.gd
 "$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/mobile_controls_test.gd
 "$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/physics_lab_test.gd
 "$godot_bin" --headless --path . --fixed-fps 60 --script res://tests/water_network_test.gd

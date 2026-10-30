@@ -92,7 +92,7 @@ jobs:
           set_setting export/android/java_sdk_path "$JAVA_HOME"
           version_code=$((10000 + GITHUB_RUN_NUMBER))
           export MARBLE_VERSION_CODE="$version_code"
-          export MARBLE_VERSION_NAME="0.4.0-test.$GITHUB_RUN_NUMBER"
+          export MARBLE_VERSION_NAME="0.5.0-test.$GITHUB_RUN_NUMBER"
           perl -0pi -e 's/(name="Android Stable".*?version\/code=)\d+/${1}$ENV{MARBLE_VERSION_CODE}/s; s/(name="Android Stable".*?version\/name=")[^"]+/${1}$ENV{MARBLE_VERSION_NAME}/s' export_presets.cfg
           grep -Fqx "version/code=$version_code" export_presets.cfg
           grep -Fqx "version/name=\"$MARBLE_VERSION_NAME\"" export_presets.cfg
