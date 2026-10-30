@@ -61,6 +61,29 @@ Water visuals (`shaders/flow_water.gdshader`, `scripts/water/flow_water_surface.
 - The power cube is 0.45 (was 0.55): a rotated 0.55 cube wedged diagonally in the 0.75 lane.
 - A fascia beam under the tier-3 edge closes a sight slot above the tier-2 rail, so the auto camera no longer stays in OVERVIEW while only a sliver of the marble is visible.
 
+### Level 5 — Alpine Cascade
+
+The first level built from finished art: the Blender v4 model (`tools/blender/build_level05.py`) exported as an optimised mobile GLB (`assets/levels/level05/`) and mounted on the tilting board by `scripts/levels/level05_visuals.gd`. Its 206 box colliders (decks with their railing openings, bridges, walls with arch openings, flumes, lift tower) become shapes of the board itself, so the marble, the crate and the smart camera all see the same geometry. Deck tops 0 / 1.4 / 2.8 m; the marble is a live `RigidBody3D` all the way.
+
+```text
+pond --headgate--> upper channel --spill notches--> middle channel --shutter--> MILL wheel -> pit -> stream
+pond --headgate--> upper pool --pool sluice--> LIFT wheel -> valley --ram pump--> pond
+spring --stream sluice--> stream (stream wheel) --spillway--> valley --spring--> spring
+```
+
+1. Roll over the brass **start ring**: the headgate opens and water reaches every channel, fall and wheel (all still until then).
+2. Push the **crate** across the spillway bridge onto the **plate**: the lift interlock releases.
+3. The **east wheel** turns only from the pool sluice flux; its bevel train (10:10, 10:10, 8:16) winds the lift winch at half the wheel angle. The **three-stop lift** carries the marble to the workshop tier; the GLB cage and doors ride the physical deck.
+4. Wind the **terrace crank** (pinion 9 → pillar crown 22): it releases the lift's top stop. Ride up, cross the pool and valve decks and settle in the **goal socket**.
+5. **Secret:** the arch off the start lane opens into a hidden corridor (the camera switches to CHASE); its ring and the alcove lever free the top stop without the crank.
+
+The mill wheel drives the millstone through the pit wheel and wallower (16:7). The diverter on the valve deck closes the spill notches, so the mill stops and the lift wheel gets the water. Every water sheet, fall and spray reads its own live flux, and the volume of the closed loop is conserved. The far Alps are a 360° panorama rendered from the Blender scene (`PanoramaSkyMaterial`), correct for any camera yaw including CHASE. Forest, cloud and near-rock rings come from the Luma parallax images. **GFX** (or `Q`) toggles the LOW and HIGH tiers.
+
+**Engineering fixes found by the Level 5 physical playthrough:**
+- The cube plate sat in the middle of the only lane to the lift, so the parked crate left 0.59 m either side of it for a 0.66 m marble. It now sits on the north side (`build_level05.py`, v5).
+- Stacked cargo slid into the lanes under the 15° tilt, so it is now lashed to its decks. Only the puzzle crate is free.
+- A sharp-edged crate collider snagged on the internal edge between two floor boxes; it now uses a chamfered convex hull, as modelled.
+
 ### Smart camera
 
 `scripts/camera/smart_camera_controller.gd` owns camera modes, so `main.gd` only supplies the overview orbit pose:
@@ -102,7 +125,8 @@ For later puzzle levels, `PuzzleShapeBody` supports real **cube** and **pyramid*
 | Both | Change Auto/Touch/Sensor mode | **Control** HUD button or `G`/`M` |
 | Both | Calibrate sensor | **Calibrate** HUD button or `C` |
 | Both | Reset level | **Reset** HUD button or `R` |
-| Testing | Select level | HUD selector, `1`, `2`, or `L` |
+| Testing | Select level | HUD selector, `1`–`5`, or `L` |
+| Level 5 | Graphics tier LOW / HIGH | **GFX** HUD button or `Q` |
 | Completion | Continue | Completion button, `N`, or Enter |
 
 **Important:** On Android, dragging the **left half tilts the entire board**. The ball is never moved directly: gravity, collisions and inertia make it roll. Dragging the **right half changes the camera only**. After rotating the camera, left drag is interpreted relative to the current screen view so left/right feel consistent.
@@ -129,6 +153,12 @@ scripts/mechanisms/watermill_mechanisms.gd     Water network, wheel, pontoon, mi
 scripts/mechanisms/water_wheel.gd              Flux-driven wheel with gear train and states
 scripts/environment/alpine_parallax_controller.gd  Layered Alpine parallax surroundings
 scripts/water/flow_water_surface.gd            Flux-driven animated water sheet
+scripts/levels/level_05.gd                     Alpine Cascade data, hydraulics and route
+scripts/levels/level05_visuals.gd              GLB scene, colliders, MultiMesh, sky, parallax, water
+scripts/mechanisms/level05_mechanisms.gd       Water network, wheels/gear trains, lift skin, crank
+shaders/level05_water.gdshader                 Two-layer flux-driven channel water
+shaders/level05_waterfall.gdshader             Waterfall body / foam / spray layers
+assets/levels/level05/                         Mobile GLB, colliders, vegetation, parallax
 shaders/flow_water.gdshader                    GL Compatibility water / waterfall shader
 shaders/parallax_layer.gdshader                Seamless cylindrical backdrop layer
 assets/luma/level04/                           Luma-generated textures and panoramas
@@ -142,6 +172,8 @@ tests/smoke_test.gd                            Level 1 regression test
 tests/level_02_smoke_test.gd                   Level 2 and transition test
 tests/level_03_smoke_test.gd                   Level 3 tiers, lift, route and camera test
 tests/level_04_smoke_test.gd                   Level 4 PHYSICAL playthrough, water, parallax
+tests/level_05_smoke_test.gd                   Level 5 PHYSICAL playthrough on the GLB model
+tests/level05_visuals_test.gd                  Level 5 GLB import, pivots, textures, colliders
 tests/physics_lab_test.gd                      P1 physical integration test
 tests/water_network_test.gd                    P2 conservation/valve/pump test
 tests/water_buoyancy_test.gd                   P2 rigid-body water forces test
@@ -169,6 +201,8 @@ godot --headless --path . --fixed-fps 60 --script res://tests/smoke_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/level_02_smoke_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/level_03_smoke_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/level_04_smoke_test.gd
+godot --headless --path . --fixed-fps 60 --script res://tests/level_05_smoke_test.gd
+godot --headless --path . --fixed-fps 60 --script res://tests/level05_visuals_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/physics_lab_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/water_network_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/water_buoyancy_test.gd

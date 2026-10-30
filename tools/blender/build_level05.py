@@ -14,6 +14,7 @@ import math
 import os
 import random
 import sys
+import zlib
 
 import bmesh
 import bpy
@@ -872,7 +873,10 @@ SPILL_NOTCHES = {"U_ValveDeck": {"S": [(6.6, 7.05), (7.3, 7.75)]}}
 # Flush recesses (no boards) for pressure plates and the goal socket.
 INLAYS = {
     "L_Start": [(2.8, 3.8, 3.5, 4.5)],
-    "L_FrontEast": [(7.4, 8.4, 0.5, 1.5)],
+    # v5: the cube plate sits on the NORTH side of the only lane to the lift.
+    # Centred (v4) the parked 0.5 m crate left 0.59 m either side - less than
+    # the 0.66 m marble - and physically sealed the lift once solved.
+    "L_FrontEast": [(7.45, 8.35, 0.92, 1.78)],
     "L_HiddenCorridor": [(7.8, 8.6, 3.6, 4.4)],
     "U_GoalDeck": [(1.72, 3.08, 7.92, 9.28)],
 }
@@ -1513,7 +1517,8 @@ def waterfall(name, a0, a1, edge, z_top, z_bottom, outward, axis="X", thickness=
     verts = [((mid + u, edge + land, z_bottom + v) if axis == "X" else (edge + land, mid + u, z_bottom + v)) for u, v in quad]
     b.raw(verts, [(0, 1, 2, 3)], "Water_Mist", uvs=[(0, 0), (1, 0), (1, 1), (0, 1)])
     # v4: extra churn and a crossed spray card make the landings read as power.
-    extra = random.Random(hash(name) & 0xFFFF)
+    # crc32, not hash(): str hashes are salted per process, builds must repeat.
+    extra = random.Random(zlib.crc32(name.encode()))
     for k in range(int((a1 - a0) * 10) + 5):
         a = extra.uniform(a0 - 0.05, a1 + 0.05)
         r = extra.uniform(0.05, 0.13) * (1.0 + scale * 0.6)
@@ -1852,7 +1857,7 @@ def build_mechanisms():
     build_ring_plate("Plate_StartRing", (3.3, 4.0, Z0 - 0.04), 0.3, "Goal_Gold", "Iron")
     build_lever("Lever_Sluice", (2.2, 4.55, Z0), yaw=0.4)
     build_lever("Lever_Secret", (9.9, 4.4, Z0), yaw=-1.2)
-    build_ring_plate("Plate_Cube", (7.9, 1.0, Z0 - 0.04), 0.34, "Plate_White", "Red_Paint")
+    build_ring_plate("Plate_Cube", (7.9, 1.35, Z0 - 0.04), 0.34, "Plate_White", "Red_Paint")
     build_valve("Valve_Diverter", (6.6, 7.7, Z2 + 0.1), "X")
     build_valve("Valve_PoolSluice", (12.16, 5.3, Z2 - 0.05), "X")
     build_sluice_gate("Gate_StreamSluice", (1.6, 2.5, -0.2), "Y", 0.72)

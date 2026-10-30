@@ -6,6 +6,7 @@ const Level01 = preload("res://scripts/levels/level_01.gd")
 const Level02 = preload("res://scripts/levels/level_02.gd")
 const Level03 = preload("res://scripts/levels/level_03.gd")
 const Level04 = preload("res://scripts/levels/level_04.gd")
+const Level05 = preload("res://scripts/levels/level_05.gd")
 const WatermillMechanismsScript = preload("res://scripts/mechanisms/watermill_mechanisms.gd")
 const AlpineParallaxControllerScript = preload("res://scripts/environment/alpine_parallax_controller.gd")
 const ClockworkMechanismsScript = preload("res://scripts/components/clockwork_mechanisms.gd")
@@ -13,7 +14,11 @@ const LiftworksMechanismsScript = preload("res://scripts/mechanisms/liftworks_me
 const SmartCameraControllerScript = preload("res://scripts/camera/smart_camera_controller.gd")
 const TiltStickIndicatorScript = preload("res://scripts/components/tilt_stick_indicator.gd")
 const GoalSocketDetectorScript = preload("res://scripts/components/goal_socket_detector.gd")
-const LEVEL_SOURCES := [Level01, Level02, Level03, Level04]
+const Level05MechanismsScript = preload("res://scripts/mechanisms/level05_mechanisms.gd")
+const Level05VisualsScript = preload("res://scripts/levels/level05_visuals.gd")
+const LEVEL_SOURCES := [Level01, Level02, Level03, Level04, Level05]
+## Default key-light pose of the studio levels; Level 05 aims it like its Blender sun.
+const KEY_LIGHT_ROTATION := Vector3(-58.0, -32.0, -18.0)
 
 const MAX_TILT := deg_to_rad(15.0)
 const TILT_RESPONSE := 5.5
@@ -66,6 +71,11 @@ var trap_ring: MeshInstance3D
 var goal_ring: MeshInstance3D
 var goal_detector: GoalSocketDetector
 var clockwork: ClockworkMechanisms
+## Finished-art levels (Level 05): the GLB scene mounted on the board.
+var level_visuals: Level05Visuals
+## Level 05 graphics tier: LOW on phones by default, HIGH on desktop (GFX button).
+var graphics_high := true
+var graphics_button: Button
 
 var materials: Dictionary = {}
 var touch_start: Dictionary = {}
@@ -91,6 +101,7 @@ var transient_message_time := 0.0
 
 func _ready() -> void:
 	control_mode = _default_control_mode(OS.get_name())
+	graphics_high = OS.get_name() != "Android"
 	_build_materials()
 	_build_environment()
 	_build_camera()
@@ -181,6 +192,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_load_level(2)
 			KEY_4:
 				_load_level(3)
+			KEY_5:
+				_load_level(4)
+			KEY_Q:
+				_toggle_graphics()
 			KEY_V:
 				_cycle_camera_preference()
 			KEY_L:
@@ -396,6 +411,7 @@ func _load_level(index: int) -> void:
 	current_level_index = index
 	level_data = LEVEL_SOURCES[index].definition()
 	clockwork = null
+	level_visuals = null
 	wind_rotor = null
 	magnet_light = null
 	magnet_ring = null
@@ -414,7 +430,14 @@ func _load_level(index: int) -> void:
 	_build_ball()
 	goal_detector.target_body = ball
 	_update_alpine_environment()
-	if level_data.has("watermill"):
+	if level_data.has("level05"):
+		var cascade := Level05MechanismsScript.new() as Level05Mechanisms
+		cascade.name = "Level05Mechanisms"
+		board.add_child(cascade)
+		cascade.setup_level05(level_data["level05"], materials, ball, self, level_visuals)
+		cascade.state_changed.connect(_on_mechanism_message)
+		clockwork = cascade
+	elif level_data.has("watermill"):
 		var watermill := WatermillMechanismsScript.new() as WatermillMechanisms
 		watermill.name = "WatermillMechanisms"
 		board.add_child(watermill)
@@ -462,7 +485,25 @@ func _update_alpine_environment() -> void:
 		alpine_environment.name = "AlpineParallax"
 		add_child(alpine_environment)
 		alpine_environment.setup(camera, Vector3(0.0, 0.0, 0.0), materials)
+	var key_light := get_node_or_null("KeyLight") as DirectionalLight3D
+	for light_name in ["WarmBenchLight", "CoolRimLight"]:
+		var studio_light := get_node_or_null(light_name) as Light3D
+		if studio_light:
+			# The finished-art level carries its own lamps; studio lights would
+			# double-light it and cost extra passes in GL Compatibility.
+			studio_light.visible = level_visuals == null
+	if world_environment and level_visuals:
+		level_visuals.configure_environment(world_environment, key_light)
+		return
 	if world_environment:
+		world_environment.fog_enabled = false
+		world_environment.glow_enabled = false
+		world_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		if key_light:
+			key_light.rotation_degrees = KEY_LIGHT_ROTATION
+			key_light.shadow_enabled = true
+			key_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+			key_light.directional_shadow_max_distance = 100.0
 		if wants_alpine:
 			var sky := Sky.new()
 			var sky_material := ProceduralSkyMaterial.new()
@@ -485,6 +526,9 @@ func _update_level_lighting() -> void:
 	var warm_light := get_node_or_null("WarmBenchLight") as OmniLight3D
 	var rim_light := get_node_or_null("CoolRimLight") as OmniLight3D
 	var key_light := get_node_or_null("KeyLight") as DirectionalLight3D
+	if level_visuals:
+		# Sun colour, energy and direction come from the Blender v4 scene.
+		return
 	if key_light:
 		var alpine: bool = level_data.get("style", "workshop") == "alpine"
 		# Cold mountain daylight for the watermill, warm bench light elsewhere.
@@ -514,7 +558,9 @@ func _build_board() -> void:
 	board.physics_material_override = board_physics
 	add_child(board)
 
-	if level_data.has("floor_tiles"):
+	if level_data.get("scene", "") == "level05":
+		_build_scene_level()
+	elif level_data.has("floor_tiles"):
 		_add_box_part("FactoryUnderframe", Vector3(0.0, -0.52, 0.0), Vector3(9.65, 0.12, 9.65), materials.frame, false)
 		_add_box_part("FactoryBrassBand", Vector3(0.0, -0.60, 0.0), Vector3(9.82, 0.08, 9.82), materials.brass_dark, false)
 		for tile: Dictionary in level_data["floor_tiles"]:
@@ -542,6 +588,33 @@ func _build_board() -> void:
 	for hole: Dictionary in level_data.get("holes", []):
 		_build_hole(hole)
 	_build_goal(level_data["goal"])
+
+
+## Mounts the finished GLB level on the board, centred on the board origin.
+## Its box colliders become shapes of the board itself, so the marble, the
+## crates AND the smart camera's occlusion rays all see the same geometry.
+func _build_scene_level() -> void:
+	level_visuals = Level05VisualsScript.new() as Level05Visuals
+	level_visuals.name = "Level05Visuals"
+	level_visuals.quality = Level05Visuals.Quality.HIGH if graphics_high else Level05Visuals.Quality.LOW
+	level_visuals.build_environment = false
+	level_visuals.collider_parent = board
+	level_visuals.world_parent = self
+	level_visuals.position = -Level05Visuals.CENTRE
+	board.add_child(level_visuals)
+
+
+func _toggle_graphics() -> void:
+	graphics_high = not graphics_high
+	_update_graphics_button()
+	if level_visuals:
+		_load_level(current_level_index)
+	_show_message("GRAPHICS: %s" % ("HIGH" if graphics_high else "LOW"), 2.5)
+
+
+func _update_graphics_button() -> void:
+	if graphics_button:
+		graphics_button.text = "GFX: HIGH" if graphics_high else "GFX: LOW"
 
 
 func _add_floor_tile_details(tile: Dictionary) -> void:
@@ -590,11 +663,20 @@ func _build_factory_lamp(spec: Dictionary) -> void:
 func _build_hole(spec: Dictionary) -> void:
 	var at: Vector3 = spec["position"]
 	var size: Vector3 = spec["size"]
+	if spec.get("plain", false):
+		_add_hole_trigger(spec)
+		return
 	var rim_y := at.y + size.y * 0.5 + 0.37
 	_add_box_visual(board, Vector3(at.x, rim_y, at.z - size.z * 0.5), Vector3(size.x + 0.16, 0.07, 0.09), materials.brass_dark, spec["name"] + "RimNorth")
 	_add_box_visual(board, Vector3(at.x, rim_y, at.z + size.z * 0.5), Vector3(size.x + 0.16, 0.07, 0.09), materials.brass_dark, spec["name"] + "RimSouth")
 	_add_box_visual(board, Vector3(at.x - size.x * 0.5, rim_y, at.z), Vector3(0.09, 0.07, size.z), materials.brass_dark, spec["name"] + "RimWest")
 	_add_box_visual(board, Vector3(at.x + size.x * 0.5, rim_y, at.z), Vector3(0.09, 0.07, size.z), materials.brass_dark, spec["name"] + "RimEast")
+	_add_hole_trigger(spec)
+
+
+func _add_hole_trigger(spec: Dictionary) -> void:
+	var at: Vector3 = spec["position"]
+	var size: Vector3 = spec["size"]
 	var hole_area := Area3D.new()
 	hole_area.name = spec["name"] + "Trigger"
 	hole_area.position = at
@@ -693,9 +775,11 @@ func _build_trap(config: Dictionary) -> void:
 
 
 func _build_goal(origin: Vector3) -> void:
-	_add_cylinder_visual(board, origin, 0.65, 0.055, materials.frame, "GoalSocket")
-	_add_torus_visual(board, origin + Vector3(0.0, 0.055, 0.0), 0.38, 0.62, materials.brass, "GoalBrassRing")
-	goal_ring = _add_torus_visual(board, origin + Vector3(0.0, 0.085, 0.0), 0.27, 0.36, materials.goal, "GoalGlow")
+	if not level_data.get("goal_model", false):
+		# Finished-art levels already model their recessed goal socket.
+		_add_cylinder_visual(board, origin, 0.65, 0.055, materials.frame, "GoalSocket")
+		_add_torus_visual(board, origin + Vector3(0.0, 0.055, 0.0), 0.38, 0.62, materials.brass, "GoalBrassRing")
+		goal_ring = _add_torus_visual(board, origin + Vector3(0.0, 0.085, 0.0), 0.27, 0.36, materials.goal, "GoalGlow")
 
 	# Proximity detection is intentionally broad, but does NOT complete a level.
 	# The reusable socket requires the ball CENTRE to be inside and held steady.
@@ -838,6 +922,7 @@ func _build_hud() -> void:
 	level_selector.add_item("LEVEL 2 — FACTORY")
 	level_selector.add_item("LEVEL 3 — LIFTWORKS")
 	level_selector.add_item("LEVEL 4 — WATERMILL")
+	level_selector.add_item("LEVEL 5 — CASCADE")
 	level_selector.item_selected.connect(_on_level_selected)
 	button_row.add_child(level_selector)
 	mode_button = _hud_button("BOARD: DRAG", Vector2(155.0, 44.0))
@@ -852,6 +937,10 @@ func _build_hud() -> void:
 	camera_button = _hud_button("CAM: AUTO", Vector2(96.0, 44.0))
 	camera_button.pressed.connect(_cycle_camera_preference)
 	button_row.add_child(camera_button)
+	graphics_button = _hud_button("GFX: HIGH", Vector2(96.0, 44.0))
+	graphics_button.pressed.connect(_toggle_graphics)
+	button_row.add_child(graphics_button)
+	_update_graphics_button()
 	help_button = _hud_button("?", Vector2(42.0, 44.0))
 	help_button.pressed.connect(_show_controls_help)
 	button_row.add_child(help_button)
@@ -976,7 +1065,7 @@ func _close_controls_help() -> void:
 
 
 func _reset_camera_view() -> void:
-	yaw = DEFAULT_CAMERA_YAW
+	yaw = deg_to_rad(float(level_data["camera_yaw_deg"])) if level_data.has("camera_yaw_deg") else DEFAULT_CAMERA_YAW
 	pitch = DEFAULT_CAMERA_PITCH
 	orbit_distance = level_data.get("camera_distance", DEFAULT_CAMERA_DISTANCE)
 	if smart_camera:

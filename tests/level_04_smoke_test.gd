@@ -37,7 +37,7 @@ func _run() -> void:
 	game._load_level(3)
 	await process_frame
 	await physics_frame
-	if not _require(game.level_data["id"] == "alpine_watermill_04" and game.level_selector.item_count == 4, "Level 4 must load and be listed"):
+	if not _require(game.level_data["id"] == "alpine_watermill_04" and game.level_selector.item_count >= 4, "Level 4 must load and be listed"):
 		return
 	works = game.clockwork
 	if not _require(works is WatermillMechanisms, "Level 4 must use WatermillMechanisms"):

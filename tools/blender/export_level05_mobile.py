@@ -187,8 +187,12 @@ def colliders(walls, flumes):
         for rx0, rx1, ry0, ry1 in L5._rect_minus((x0, x1, y0, y1), holes + inlays + cuts):
             out.append(box(((rx0 + rx1) / 2, (ry0 + ry1) / 2, z - Z["floor"] / 2), (rx1 - rx0, ry1 - ry0, Z["floor"]), tag=name + ":floor"))
         for rx0, rx1, ry0, ry1 in inlays:
-            # Recess floor 5 cm down (flush rings, goal socket).
-            out.append(box(((rx0 + rx1) / 2, (ry0 + ry1) / 2, z - 0.05 - 0.05), (rx1 - rx0, ry1 - ry0, 0.1), tag=name + ":recess"))
+            if name == "U_GoalDeck":
+                # The goal dish is a real 5 cm recess the marble settles into.
+                out.append(box(((rx0 + rx1) / 2, (ry0 + ry1) / 2, z - 0.05 - 0.05), (rx1 - rx0, ry1 - ry0, 0.1), tag=name + ":recess"))
+            else:
+                # Flush ring plates fill their inlay; their top is 1.5 cm proud.
+                out.append(box(((rx0 + rx1) / 2, (ry0 + ry1) / 2, z + 0.015 - 0.05), (rx1 - rx0, ry1 - ry0, 0.1), tag=name + ":plate"))
         gaps = {side: list(spans) for side, spans in openings.items()}
         for side, spans in L5.SPILL_NOTCHES.get(name, {}).items():
             gaps.setdefault(side, []).extend(spans)
@@ -420,14 +424,11 @@ def main():
             static.setdefault(key, []).append(o)
     merged = [join(v, "Static_" + k) for k, v in sorted(static.items())]
     merged.append(join(terrain, "Terrain_Summit"))
-    for o in water:
+    # Water bodies stay separate nodes: gameplay drives each one from its own
+    # hydraulic connection (flow speed, foam, falls on/off).
+    for o in water + falls:
         for mod in list(o.modifiers):
             o.modifiers.remove(mod)
-    join(water, "Water_Surfaces")
-    for o in falls:
-        for mod in list(o.modifiers):
-            o.modifiers.remove(mod)
-    join(falls, "Waterfalls")
     merged = [m for m in merged if m]
     bake_ao(merged)
     after = stats("mobile GLB content")

@@ -4,7 +4,9 @@ shader_type spatial;
 // at different scale, angle and speed (never line up), foam from their
 // brightness, Fresnel-lit turquoise body. UVs are metres with +U downstream;
 // COLOR.r is the flow factor baked per water body (1 channel, 0.1 still pool).
-// No fluid simulation: everything is UV offsets.
+// No fluid simulation: everything is UV offsets. The two phases are integrated
+// on the CPU from the live hydraulic flux (Level05Visuals.set_flow), so water
+// speeds up, slows and stops smoothly with the simulated flow.
 render_mode blend_mix, depth_draw_opaque, cull_disabled, specular_schlick_ggx;
 
 uniform sampler2D foam_texture : source_color, filter_linear_mipmap, repeat_enable;
@@ -17,24 +19,27 @@ uniform float tile_a = 1.6;
 uniform float speed_a = 0.45;
 uniform float tile_b = 0.9;
 uniform float speed_b = 0.75;
-// Live control hook for the hydraulic network later (0 = still water).
-uniform float flow_scale = 1.0;
+// Texture-space offsets along +U (downstream), advanced by the CPU.
+uniform float phase_a = 0.0;
+uniform float phase_b = 0.0;
+// Live flow 0..1+: foam and glints fade out in a dry or stagnant channel.
+uniform float flow = 1.0;
 uniform float alpha = 0.86;
 uniform float glow = 0.35;
 // 0 on Low quality: one texture layer, no normal map.
 uniform float detail = 1.0;
 
 void fragment() {
-	float factor = COLOR.r * flow_scale;
-	vec2 uv_a = UV / tile_a - vec2(TIME * speed_a * factor / tile_a, 0.0);
+	float factor = COLOR.r;
+	vec2 uv_a = UV / tile_a - vec2(phase_a * factor, 0.0);
 	float c = cos(0.35);
 	float s = sin(0.35);
-	vec2 uv_b = mat2(vec2(c, s), vec2(-s, c)) * (UV / tile_b) - vec2(TIME * speed_b * factor / tile_b, 0.0);
+	vec2 uv_b = mat2(vec2(c, s), vec2(-s, c)) * (UV / tile_b) - vec2(phase_b * factor, 0.0);
 	vec3 a = texture(foam_texture, uv_a).rgb;
 	vec3 b = detail > 0.5 ? texture(foam_texture, uv_b).rgb : a;
 	vec3 both = mix(a, b, 0.5);
 	float lum = dot(both, vec3(0.299, 0.587, 0.114));
-	float foam = smoothstep(0.62, 0.9, lum);
+	float foam = smoothstep(0.62, 0.9, lum) * clamp(0.35 + flow * 0.65, 0.0, 1.0);
 	float facing = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	vec3 body = mix(water_color.rgb, water_color.rgb * both * 1.6, 0.45);
 	body = mix(body * deep_color.rgb / max(water_color.rgb, vec3(0.01)), body, 1.0 - facing * 0.6);

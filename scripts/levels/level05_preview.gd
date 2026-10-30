@@ -34,7 +34,7 @@ func _use_camera(i: int) -> void:
 	var data: Dictionary = visuals.scene_data.get("cameras", {}).get(CAMERAS[index], {})
 	if data.is_empty():
 		return
-	camera.transform = visuals._xform(data["xform"])
+	camera.transform = visuals.xform(data["xform"])
 	if data.get("ortho_size") != null:
 		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 		camera.size = float(data["ortho_size"])

@@ -328,7 +328,7 @@
  },
  "routes": {
   "main_lower": {
-   "samples": 236,
+   "samples": 241,
    "blocked_stretches": [
     {
      "from": [
@@ -371,34 +371,6 @@
      ],
      "by": "Plate_StartRing",
      "max_penetration_cm": 0.3
-    },
-    {
-     "from": [
-      7.586,
-      1.0,
-      0.0
-     ],
-     "to": [
-      7.586,
-      1.0,
-      0.0
-     ],
-     "by": "Plate_Cube",
-     "max_penetration_cm": 0.2
-    },
-    {
-     "from": [
-      8.214,
-      1.0,
-      0.0
-     ],
-     "to": [
-      8.214,
-      1.0,
-      0.0
-     ],
-     "by": "Plate_Cube",
-     "max_penetration_cm": 0.2
     }
    ],
    "floor_gaps": [],
@@ -464,7 +436,7 @@
       3.05,
       0.0
      ],
-     "min_width": 2.109
+     "min_width": 1.926
     },
     {
      "from": [
@@ -516,7 +488,7 @@
       1.0,
       0.0
      ],
-     "min_width": 1.13
+     "min_width": 1.4
     },
     {
      "from": [
@@ -525,16 +497,29 @@
       0.0
      ],
      "to": [
-      7.9,
-      1.0,
+      7.3,
+      0.65,
       0.0
      ],
      "min_width": 1.13
     },
     {
      "from": [
-      7.9,
-      1.0,
+      7.3,
+      0.65,
+      0.0
+     ],
+     "to": [
+      8.5,
+      0.65,
+      0.0
+     ],
+     "min_width": 1.707
+    },
+    {
+     "from": [
+      8.5,
+      0.65,
       0.0
      ],
      "to": [
@@ -1240,7 +1225,7 @@
    ],
    "location": [
     7.9,
-    1.0,
+    1.35,
     -0.04
    ]
   },
@@ -2287,7 +2272,12 @@
    "samples": 44,
    "fully_hidden": 0,
    "hidden_pct": 0,
-   "top_blockers": []
+   "top_blockers": [
+    [
+     "Bridge_Spillway",
+     1
+    ]
+   ]
   },
   "main_middle": {
    "samples": 28,

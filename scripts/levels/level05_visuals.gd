@@ -2,10 +2,16 @@ class_name Level05Visuals
 extends Node3D
 ## Level 05 Alpine Watermill, mobile visual build for GL Compatibility.
 ## Instances the exported GLB (tools/blender/export_level05_mobile.py) and adds
-## what glTF cannot carry: water shaders, MultiMesh conifers, box colliders,
-## the rendered panorama sky with parallax rings, cheap lantern glow and three
-## quality tiers. Mechanisms stay separate GLB nodes with their own pivots, so
-## the existing gameplay scripts can drive them later.
+## what glTF cannot carry: flow-driven water shaders, MultiMesh conifers, box
+## colliders, the rendered panorama sky with parallax rings, cheap lantern glow
+## and quality tiers. Mechanisms stay separate GLB nodes with their own pivots;
+## Level05Mechanisms drives them in the game.
+##
+## Standalone (preview) it builds its own sky, sun and colliders. In the game,
+## main.gd mounts it on the tilting board: `collider_parent` receives the box
+## shapes (so physics AND the smart camera's occlusion rays see them),
+## `world_parent` receives the far parallax rings (they must not tilt with the
+## board) and `build_environment` is off (main owns the WorldEnvironment).
 
 enum Quality { LOW, MEDIUM, HIGH }
 
@@ -22,17 +28,32 @@ const PRESETS := {
 	Quality.MEDIUM: {"veg": 0.65, "shadows": true, "shadow_splits": 1, "lamp_lights": 0, "spray": 14, "sky": "sky_panorama_low.jpg", "glow": false, "water_detail": 1.0},
 	Quality.HIGH: {"veg": 1.0, "shadows": true, "shadow_splits": 2, "lamp_lights": 3, "spray": 28, "sky": "sky_panorama.jpg", "glow": true, "water_detail": 1.0},
 }
+## Mechanism nodes whose simple local colliders this class adds by itself. The
+## lift, crates and wheels get their physics from Level05Mechanisms instead.
+const SELF_COLLIDED := ["Valve_", "Gate_", "Lever_Sluice_Base", "Lever_Secret_Base"]
 
 @export var quality := Quality.HIGH
 @export var build_colliders := true
+@export var build_environment := true
 
+var collider_parent: CollisionObject3D
+var world_parent: Node3D
 var level_root: Node3D
 var scene_data := {}
 var water_params := {}
 var report := {}
+## name -> {"node", "materials", "kind", "flow", "phase_a", "phase_b", "speed_a", "speed_b", "spray"}
+var water_bodies := {}
+## Nodes hung on world_parent (they do not tilt); freed together with this level.
+var world_nodes: Array[Node] = []
 
 
 func _ready() -> void:
+	tree_exiting.connect(func() -> void:
+		for world_node in world_nodes:
+			if is_instance_valid(world_node):
+				world_node.queue_free()
+	)
 	build()
 
 
@@ -48,10 +69,63 @@ func build() -> void:
 	_build_vegetation(preset)
 	if build_colliders:
 		_build_colliders()
-	_build_environment(preset)
+	if build_environment:
+		var environment := Environment.new()
+		var sun := DirectionalLight3D.new()
+		sun.name = "AlpineSun"
+		configure_environment(environment, sun)
+		var world := WorldEnvironment.new()
+		world.environment = environment
+		add_child(world)
+		add_child(sun)
 	_build_parallax(preset)
 	_build_lamps(preset)
 	_build_spray(preset)
+
+
+func _process(delta: float) -> void:
+	# Each water body scrolls by its own live flux (set_flow), never by a clock.
+	for body_name in water_bodies:
+		var body: Dictionary = water_bodies[body_name]
+		var flow: float = body["flow"]
+		body["phase_a"] = fmod(float(body["phase_a"]) + float(body["speed_a"]) * flow * delta, 1000.0)
+		body["phase_b"] = fmod(float(body["phase_b"]) + float(body["speed_b"]) * flow * delta, 1000.0)
+		for material: ShaderMaterial in body["materials"]:
+			material.set_shader_parameter("phase_a", body["phase_a"])
+			material.set_shader_parameter("phase_b", body["phase_b"])
+
+
+## Live hydraulic coupling: 0 = dry, 1 = nominal design flow. Falls fade in
+## and out with their flow; channels slow down and lose their foam.
+func set_flow(body_name: String, flow: float) -> void:
+	if not water_bodies.has(body_name):
+		return
+	var body: Dictionary = water_bodies[body_name]
+	body["flow"] = maxf(flow, 0.0)
+	var node := body["node"] as Node3D
+	if body["kind"] == "fall":
+		var opacity := clampf(flow * 1.6, 0.0, 1.0)
+		node.visible = opacity > 0.02
+		for material: ShaderMaterial in body["materials"]:
+			material.set_shader_parameter("opacity", opacity * (0.75 if material.get_shader_parameter("mode") == 2 else 1.0))
+		var spray := body.get("spray") as CPUParticles3D
+		if spray:
+			spray.emitting = flow > 0.08
+	else:
+		for material: ShaderMaterial in body["materials"]:
+			material.set_shader_parameter("flow", clampf(flow, 0.0, 1.5))
+
+
+func flow_of(body_name: String) -> float:
+	return float(water_bodies[body_name]["flow"]) if water_bodies.has(body_name) else 0.0
+
+
+func phase_of(body_name: String) -> float:
+	return float(water_bodies[body_name]["phase_a"]) if water_bodies.has(body_name) else 0.0
+
+
+func node(node_name: String) -> Node3D:
+	return level_root.find_child(node_name, true, false) as Node3D
 
 
 func _json(path: String) -> Dictionary:
@@ -60,52 +134,41 @@ func _json(path: String) -> Dictionary:
 	return parsed if parsed is Dictionary else {}
 
 
-func _layer(name: String) -> Dictionary:
-	return water_params.get("layers", {}).get(name, {})
+func _layer(layer_name: String) -> Dictionary:
+	return water_params.get("layers", {}).get(layer_name, {})
 
 
 # Materials ------------------------------------------------------------------
 
 func _apply_materials(root: Node, preset: Dictionary) -> void:
 	var channel := _layer("channel")
-	var body := _layer("fall_body")
-	var foam := _layer("fall_foam")
-	var water := ShaderMaterial.new()
-	water.shader = WaterShader
-	water.set_shader_parameter("foam_texture", load(BASE + "textures/water_foam.jpg"))
-	water.set_shader_parameter("normal_texture", load(BASE + "textures/water_normal.png"))
-	water.set_shader_parameter("tile_a", channel.get("tile_a", 1.6))
-	water.set_shader_parameter("speed_a", channel.get("speed_a", 0.45))
-	water.set_shader_parameter("tile_b", channel.get("tile_b", 0.9))
-	water.set_shader_parameter("speed_b", channel.get("speed_b", 0.75))
-	water.set_shader_parameter("detail", preset["water_detail"])
-	var fall_body := _fall_material(0, "textures/waterfall_streaks.png", body)
-	var fall_foam := _fall_material(1, "textures/waterfall_foam_mask.png", foam)
-	var spray := _fall_material(2, "", {})
-	spray.set_shader_parameter("opacity", 0.75)
+	var still := _layer("still")
+	var fall_layers := {0: _layer("fall_body"), 1: _layer("fall_foam")}
 	var count := 0
-	for node in root.find_children("*", "MeshInstance3D", true, false):
-		var mesh_instance := node as MeshInstance3D
+	for node_ref in root.find_children("*", "MeshInstance3D", true, false):
+		var mesh_instance := node_ref as MeshInstance3D
 		if mesh_instance.name.begins_with("Terrain"):
 			mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var mesh := mesh_instance.mesh
 		if mesh == null:
 			continue
+		var body_name := String(mesh_instance.name)
+		var water_kind := "fall" if body_name.begins_with("Waterfall_") else ("surface" if body_name.begins_with("Water_") else "")
 		for i in mesh.get_surface_count():
 			var material := mesh.surface_get_material(i)
 			if material == null:
 				continue
+			var shader_material: ShaderMaterial = null
 			match material.resource_name:
 				"M_Water":
-					mesh_instance.set_surface_override_material(i, water)
-					mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+					shader_material = _water_material(channel, preset)
 				"M_FallBody":
-					mesh_instance.set_surface_override_material(i, fall_body)
-					mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+					shader_material = _fall_material(0, "textures/waterfall_streaks.png", fall_layers[0])
 				"M_FallFoam":
-					mesh_instance.set_surface_override_material(i, fall_foam)
+					shader_material = _fall_material(1, "textures/waterfall_foam_mask.png", fall_layers[1])
 				"M_Spray":
-					mesh_instance.set_surface_override_material(i, spray)
+					shader_material = _fall_material(2, "", {})
+					shader_material.set_shader_parameter("opacity", 0.75)
 				"M_Glow":
 					var glow := StandardMaterial3D.new()
 					glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -117,8 +180,41 @@ func _apply_materials(root: Node, preset: Dictionary) -> void:
 						# Role tint, per-piece jitter and baked AO live in COLOR_0.
 						standard.vertex_color_use_as_albedo = true
 						standard.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+			if shader_material:
+				mesh_instance.set_surface_override_material(i, shader_material)
+				mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				if water_kind != "":
+					_register_water(body_name, mesh_instance, water_kind, shader_material, channel, still, fall_layers)
 			count += 1
 	report["surfaces"] = count
+	report["water_bodies"] = water_bodies.size()
+
+
+func _register_water(body_name: String, mesh_instance: MeshInstance3D, kind: String, material: ShaderMaterial, channel: Dictionary, still: Dictionary, fall_layers: Dictionary) -> void:
+	if not water_bodies.has(body_name):
+		var speed_a := 0.0
+		var speed_b := 0.0
+		if kind == "fall":
+			var body_layer: Dictionary = fall_layers[0]
+			speed_a = float(body_layer.get("speed_a", 1.7)) / float(body_layer.get("tile_v", 1.2))
+			speed_b = float(body_layer.get("speed_b", 2.4)) / (float(body_layer.get("tile_v", 1.2)) * 1.5)
+		else:
+			# Pools carry COLOR.r = 0.1 in the mesh, so one channel speed fits all.
+			speed_a = float(channel.get("speed_a", 0.45)) / float(channel.get("tile_a", 1.6))
+			speed_b = float(channel.get("speed_b", 0.75)) / float(channel.get("tile_b", 0.9))
+		water_bodies[body_name] = {"node": mesh_instance, "materials": [], "kind": kind, "flow": 1.0, "phase_a": 0.0, "phase_b": 0.0, "speed_a": speed_a, "speed_b": speed_b, "spray": null}
+	(water_bodies[body_name]["materials"] as Array).append(material)
+
+
+func _water_material(channel: Dictionary, preset: Dictionary) -> ShaderMaterial:
+	var water := ShaderMaterial.new()
+	water.shader = WaterShader
+	water.set_shader_parameter("foam_texture", load(BASE + "textures/water_foam.jpg"))
+	water.set_shader_parameter("normal_texture", load(BASE + "textures/water_normal.png"))
+	water.set_shader_parameter("tile_a", channel.get("tile_a", 1.6))
+	water.set_shader_parameter("tile_b", channel.get("tile_b", 0.9))
+	water.set_shader_parameter("detail", preset["water_detail"])
+	return water
 
 
 func _fall_material(mode: int, texture: String, layer: Dictionary) -> ShaderMaterial:
@@ -157,9 +253,7 @@ func _build_vegetation(preset: Dictionary) -> void:
 		multimesh.mesh = proto.mesh
 		multimesh.instance_count = keep.size()
 		for i in keep.size():
-			var x: Array = keep[i]
-			var basis := Basis(Vector3(x[0][0], x[0][1], x[0][2]), Vector3(x[1][0], x[1][1], x[1][2]), Vector3(x[2][0], x[2][1], x[2][2]))
-			multimesh.set_instance_transform(i, Transform3D(basis, Vector3(x[3][0], x[3][1], x[3][2])))
+			multimesh.set_instance_transform(i, xform(keep[i]))
 		var instance := MultiMeshInstance3D.new()
 		instance.name = "MM_" + proto_name
 		instance.multimesh = multimesh
@@ -174,23 +268,34 @@ func _build_vegetation(preset: Dictionary) -> void:
 
 func _build_colliders() -> void:
 	var data := _json(BASE + "level05_colliders.json")
-	var body := StaticBody3D.new()
-	body.name = "Level05Colliders"
-	add_child(body)
+	var body := collider_parent
+	var offset := Transform3D.IDENTITY
+	if body == null:
+		body = StaticBody3D.new()
+		body.name = "Level05Colliders"
+		add_child(body)
+	else:
+		# Shapes live directly on the board: same transform as this node.
+		offset = transform
 	for entry in data.get("static", []):
-		body.add_child(_box_shape(entry, entry.get("tag", "")))
+		var shape := _box_shape(entry, String(entry.get("tag", "")))
+		shape.transform = offset * shape.transform
+		body.add_child(shape)
 	var dynamic := 0
 	for entry in data.get("dynamic", []):
-		var node := level_root.find_child(entry["node"], true, false) as Node3D
-		if node == null:
-			push_warning("Level05: collider node %s missing" % entry["node"])
+		var node_name: String = entry["node"]
+		if not SELF_COLLIDED.any(func(prefix: String) -> bool: return node_name.begins_with(prefix)):
+			continue
+		var mechanism := level_root.find_child(node_name, true, false) as Node3D
+		if mechanism == null:
+			push_warning("Level05: collider node %s missing" % node_name)
 			continue
 		# Mechanism colliders ride on their node, so they move with its pivot.
 		var mover := AnimatableBody3D.new()
 		mover.name = "Collider"
 		mover.sync_to_physics = false
 		mover.add_child(_box_shape(entry, "box"))
-		node.add_child(mover)
+		mechanism.add_child(mover)
 		dynamic += 1
 	report["colliders_static"] = data.get("static", []).size()
 	report["colliders_dynamic"] = dynamic
@@ -210,12 +315,16 @@ func _box_shape(entry: Dictionary, label: String) -> CollisionShape3D:
 
 # Environment, sky, parallax -----------------------------------------------------
 
-func _build_environment(preset: Dictionary) -> void:
+## Fills a WorldEnvironment + sun with the Level 05 look (panorama sky rendered
+## from Blender v4, fog, sun direction and colour of the v4 scene).
+func configure_environment(environment: Environment, sun: DirectionalLight3D) -> void:
+	var preset: Dictionary = PRESETS[quality]
+	if scene_data.is_empty():
+		scene_data = _json(BASE + "level05_scene.json")
 	var sky_material := PanoramaSkyMaterial.new()
 	sky_material.panorama = load(BASE + "parallax/" + str(preset["sky"]))
 	var sky := Sky.new()
 	sky.sky_material = sky_material
-	var environment := Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -229,27 +338,21 @@ func _build_environment(preset: Dictionary) -> void:
 	environment.glow_enabled = preset["glow"]
 	environment.glow_intensity = 0.5
 	environment.glow_hdr_threshold = 1.1
-	var world := WorldEnvironment.new()
-	world.environment = environment
-	add_child(world)
 	var sun_data: Dictionary = scene_data.get("sun", {})
-	var sun := DirectionalLight3D.new()
-	sun.name = "AlpineSun"
 	if sun_data.has("xform"):
-		sun.transform = _xform(sun_data["xform"])
+		sun.basis = xform(sun_data["xform"]).basis
 	var color: Array = sun_data.get("color", [1.0, 0.8, 0.55])
 	sun.light_color = Color(color[0], color[1], color[2])
 	sun.light_energy = 1.55
 	sun.shadow_enabled = preset["shadows"]
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL if int(preset["shadow_splits"]) <= 1 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	sun.directional_shadow_max_distance = 32.0
-	add_child(sun)
 
 
 func _build_parallax(_preset: Dictionary) -> void:
 	# Far snowy Alps and sky are the panorama itself (correct for any camera
 	# yaw, including CHASE). The rings in level05_parallax.json add depth
-	# between it and the summit.
+	# between it and the summit; they hang in the world, not on the board.
 	var data := _json(BASE + "level05_parallax.json")
 	var rings := 0
 	for layer in data.get("rings", []):
@@ -281,8 +384,14 @@ func _ring(ring_name: String, texture: String, radius: float, bottom: float, top
 	ring.mesh = mesh
 	ring.material_override = material
 	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	ring.position = CENTRE + Vector3(0.0, (top + bottom) * 0.5, 0.0)
-	add_child(ring)
+	var local := CENTRE + Vector3(0.0, (top + bottom) * 0.5, 0.0)
+	if world_parent:
+		ring.position = world_parent.to_local(to_global(local))
+		world_parent.add_child(ring)
+		world_nodes.append(ring)
+	else:
+		ring.position = local
+		add_child(ring)
 
 
 # Lamps and spray ----------------------------------------------------------------
@@ -296,7 +405,6 @@ func _build_lamps(preset: Dictionary) -> void:
 	glow.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	glow.albedo_texture = sprite_texture
 	glow.albedo_color = Color(1.0, 0.55, 0.2, 0.55)
-	glow.no_depth_test = false
 	var quad := QuadMesh.new()
 	quad.size = Vector2(0.55, 0.55)
 	quad.material = glow
@@ -370,9 +478,11 @@ func _build_spray(preset: Dictionary) -> void:
 		particles.color = Color(0.92, 0.97, 1.0, 0.55)
 		particles.position = Vector3(p[0], p[1], p[2])
 		add_child(particles)
+		if water_bodies.has(str(fall["name"])):
+			water_bodies[str(fall["name"])]["spray"] = particles
 		emitters += 1
 	report["spray_emitters"] = emitters
 
 
-func _xform(x: Array) -> Transform3D:
+func xform(x: Array) -> Transform3D:
 	return Transform3D(Basis(Vector3(x[0][0], x[0][1], x[0][2]), Vector3(x[1][0], x[1][1], x[1][2]), Vector3(x[2][0], x[2][1], x[2][2])), Vector3(x[3][0], x[3][1], x[3][2]))

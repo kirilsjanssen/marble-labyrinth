@@ -37,6 +37,12 @@ var requires_drive := false
 var gravity_descent_ratio := 0.6
 var winch_drum: MeshInstance3D
 var drive_notice_shown := false
+## Optional finished model riding on the deck instead of the primitive plate
+## (config "skin": {"deck": Node3D, "doors": {side: Node3D}}). Physics is the
+## same; only the visuals come from the level's own art.
+var skin_deck: Node3D
+var skin_doors: Dictionary = {}
+var skin_door_rest_y: Dictionary = {}
 
 var current_floor := 0
 var target_floor := 0
@@ -73,8 +79,18 @@ func setup(config: Dictionary, materials: Dictionary, triggers: Array[RigidBody3
 		initial_locks.append(false)
 	locked = initial_locks.duplicate()
 	var at: Vector3 = config["position"]
+	var skin: Dictionary = config.get("skin", {})
+	skin_deck = skin.get("deck") as Node3D
+	skin_doors = skin.get("doors", {})
 	_build_deck(Vector3(at.x, _deck_y(0), at.z))
 	_build_shaft(at)
+	if skin_deck:
+		# The art keeps its world pose at floor 1 and from then on rides the deck.
+		skin_deck.reparent(deck, true)
+		for side: String in skin_doors:
+			var door := skin_doors[side] as Node3D
+			door.reparent(deck, true)
+			skin_door_rest_y[side] = door.position.y
 	var gates: Array = config.get("landing_gates", [])
 	for index in range(gates.size()):
 		_build_landing_gate(index, gates[index])
@@ -220,8 +236,11 @@ func _apply_doors(delta: float, snap: bool) -> void:
 		if shape.disabled != open:
 			# Doors may toggle from an Area3D callback while physics is flushing.
 			shape.set_deferred("disabled", open)
-		var visual: MeshInstance3D = door_visuals[side]
+		var visual: Node3D = door_visuals[side]
 		var target_y := deck_size.y * 0.5 + (-LIP_HEIGHT * 0.5 + 0.01 if open else LIP_HEIGHT * 0.5)
+		if skin_door_rest_y.has(side):
+			# Skinned doors drop through a slot in the deck when they open.
+			target_y = float(skin_door_rest_y[side]) - (LIP_HEIGHT + 0.02 if open else 0.0)
 		visual.position.y = target_y if snap else move_toward(visual.position.y, target_y, DOOR_SPEED * delta)
 	for index in range(landing_gates.size()):
 		var open_here := not moving and current_floor == index
@@ -260,8 +279,9 @@ func _build_deck(at: Vector3) -> void:
 	deck.physics_material_override = deck_physics
 	add_child(deck)
 	_add_box_collision(deck, Vector3.ZERO, deck_size, "LiftDeckCollision")
-	_add_box_visual(deck, Vector3.ZERO, deck_size, palette["steel"], "LiftDeckPlate")
-	_add_torus_visual(deck, Vector3(0.0, deck_size.y * 0.52, 0.0), 0.30, 0.44, palette["brass"], "LiftDeckCog")
+	if not skin_deck:
+		_add_box_visual(deck, Vector3.ZERO, deck_size, palette["steel"], "LiftDeckPlate")
+		_add_torus_visual(deck, Vector3(0.0, deck_size.y * 0.52, 0.0), 0.30, 0.44, palette["brass"], "LiftDeckCog")
 	for side: String in SIDES:
 		var normal: Vector3 = SIDES[side]
 		var along_x := absf(normal.z) > 0.5
@@ -269,6 +289,11 @@ func _build_deck(at: Vector3) -> void:
 		var offset := Vector3(normal.x * (deck_size.x * 0.5 - LIP_THICKNESS * 0.5), deck_size.y * 0.5 + LIP_HEIGHT * 0.5, normal.z * (deck_size.z * 0.5 - LIP_THICKNESS * 0.5))
 		var is_door := exit_sides.has(side)
 		var shape := _add_box_collision(deck, offset, size, ("Door" if is_door else "Lip") + side.capitalize() + "Collision")
+		if skin_deck:
+			if is_door:
+				door_shapes[side] = shape
+				door_visuals[side] = skin_doors[side] if skin_doors.has(side) else _add_marker(deck, side)
+			continue
 		var visual := _add_box_visual(deck, offset, size, palette["brass"] if is_door else palette["brass_dark"], ("Door" if is_door else "Lip") + side.capitalize())
 		if is_door:
 			door_shapes[side] = shape
@@ -284,8 +309,19 @@ func _build_deck(at: Vector3) -> void:
 	deck.add_child(rider_area)
 
 
+func _add_marker(parent: Node3D, side: String) -> Node3D:
+	var marker := Node3D.new()
+	marker.name = "Door" + side.capitalize()
+	parent.add_child(marker)
+	return marker
+
+
 func _build_shaft(at: Vector3) -> void:
 	var top := floors[floors.size() - 1] + 1.05
+	if skin_deck:
+		# The level's own tower, drum and chain are the shaft; keep the signal.
+		_build_signal(at, top + 0.75)
+		return
 	var bottom := floors[0] - 0.20
 	var post_height := top - bottom
 	for corner_x in [-1.0, 1.0]:
@@ -295,6 +331,10 @@ func _build_shaft(at: Vector3) -> void:
 	_add_box_visual(self, Vector3(at.x, top, at.z), Vector3(deck_size.x + 0.24, 0.10, deck_size.z + 0.24), palette["brass"], "LiftCrown")
 	winch_drum = _add_cylinder_visual(self, Vector3(at.x, top - 0.25, at.z), 0.20, 0.36, palette["copper"], "LiftWinchDrum")
 	winch_drum.rotation.z = PI * 0.5
+	_build_signal(at, top)
+
+
+func _build_signal(at: Vector3, top: float) -> void:
 	signal_lamp = OmniLight3D.new()
 	signal_lamp.name = "LiftSignalLamp"
 	signal_lamp.position = Vector3(at.x, top + 0.25, at.z)
