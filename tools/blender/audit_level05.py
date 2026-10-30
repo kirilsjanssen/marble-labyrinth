@@ -88,7 +88,7 @@ for o in groups["Platforms"] + [x for x in groups["Mechanisms"] if x.name.starts
     # Walking surface = the highest up-facing level with substantial area
     # (boards sit 5 cm above the subfloor slab, which has more area).
     biggest = max(area_by_z.values())
-    top = max(z for z, a in area_by_z.items() if a >= 0.2 * biggest)
+    top = max(z for z, a in area_by_z.items() if a >= 0.45 * biggest)
     # Walking-surface extent: up-facing faces at the floor height.
     xs, ys = [], []
     for p in o.data.polygons:
@@ -104,9 +104,12 @@ report["floors"] = floors
 
 # ------------------------------------------------------- solid BVH (lanes) ----
 SOLID_ROOTS = ("Platforms", "Static_Architecture", "Mechanisms", "Terrain")
+# Crates are RigidBodies the marble pushes; lift gates open at every stop.
+DYNAMIC_PREFIXES = ("Crate_", "Lift_Gate_")
 solid_objs = [o for root in SOLID_ROOTS for o in groups[root] if not o.name.startswith("Lift_Chain")]
+static_objs = [o for o in solid_objs if not o.name.startswith(DYNAMIC_PREFIXES)]
 all_v, all_p, owner = [], [], []
-for o in solid_objs:
+for o in static_objs:
     verts, polys = world_mesh(o)
     base = len(all_v)
     all_v.extend(verts)
@@ -132,12 +135,21 @@ def nearest(center, dist):
 
 # Routes on the lane centrelines (world X, Y, floor Z). Lift legs are checked
 # separately (vertical travel of the cage).
+# v2 lane centrelines. The start plate, cube plate, corridor plate and goal
+# now lie ON the route (they are flush), so the sweep crosses them.
 ROUTES = {
-    "main_lower": [(0.8, 4.0, Z0), (2.0, 3.9, Z0), (3.3, 3.85, Z0), (4.6, 3.8, Z0), (4.6, 3.05, Z0), (4.6, 1.95, Z0), (4.6, 1.0, Z0), (6.0, 1.0, Z0), (6.8, 1.0, Z0), (7.9, 1.0, Z0), (9.0, 1.0, Z0), (9.8, 1.0, Z0)],
-    "main_middle": [(9.8, 1.0, Z1), (9.8, 1.8, Z1), (9.8, 2.4, Z1), (9.8, 3.0, Z1), (8.0, 3.0, Z1), (6.6, 4.0, Z1), (6.0, 5.6, Z1), (5.5, 5.75, Z1), (4.9, 5.75, Z1), (4.3, 5.6, Z1)],
-    "main_upper": [(9.8, 1.0, Z2), (9.9, 1.8, Z2), (9.9, 5.6, Z2), (9.98, 6.5, Z2), (9.98, 8.5, Z2), (9.4, 8.5, Z2), (8.5, 8.5, Z2), (6.6, 8.5, Z2), (4.5, 8.5, Z2), (2.4, 8.6, Z2)],
-    "secret_corridor": [(5.0, 4.0, Z0), (5.55, 4.0, Z0), (6.0, 4.0, Z0), (8.2, 4.0, Z0), (9.0, 4.0, Z0), (9.7, 4.0, Z0)],
+    "main_lower": [(0.8, 4.0, Z0), (2.0, 4.0, Z0), (3.3, 4.0, Z0), (4.6, 4.0, Z0), (4.6, 3.05, Z0), (4.6, 1.95, Z0), (4.6, 1.0, Z0), (6.0, 1.0, Z0), (6.8, 1.0, Z0), (7.9, 1.0, Z0), (9.0, 1.0, Z0), (9.8, 1.0, Z0)],
+    "main_middle": [(9.8, 1.0, Z1), (9.8, 1.8, Z1), (9.8, 2.4, Z1), (9.8, 3.0, Z1), (8.0, 3.0, Z1), (6.9, 4.0, Z1), (6.3, 5.0, Z1), (6.0, 5.85, Z1), (5.0, 5.85, Z1), (4.7, 6.0, Z1)],
+    "middle_under_walk": [(9.8, 2.6, Z1), (10.1, 3.0, Z1), (10.1, 4.55, Z1), (8.9, 4.55, Z1)],
+    "main_upper": [(9.8, 1.0, Z2), (10.1, 1.8, Z2), (10.1, 5.6, Z2), (10.1, 6.5, Z2), (10.1, 8.6, Z2), (9.4, 8.6, Z2), (8.5, 8.6, Z2), (6.6, 8.6, Z2), (4.5, 8.6, Z2), (2.4, 8.6, Z2)],
+    "secret_corridor": [(5.0, 4.0, Z0), (5.55, 4.0, Z0), (6.0, 4.0, Z0), (8.2, 4.0, Z0), (9.0, 4.0, Z0), (9.6, 4.0, Z0)],
 }
+# Flush plates and the goal dish are shallow recesses, not holes.
+RECESSES = [(3.3, 4.0, 0.47), (7.9, 1.0, 0.45), (8.2, 4.0, 0.37), (2.4, 8.6, 0.68)]
+
+
+def in_recess(p):
+    return any(math.hypot(p.x - x, p.y - y) <= r for x, y, r in RECESSES)
 
 
 def sample(route, step=0.05):
@@ -175,6 +187,8 @@ for name, route in ROUTES.items():
                 offsets.append(0.3 - down)
                 if abs(0.3 - down) <= 0.03:
                     supported = True
+        if not supported and in_recess(p) and offsets and -0.07 <= max(offsets) <= 0.02:
+            supported = True
         if not supported:
             gaps.append({"at": [r3(p.x), r3(p.y)], "floor_offset": r3(max(offsets)) if offsets else None, "by": by})
         # Lateral free width at marble-centre height, perpendicular to travel.
@@ -219,7 +233,7 @@ report["routes"] = route_report
 
 # ---------------------------------------- protrusions of plates on floors ----
 prot = {}
-for name in ("Plate_StartRing", "Gear_StartRing", "Plate_Cube", "Plate_CorridorRing", "Gear_CorridorTrigger", "Goal_Socket", "Lever_Sluice_Base", "Lever_Secret_Base", "Lever_Sluice"):
+for name in ("Plate_StartRing", "Gear_StartRing", "Plate_Cube", "Plate_CorridorRing", "Gear_CorridorTrigger", "Goal_Socket", "Lever_Sluice_Base", "Lever_Secret_Base", "Lever_Sluice", "Crank_Handle"):
     o = bpy.data.objects.get(name)
     if o:
         b = bbox(o)
@@ -231,7 +245,7 @@ report["floor_items"] = prot
 mech = {}
 for o in groups["Mechanisms"]:
     role = o.get("l05_role")
-    if role in ("water_wheel", "gear", "shaft", "lift_deck"):
+    if role in ("water_wheel", "gear", "shaft", "lift_deck", "millstone"):
         b = bbox(o)
         mech[o.name] = {"role": role, "location": [r3(o.location.x), r3(o.location.y), r3(o.location.z)], "axis": o.get("l05_axis"),
                         "radius": o.get("l05_radius"), "teeth": o.get("l05_teeth"), "bbox": [r3(x) for x in b]}
@@ -240,6 +254,8 @@ report["mechanisms"] = mech
 
 def axis_vec(name):
     o = bpy.data.objects[name]
+    if "l05_axis_vec" in o:
+        return Vector(o["l05_axis_vec"]).normalized()
     a = o.get("l05_axis", "Z")
     v = {"X": Vector((1, 0, 0)), "Y": Vector((0, 1, 0)), "Z": Vector((0, 0, 1))}[a]
     return (o.matrix_world.to_3x3() @ v).normalized()
@@ -252,7 +268,7 @@ for i, a in enumerate(gear_names):
         oa, ob = bpy.data.objects[a], bpy.data.objects[b]
         d = (oa.location - ob.location).length
         ra, rb = oa["l05_radius"], ob["l05_radius"]
-        if d > ra + rb + 0.6:
+        if d > ra + rb + 0.25:
             continue
         va, vb = axis_vec(a), axis_vec(b)
         parallel = abs(va.dot(vb)) > 0.99
@@ -260,7 +276,19 @@ for i, a in enumerate(gear_names):
         pitch_a = 2 * math.pi * ra / oa["l05_teeth"]
         pitch_b = 2 * math.pi * rb / ob["l05_teeth"]
         ideal = ra + rb - 0.5 * (ra * 0.16 + rb * 0.16)
-        pairs.append({"a": a, "b": b, "centre_distance": r3(d), "ideal_spur_distance": r3(ideal), "axes": "parallel" if parallel else "crossed %.0f deg" % math.degrees(math.acos(min(1, abs(va.dot(vb))))),
+        kinds = (oa.get("l05_kind", "spur"), ob.get("l05_kind", "spur"))
+        verdict = "no mesh"
+        apex_gap = None
+        if kinds == ("bevel", "bevel"):
+            apex_gap = (Vector(oa["l05_apex"]) - Vector(ob["l05_apex"])).length
+            if apex_gap < 0.02 and abs(va.dot(vb)) < 0.02 and abs(pitch_a - pitch_b) / max(pitch_a, pitch_b) < 0.06:
+                verdict = "MESHES (bevel pair, common apex, 90 deg)"
+        elif kinds == ("spur", "spur") and parallel:
+            thick = min(oa.get("l05_thickness", 0.07), ob.get("l05_thickness", 0.07))
+            if offset_plane is not None and offset_plane < thick * 0.5 and abs(d - ideal) < 0.025 and abs(pitch_a - pitch_b) / max(pitch_a, pitch_b) < 0.06:
+                verdict = "MESHES (spur pair, coplanar)"
+        pairs.append({"a": a, "b": b, "kinds": list(kinds), "verdict": verdict, "centre_distance": r3(d), "ideal_spur_distance": r3(ideal), "apex_gap": None if apex_gap is None else r3(apex_gap),
+                      "axes": "parallel" if parallel else "crossed %.0f deg" % math.degrees(math.acos(min(1, abs(va.dot(vb))))),
                       "plane_offset": None if offset_plane is None else r3(offset_plane), "pitch_mm": [round(pitch_a * 1000), round(pitch_b * 1000)]})
 report["gear_pairs"] = pairs
 
@@ -272,27 +300,56 @@ def obj_tree(o, offset=Vector((0, 0, 0))):
 
 trees = {o.name: obj_tree(o) for o in solid_objs}
 clashes = []
-moving = [o for o in groups["Mechanisms"] if o.get("l05_role") in ("water_wheel", "gear", "shaft", "lift_deck", "gate", "lift_gate")]
+moving = [o for o in groups["Mechanisms"] if o.get("l05_role") in ("water_wheel", "gear", "shaft", "lift_deck", "gate", "lift_gate", "millstone")]
+
+
+def same_assembly(a, b):
+    """Parts meant to touch: a shaft and what it carries, a gate in its frame,
+    the cage with its own gates."""
+    names = {a.name, b.name}
+    if a.name.startswith("Lift_") and b.name.startswith("Lift_") and "Lift_Tower" not in names:
+        return True
+    if any(n.startswith("Gate_") for n in names) and any(n.endswith("_Frame") or n.startswith("Flumes") for n in names):
+        return True
+    # A flush plate sits on its trigger gear; a gear sits on its own pillar spindle.
+    if any(n.startswith("Plate_") for n in names) and any(n.startswith("Gear_") for n in names):
+        return True
+    if "Gear_Pillar" in names and any(n in names for n in ("Gear_PillarCrown", "Gear_CrankPinion")):
+        return True
+    # Flush trigger gears turn on a spindle set into the deck (footstep bearing).
+    if names & {"Gear_StartRing", "Gear_CorridorTrigger"} and names & {"L_Start", "L_HiddenCorridor"}:
+        return True
+    return any(n.startswith(("Shaft_", "Axle_")) for n in names)
+
+
+seen = set()
 for m in moving:
     tm = trees[m.name]
     for o in solid_objs:
-        if o is m:
+        if o is m or (o.name, m.name) in seen:
             continue
         hits = tm.overlap(trees[o.name])
-        if hits:
-            clashes.append({"moving": m.name, "with": o.name, "faces": len(hits)})
+        if not hits:
+            continue
+        seen.add((m.name, o.name))
+        intended = same_assembly(m, o) or (o.get("l05_role") == "gear" and m.get("l05_role") == "gear")
+        clashes.append({"moving": m.name, "with": o.name, "faces": len(hits), "intended_contact": intended})
 report["mechanism_interference"] = clashes
+report["mechanism_interference_unintended"] = [c for c in clashes if not c["intended_contact"]]
 
 # ------------------------------------------------ lift travel 0 -> 2.8 m ----
 cage = bpy.data.objects["Lift_Cage"]
 travel = []
-others = [o for o in solid_objs if not o.name.startswith("Lift_Cage") and not o.name.startswith("Lift_Gate")]
+others = [o for o in solid_objs if not o.name.startswith(("Lift_Cage", "Lift_Gate", "Lift_Chain"))]
+assembly = [cage] + [o for o in solid_objs if o.name.startswith("Lift_Gate")]
 z = 0.0
 while z <= 2.81:
-    t = obj_tree(cage, Vector((0, 0, z)))
-    hit_names = sorted({o.name for o in others if t.overlap(trees[o.name])})
-    travel.append({"z": r3(z), "touches": hit_names})
-    z += 0.1
+    hit_names = set()
+    for part in assembly:
+        t = obj_tree(part, Vector((0, 0, z)))
+        hit_names |= {o.name for o in others if t.overlap(trees[o.name])}
+    travel.append({"z": r3(z), "touches": sorted(hit_names)})
+    z += 0.05
 report["lift_travel"] = travel
 cb = bbox(cage)
 report["lift_cage"] = {"deck_size": [r3(cb[1] - cb[0]), r3(cb[3] - cb[2])], "bbox_at_Z0": [r3(x) for x in cb]}
@@ -307,6 +364,8 @@ if cam:
     cpos = cam.matrix_world.translation
     for name, route in ROUTES.items():
         pts = sample(route, 0.25)
+        # The cage is parked at Z0, so skip shaft points at the upper stops.
+        pts = [p for p in pts if not (p.z > 0.5 and 9.0 < p.x < 10.6 and 0.2 < p.y < 1.8)]
         hidden = 0
         blockers = defaultdict(int)
         for p in pts:

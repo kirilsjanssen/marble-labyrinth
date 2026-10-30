@@ -1,6 +1,6 @@
 {
- "objects": 541,
- "mesh_objects": 514,
+ "objects": 552,
+ "mesh_objects": 525,
  "extents": {
   "Background": [
    -156.0,
@@ -12,18 +12,18 @@
   ],
   "Mechanisms": [
    1.56,
-   12.45,
-   -0.025,
+   12.66,
+   -0.285,
    9.477,
    -1.6,
-   4.97
+   4.998
   ],
   "Static_Architecture": [
    -0.182,
-   12.6,
+   12.67,
    -0.184,
-   13.642,
-   -1.49,
+   13.649,
+   -1.5,
    7.26
   ],
   "Terrain": [
@@ -43,10 +43,10 @@
    1.545
   ],
   "Platforms": [
-   -0.105,
-   12.105,
-   -0.105,
-   10.105,
+   -0.025,
+   12.025,
+   -0.025,
+   10.025,
    -0.25,
    3.545
   ],
@@ -60,22 +60,22 @@
   ],
   "Water": [
    -0.082,
-   13.517,
-   -1.018,
+   13.49,
+   -0.819,
    13.4,
    -7.095,
-   3.903
+   4.124
   ]
  },
  "triangles_by_group": {
   "Background": 68600,
-  "Mechanisms": 39520,
-  "Static_Architecture": 109496,
+  "Mechanisms": 39812,
+  "Static_Architecture": 123808,
   "Terrain": 51960,
   "Vegetation": 219232,
-  "Platforms": 38148,
+  "Platforms": 38316,
   "Game_Markers": 960,
-  "Water": 3312
+  "Water": 3358
  },
  "floors": {
   "L_Front": {
@@ -119,32 +119,32 @@
     8.986
    ],
    "walk_y": [
-    3.315,
-    4.685
+    3.215,
+    4.785
    ],
    "size": [
     2.972,
-    1.37
+    1.57
    ],
    "thickness_below_floor": 0.25,
    "rail_top_above_floor": 0.745
   },
   "L_SecretAlcove": {
-   "floor_z": 0.22,
+   "floor_z": 0.0,
    "walk_x": [
-    9.025,
-    10.375
+    9.015,
+    10.385
    ],
    "walk_y": [
-    2.925,
-    4.975
+    2.914,
+    4.986
    ],
    "size": [
-    1.35,
-    2.05
+    1.37,
+    2.072
    ],
-   "thickness_below_floor": 0.47,
-   "rail_top_above_floor": 0.525
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
   },
   "L_Start": {
    "floor_z": 0.0,
@@ -217,15 +217,15 @@
   "U_LiftWalk": {
    "floor_z": 2.8,
    "walk_x": [
-    9.415,
-    10.785
+    9.365,
+    10.835
    ],
    "walk_y": [
     1.814,
     5.586
    ],
    "size": [
-    1.37,
+    1.47,
     3.772
    ],
    "thickness_below_floor": 0.25,
@@ -239,11 +239,11 @@
    ],
    "walk_y": [
     5.614,
-    9.086
+    9.286
    ],
    "size": [
     2.57,
-    3.472
+    3.672
    ],
    "thickness_below_floor": 0.25,
    "rail_top_above_floor": 0.745
@@ -268,253 +268,142 @@
   "Bridge_LiftMiddle": {
    "floor_z": 1.4,
    "walk_x": [
-    9.16,
-    10.44
+    9.06,
+    10.54
    ],
    "walk_y": [
     1.82,
     2.38
    ],
    "size": [
-    1.281,
+    1.48,
     0.56
    ],
    "thickness_below_floor": 0.25,
    "rail_top_above_floor": 0.74
   },
   "Bridge_Spillway": {
-   "floor_z": -0.0,
+   "floor_z": -0.01,
    "walk_x": [
     6.02,
     6.78
    ],
    "walk_y": [
-    0.36,
-    1.64
+    0.26,
+    1.74
    ],
    "size": [
     0.76,
-    1.281
+    1.48
    ],
-   "thickness_below_floor": 0.25,
-   "rail_top_above_floor": 0.74
+   "thickness_below_floor": 0.24,
+   "rail_top_above_floor": 0.75
   },
   "Bridge_StreamWest": {
-   "floor_z": 0.3,
+   "floor_z": -0.0,
    "walk_x": [
-    4.02,
-    5.18
+    3.86,
+    5.34
    ],
    "walk_y": [
     2.02,
     2.98
    ],
    "size": [
-    1.16,
+    1.481,
     0.96
    ],
-   "thickness_below_floor": 0.55,
-   "rail_top_above_floor": 0.44
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.74
   }
  },
  "routes": {
   "main_lower": {
-   "samples": 234,
+   "samples": 236,
    "blocked_stretches": [
     {
      "from": [
-      2.65,
-      3.875,
+      2.988,
+      4.0,
       0.0
      ],
      "to": [
-      2.65,
-      3.875,
-      0.0
-     ],
-     "by": "Gear_StartRing",
-     "max_penetration_cm": 3.7
-    },
-    {
-     "from": [
-      2.7,
-      3.873,
-      0.0
-     ],
-     "to": [
-      3.9,
-      3.827,
+      2.988,
+      4.0,
       0.0
      ],
      "by": "Plate_StartRing",
-     "max_penetration_cm": 28.3
+     "max_penetration_cm": 0.3
     },
     {
      "from": [
-      3.95,
-      3.825,
+      3.196,
+      4.0,
       0.0
      ],
      "to": [
-      3.95,
-      3.825,
+      3.404,
+      4.0,
       0.0
      ],
      "by": "Gear_StartRing",
-     "max_penetration_cm": 3.7
+     "max_penetration_cm": 0.3
     },
     {
      "from": [
-      4.6,
-      1.5,
+      3.612,
+      4.0,
       0.0
      ],
      "to": [
-      5.55,
-      1.0,
+      3.612,
+      4.0,
       0.0
      ],
-     "by": "Crate_Cube",
-     "max_penetration_cm": 32.0
+     "by": "Plate_StartRing",
+     "max_penetration_cm": 0.3
     },
     {
      "from": [
-      7.324,
+      7.586,
       1.0,
       0.0
      ],
      "to": [
-      8.476,
+      7.586,
       1.0,
       0.0
      ],
      "by": "Plate_Cube",
-     "max_penetration_cm": 10.2
+     "max_penetration_cm": 0.2
     },
     {
      "from": [
-      8.738,
+      8.214,
       1.0,
       0.0
      ],
      "to": [
-      9.4,
+      8.214,
       1.0,
       0.0
      ],
-     "by": "Lift_Gate_West",
-     "max_penetration_cm": 31.5
+     "by": "Plate_Cube",
+     "max_penetration_cm": 0.2
     }
    ],
-   "floor_gaps": [
-    {
-     "at": [
-      3.0,
-      3.862
-     ],
-     "floor_offset": 0.295,
-     "by": "Plate_StartRing"
-    },
-    {
-     "at": [
-      3.05,
-      3.86
-     ],
-     "floor_offset": 0.29,
-     "by": "Plate_StartRing"
-    },
-    {
-     "at": [
-      3.1,
-      3.858
-     ],
-     "floor_offset": 0.278,
-     "by": "Plate_StartRing"
-    },
-    {
-     "at": [
-      3.15,
-      3.856
-     ],
-     "floor_offset": 0.235,
-     "by": "Plate_StartRing"
-    },
-    {
-     "at": [
-      3.2,
-      3.854
-     ],
-     "floor_offset": 0.235,
-     "by": "Plate_StartRing"
-    },
-    {
-     "at": [
-      3.25,
-      3.852
-     ],
-     "floor_offset": 0.235,
-     "by": "Plate_StartRing"
-    },
-    {
-     "at": [
-      3.3,
-      3.85
-     ],
-     "floor_offset": 0.235,
-     "by": "Plate_StartRing"
-    },
-    {
-     "at": [
-      3.35,
-      3.848
-     ],
-     "floor_offset": 0.235,
-     "by": "Plate_StartRing"
-    },
-    {
-     "at": [
-      3.4,
-      3.846
-     ],
-     "floor_offset": 0.235,
-     "by": "Plate_StartRing"
-    },
-    {
-     "at": [
-      3.45,
-      3.844
-     ],
-     "floor_offset": 0.235,
-     "by": "Plate_StartRing"
-    },
-    {
-     "at": [
-      3.5,
-      3.842
-     ],
-     "floor_offset": 0.278,
-     "by": "Plate_StartRing"
-    },
-    {
-     "at": [
-      3.55,
-      3.84
-     ],
-     "floor_offset": 0.29,
-     "by": "Plate_StartRing"
-    }
-   ],
-   "floor_gap_count": 28,
-   "min_free_width_m": 0.342,
-   "min_headroom_m": 0.358,
+   "floor_gaps": [],
+   "floor_gap_count": 0,
+   "min_free_width_m": 1.13,
+   "min_headroom_m": 0.938,
    "headroom_limited_by": [
-    "Lift_Gate_West",
+    "Lift_Cage",
     [
-     9.05,
+     9.15,
      1.0
     ]
    ],
-   "min_centre_clearance_m": 0.01,
+   "min_centre_clearance_m": 0.327,
    "legs": [
     {
      "from": [
@@ -524,41 +413,41 @@
      ],
      "to": [
       2.0,
-      3.9,
+      4.0,
       0.0
      ],
-     "min_width": 1.676
+     "min_width": 1.67
     },
     {
      "from": [
       2.0,
-      3.9,
+      4.0,
       0.0
      ],
      "to": [
       3.3,
-      3.85,
+      4.0,
       0.0
      ],
-     "min_width": 2.147
+     "min_width": 1.515
     },
     {
      "from": [
       3.3,
-      3.85,
+      4.0,
       0.0
      ],
      "to": [
       4.6,
-      3.8,
+      4.0,
       0.0
      ],
-     "min_width": 2.109
+     "min_width": 1.926
     },
     {
      "from": [
       4.6,
-      3.8,
+      4.0,
       0.0
      ],
      "to": [
@@ -566,7 +455,7 @@
       3.05,
       0.0
      ],
-     "min_width": 1.923
+     "min_width": 2.109
     },
     {
      "from": [
@@ -579,7 +468,7 @@
       1.95,
       0.0
      ],
-     "min_width": 0.93
+     "min_width": 1.13
     },
     {
      "from": [
@@ -592,7 +481,7 @@
       1.0,
       0.0
      ],
-     "min_width": 0.93
+     "min_width": 1.13
     },
     {
      "from": [
@@ -605,7 +494,7 @@
       1.0,
       0.0
      ],
-     "min_width": 0.342
+     "min_width": 2.496
     },
     {
      "from": [
@@ -618,7 +507,7 @@
       1.0,
       0.0
      ],
-     "min_width": 0.93
+     "min_width": 1.13
     },
     {
      "from": [
@@ -631,7 +520,7 @@
       1.0,
       0.0
      ],
-     "min_width": 0.93
+     "min_width": 1.13
     },
     {
      "from": [
@@ -657,91 +546,20 @@
       1.0,
       0.0
      ],
-     "min_width": 1.26
+     "min_width": 1.2
     }
    ]
   },
   "main_middle": {
-   "samples": 176,
-   "blocked_stretches": [
-    {
-     "from": [
-      9.8,
-      1.427,
-      1.4
-     ],
-     "to": [
-      9.8,
-      2.3,
-      1.4
-     ],
-     "by": "Masonry_UpperTerraces",
-     "max_penetration_cm": 20.4
-    },
-    {
-     "from": [
-      7.753,
-      3.176,
-      1.4
-     ],
-     "to": [
-      7.218,
-      3.559,
-      1.4
-     ],
-     "by": "Gate_MiddleShutter_Frame",
-     "max_penetration_cm": 22.3
-    },
-    {
-     "from": [
-      5.95,
-      5.615,
-      1.4
-     ],
-     "to": [
-      5.5,
-      5.75,
-      1.4
-     ],
-     "by": "M_Workshop",
-     "max_penetration_cm": 11.6
-    },
-    {
-     "from": [
-      5.445,
-      5.75,
-      1.4
-     ],
-     "to": [
-      5.173,
-      5.75,
-      1.4
-     ],
-     "by": "M_GearTerrace",
-     "max_penetration_cm": 6.5
-    },
-    {
-     "from": [
-      4.5,
-      5.65,
-      1.4
-     ],
-     "to": [
-      4.3,
-      5.6,
-      1.4
-     ],
-     "by": "M_GearTerrace",
-     "max_penetration_cm": 9.5
-    }
-   ],
+   "samples": 171,
+   "blocked_stretches": [],
    "floor_gaps": [
     {
      "at": [
       9.8,
       1.0
      ],
-     "floor_offset": -0.52,
+     "floor_offset": -0.27,
      "by": "Lift_Cage"
     },
     {
@@ -749,7 +567,7 @@
       9.8,
       1.053
      ],
-     "floor_offset": -0.52,
+     "floor_offset": -0.27,
      "by": "Lift_Cage"
     },
     {
@@ -757,7 +575,7 @@
       9.8,
       1.107
      ],
-     "floor_offset": -0.52,
+     "floor_offset": -0.27,
      "by": "Lift_Cage"
     },
     {
@@ -834,16 +652,16 @@
     }
    ],
    "floor_gap_count": 15,
-   "min_free_width_m": 0.72,
-   "min_headroom_m": 1.138,
+   "min_free_width_m": 1.085,
+   "min_headroom_m": 0.988,
    "headroom_limited_by": [
-    "U_LiftWalk",
+    "Lift_Tower",
     [
      9.8,
      1.85
     ]
    ],
-   "min_centre_clearance_m": 0.107,
+   "min_centre_clearance_m": 0.342,
    "legs": [
     {
      "from": [
@@ -856,7 +674,7 @@
       1.8,
       1.4
      ],
-     "min_width": 0.93
+     "min_width": 1.13
     },
     {
      "from": [
@@ -869,7 +687,7 @@
       2.4,
       1.4
      ],
-     "min_width": 0.93
+     "min_width": 1.13
     },
     {
      "from": [
@@ -882,7 +700,7 @@
       3.0,
       1.4
      ],
-     "min_width": 3.6
+     "min_width": 3.805
     },
     {
      "from": [
@@ -895,7 +713,7 @@
       3.0,
       1.4
      ],
-     "min_width": 4.075
+     "min_width": 3.82
     },
     {
      "from": [
@@ -904,126 +722,126 @@
       1.4
      ],
      "to": [
-      6.6,
+      6.9,
       4.0,
       1.4
      ],
-     "min_width": 1.224
+     "min_width": 3.789
     },
     {
      "from": [
-      6.6,
+      6.9,
       4.0,
+      1.4
+     ],
+     "to": [
+      6.3,
+      5.0,
+      1.4
+     ],
+     "min_width": 4.251
+    },
+    {
+     "from": [
+      6.3,
+      5.0,
       1.4
      ],
      "to": [
       6.0,
-      5.6,
+      5.85,
       1.4
      ],
-     "min_width": 1.738
+     "min_width": 2.306
     },
     {
      "from": [
       6.0,
-      5.6,
+      5.85,
       1.4
      ],
      "to": [
-      5.5,
-      5.75,
+      5.0,
+      5.85,
       1.4
      ],
-     "min_width": 4.739
+     "min_width": 1.22
     },
     {
      "from": [
-      5.5,
-      5.75,
+      5.0,
+      5.85,
       1.4
      ],
      "to": [
-      4.9,
-      5.75,
+      4.7,
+      6.0,
       1.4
      ],
-     "min_width": 1.824
+     "min_width": 1.085
+    }
+   ]
+  },
+  "middle_under_walk": {
+   "samples": 66,
+   "blocked_stretches": [],
+   "floor_gaps": [],
+   "floor_gap_count": 0,
+   "min_free_width_m": 1.22,
+   "min_headroom_m": 0.958,
+   "headroom_limited_by": [
+    "Timber_WalkSupports",
+    [
+     9.4,
+     4.55
+    ]
+   ],
+   "min_centre_clearance_m": 0.342,
+   "legs": [
+    {
+     "from": [
+      9.8,
+      2.6,
+      1.4
+     ],
+     "to": [
+      10.1,
+      3.0,
+      1.4
+     ],
+     "min_width": 6.258
     },
     {
      "from": [
-      4.9,
-      5.75,
+      10.1,
+      3.0,
       1.4
      ],
      "to": [
-      4.3,
-      5.6,
+      10.1,
+      4.55,
       1.4
      ],
-     "min_width": 1.03
+     "min_width": 1.22
+    },
+    {
+     "from": [
+      10.1,
+      4.55,
+      1.4
+     ],
+     "to": [
+      8.9,
+      4.55,
+      1.4
+     ],
+     "min_width": 1.57
     }
    ]
   },
   "main_upper": {
-   "samples": 299,
-   "blocked_stretches": [
-    {
-     "from": [
-      9.887,
-      1.7,
-      2.8
-     ],
-     "to": [
-      9.9,
-      2.003,
-      2.8
-     ],
-     "by": "U_LiftWalk",
-     "max_penetration_cm": 1.5
-    },
-    {
-     "from": [
-      9.9,
-      5.397,
-      2.8
-     ],
-     "to": [
-      9.9,
-      5.549,
-      2.8
-     ],
-     "by": "U_LiftWalk",
-     "max_penetration_cm": 1.5
-    },
-    {
-     "from": [
-      9.9,
-      5.6,
-      2.8
-     ],
-     "to": [
-      9.909,
-      5.7,
-      2.8
-     ],
-     "by": "U_PoolDeck",
-     "max_penetration_cm": 1.4
-    },
-    {
-     "from": [
-      3.15,
-      8.564,
-      2.8
-     ],
-     "to": [
-      2.4,
-      8.6,
-      2.8
-     ],
-     "by": "Goal_Socket",
-     "max_penetration_cm": 13.4
-    }
-   ],
+   "samples": 304,
+   "blocked_stretches": [],
    "floor_gaps": [
     {
      "at": [
@@ -1035,104 +853,104 @@
     },
     {
      "at": [
-      9.806,
-      1.05
+      9.818,
+      1.047
      ],
      "floor_offset": null,
      "by": null
     },
     {
      "at": [
-      9.812,
-      1.1
+      9.835,
+      1.094
      ],
      "floor_offset": null,
      "by": null
     },
     {
      "at": [
-      9.819,
-      1.15
+      9.853,
+      1.141
      ],
      "floor_offset": null,
      "by": null
     },
     {
      "at": [
-      9.825,
-      1.2
+      9.871,
+      1.188
      ],
      "floor_offset": null,
      "by": null
     },
     {
      "at": [
-      9.831,
-      1.25
+      9.888,
+      1.235
      ],
      "floor_offset": null,
      "by": null
     },
     {
      "at": [
-      9.837,
-      1.3
+      9.906,
+      1.282
      ],
      "floor_offset": null,
      "by": null
     },
     {
      "at": [
-      9.844,
-      1.35
+      9.924,
+      1.329
      ],
      "floor_offset": null,
      "by": null
     },
     {
      "at": [
-      9.85,
-      1.4
+      9.941,
+      1.376
      ],
      "floor_offset": null,
      "by": null
     },
     {
      "at": [
-      9.856,
-      1.45
+      9.959,
+      1.424
      ],
      "floor_offset": null,
      "by": null
     },
     {
      "at": [
-      9.863,
-      1.5
+      9.976,
+      1.471
      ],
      "floor_offset": null,
      "by": null
     },
     {
      "at": [
-      9.869,
-      1.55
+      9.994,
+      1.518
      ],
      "floor_offset": null,
      "by": null
     }
    ],
-   "floor_gap_count": 27,
-   "min_free_width_m": 0.83,
+   "floor_gap_count": 16,
+   "min_free_width_m": 1.083,
    "min_headroom_m": 0.808,
    "headroom_limited_by": [
     "Flumes_And_Channels",
     [
      9.241,
-     8.5
+     8.6
     ]
    ],
-   "min_centre_clearance_m": 0.196,
+   "min_centre_clearance_m": 0.334,
    "legs": [
     {
      "from": [
@@ -1141,107 +959,107 @@
       2.8
      ],
      "to": [
-      9.9,
+      10.1,
       1.8,
       2.8
      ],
-     "min_width": 0.83
+     "min_width": 1.085
     },
     {
      "from": [
-      9.9,
+      10.1,
       1.8,
       2.8
      ],
      "to": [
-      9.9,
+      10.1,
       5.6,
       2.8
      ],
-     "min_width": 1.07
+     "min_width": 1.17
     },
     {
      "from": [
-      9.9,
+      10.1,
       5.6,
       2.8
      ],
      "to": [
-      9.98,
+      10.1,
       6.5,
       2.8
      ],
-     "min_width": 1.03
+     "min_width": 1.17
     },
     {
      "from": [
-      9.98,
+      10.1,
       6.5,
       2.8
      ],
      "to": [
-      9.98,
-      8.5,
+      10.1,
+      8.6,
       2.8
      ],
-     "min_width": 2.27
+     "min_width": 1.083
     },
     {
      "from": [
-      9.98,
-      8.5,
+      10.1,
+      8.6,
       2.8
      ],
      "to": [
       9.4,
-      8.5,
+      8.6,
       2.8
      ],
-     "min_width": 0.83
+     "min_width": 1.085
     },
     {
      "from": [
       9.4,
-      8.5,
+      8.6,
       2.8
      ],
      "to": [
       8.5,
-      8.5,
+      8.6,
       2.8
      ],
-     "min_width": 1.4
+     "min_width": 1.085
     },
     {
      "from": [
       8.5,
-      8.5,
+      8.6,
       2.8
      ],
      "to": [
       6.6,
-      8.5,
+      8.6,
       2.8
      ],
-     "min_width": 2.07
+     "min_width": 2.265
     },
     {
      "from": [
       6.6,
-      8.5,
+      8.6,
       2.8
      ],
      "to": [
       4.5,
-      8.5,
+      8.6,
       2.8
      ],
-     "min_width": 1.63
+     "min_width": 1.8
     },
     {
      "from": [
       4.5,
-      8.5,
+      8.6,
       2.8
      ],
      "to": [
@@ -1249,79 +1067,68 @@
       8.6,
       2.8
      ],
-     "min_width": 2.692
+     "min_width": 1.8
     }
    ]
   },
   "secret_corridor": {
-   "samples": 92,
+   "samples": 91,
    "blocked_stretches": [
     {
      "from": [
-      7.688,
+      7.944,
       4.0,
       0.0
      ],
      "to": [
-      8.75,
+      7.944,
       4.0,
       0.0
      ],
      "by": "Plate_CorridorRing",
-     "max_penetration_cm": 24.2
+     "max_penetration_cm": 0.3
     },
     {
      "from": [
-      9.646,
+      8.098,
       4.0,
       0.0
      ],
      "to": [
-      9.7,
+      8.3,
       4.0,
       0.0
      ],
-     "by": "Lever_Secret",
-     "max_penetration_cm": 5.4
-    }
-   ],
-   "floor_gaps": [
-    {
-     "at": [
-      8.149,
-      4.0
-     ],
-     "floor_offset": 0.25,
-     "by": "Plate_CorridorRing"
+     "by": "Gear_CorridorTrigger",
+     "max_penetration_cm": 0.3
     },
     {
-     "at": [
-      8.2,
-      4.0
+     "from": [
+      8.45,
+      4.0,
+      0.0
      ],
-     "floor_offset": 0.251,
-     "by": "Plate_CorridorRing"
-    },
-    {
-     "at": [
-      8.25,
-      4.0
+     "to": [
+      8.45,
+      4.0,
+      0.0
      ],
-     "floor_offset": 0.25,
-     "by": "Plate_CorridorRing"
+     "by": "Plate_CorridorRing",
+     "max_penetration_cm": 0.3
     }
    ],
-   "floor_gap_count": 3,
-   "min_free_width_m": 1.07,
-   "min_headroom_m": 0.918,
+   "floor_gaps": [],
+   "floor_gap_count": 0,
+   "min_free_width_m": 1.27,
+   "min_headroom_m": 0.998,
    "headroom_limited_by": [
     "Corridor_Beams_Lanterns",
     [
-     6.256,
+     8.047,
      4.0
     ]
    ],
-   "min_centre_clearance_m": 0.088,
+   "min_centre_clearance_m": 0.327,
    "legs": [
     {
      "from": [
@@ -1334,7 +1141,7 @@
       4.0,
       0.0
      ],
-     "min_width": 1.23
+     "min_width": 1.377
     },
     {
      "from": [
@@ -1347,7 +1154,7 @@
       4.0,
       0.0
      ],
-     "min_width": 1.07
+     "min_width": 1.27
     },
     {
      "from": [
@@ -1360,7 +1167,7 @@
       4.0,
       0.0
      ],
-     "min_width": 1.07
+     "min_width": 1.27
     },
     {
      "from": [
@@ -1373,7 +1180,7 @@
       4.0,
       0.0
      ],
-     "min_width": 1.07
+     "min_width": 1.27
     },
     {
      "from": [
@@ -1382,42 +1189,42 @@
       0.0
      ],
      "to": [
-      9.7,
+      9.6,
       4.0,
       0.0
      ],
-     "min_width": 1.07
+     "min_width": 1.27
     }
    ]
   }
  },
  "floor_items": {
   "Plate_StartRing": {
-   "top_z": 0.295,
+   "top_z": 0.015,
    "footprint": [
     0.76,
     0.76
    ],
    "location": [
     3.3,
-    3.85,
-    0.2
+    4.0,
+    -0.04
    ]
   },
   "Gear_StartRing": {
-   "top_z": 0.2,
+   "top_z": 0.015,
    "footprint": [
     0.834,
     0.834
    ],
    "location": [
     3.3,
-    3.85,
-    0.12
+    4.0,
+    -0.03
    ]
   },
   "Plate_Cube": {
-   "top_z": 0.115,
+   "top_z": 0.015,
    "footprint": [
     0.84,
     0.84
@@ -1425,35 +1232,35 @@
    "location": [
     7.9,
     1.0,
-    0.02
+    -0.04
    ]
   },
   "Plate_CorridorRing": {
-   "top_z": 0.255,
+   "top_z": 0.015,
    "footprint": [
     0.64,
     0.64
    ],
    "location": [
     8.2,
-    3.75,
-    0.16
+    4.0,
+    -0.04
    ]
   },
   "Gear_CorridorTrigger": {
-   "top_z": 0.17,
+   "top_z": 0.015,
    "footprint": [
     0.634,
     0.639
    ],
    "location": [
     8.2,
-    3.75,
-    0.1
+    4.0,
+    -0.03
    ]
   },
   "Goal_Socket": {
-   "top_z": 2.946,
+   "top_z": 2.808,
    "footprint": [
     1.24,
     1.24
@@ -1461,7 +1268,7 @@
    "location": [
     2.4,
     8.6,
-    2.8
+    2.75
    ]
   },
   "Lever_Sluice_Base": {
@@ -1499,13 +1306,25 @@
     4.55,
     0.18
    ]
+  },
+  "Crank_Handle": {
+   "top_z": 2.66,
+   "footprint": [
+    0.303,
+    0.07
+   ],
+   "location": [
+    4.368,
+    6.95,
+    2.46
+   ]
   }
  },
  "mechanisms": {
   "Axle_East": {
    "role": "shaft",
    "location": [
-    11.7,
+    12.13,
     2.6,
     1.55
    ],
@@ -1513,8 +1332,8 @@
    "radius": null,
    "teeth": null,
    "bbox": [
-    10.95,
-    12.45,
+    11.6,
+    12.66,
     2.498,
     2.702,
     1.448,
@@ -1524,18 +1343,18 @@
   "Axle_Main": {
    "role": "shaft",
    "location": [
-    9.32,
-    6.4,
+    9.3,
+    6.305,
     1.3
    ],
    "axis": null,
    "radius": null,
    "teeth": null,
    "bbox": [
-    9.201,
-    9.439,
-    5.7,
-    7.1,
+    9.181,
+    9.419,
+    5.56,
+    7.05,
     1.181,
     1.419
    ]
@@ -1544,8 +1363,8 @@
    "role": "gear",
    "location": [
     8.2,
-    3.75,
-    0.1
+    4.0,
+    -0.03
    ],
    "axis": "Z",
    "radius": 0.32,
@@ -1553,132 +1372,170 @@
    "bbox": [
     7.883,
     8.517,
-    3.43,
-    4.07,
-    0.03,
-    0.17
+    3.68,
+    4.32,
+    -0.075,
+    0.015
    ]
   },
-  "Gear_EastDrive": {
+  "Gear_CrankPinion": {
    "role": "gear",
    "location": [
-    11.2,
+    4.368,
+    6.95,
+    2.35
+   ],
+   "axis": "Z",
+   "radius": 0.2045,
+   "teeth": 9,
+   "bbox": [
+    4.164,
+    4.568,
+    6.746,
+    7.154,
+    2.27,
+    2.43
+   ]
+  },
+  "Gear_EastBevel": {
+   "role": "gear",
+   "location": [
+    11.65,
     2.6,
     1.55
    ],
-   "axis": "X",
-   "radius": 0.34,
-   "teeth": 18,
-   "bbox": [
-    11.13,
-    11.27,
-    2.26,
-    2.94,
-    1.212,
-    1.888
-   ]
-  },
-  "Gear_LiftBevel": {
-   "role": "gear",
-   "location": [
-    10.98,
-    1.0,
-    1.77
-   ],
-   "axis": "Z",
-   "radius": 0.22,
-   "teeth": 12,
-   "bbox": [
-    10.763,
-    11.197,
-    0.783,
-    1.217,
-    1.705,
-    1.835
-   ]
-  },
-  "Gear_LineBevel": {
-   "role": "gear",
-   "location": [
-    10.98,
-    2.32,
-    1.55
-   ],
-   "axis": "Y",
-   "radius": 0.22,
-   "teeth": 12,
-   "bbox": [
-    10.763,
-    11.197,
-    2.255,
-    2.385,
-    1.333,
-    1.767
-   ]
-  },
-  "Gear_LineDrop": {
-   "role": "gear",
-   "location": [
-    9.32,
-    5.62,
-    0.86
-   ],
-   "axis": "Y",
-   "radius": 0.2,
+   "axis": null,
+   "radius": 0.18,
    "teeth": 10,
    "bbox": [
-    9.124,
-    9.516,
-    5.555,
-    5.685,
-    0.661,
-    1.059
+    11.58,
+    11.74,
+    2.421,
+    2.779,
+    1.373,
+    1.727
    ]
   },
-  "Gear_MainAxle": {
+  "Gear_LineBevelNorth": {
    "role": "gear",
    "location": [
-    9.32,
-    5.75,
-    1.3
+    11.47,
+    2.42,
+    1.55
    ],
-   "axis": "Y",
-   "radius": 0.28,
-   "teeth": 14,
+   "axis": null,
+   "radius": 0.18,
+   "teeth": 10,
    "bbox": [
-    9.043,
-    9.597,
-    5.685,
-    5.815,
-    1.02,
-    1.58
+    11.293,
+    11.647,
+    2.33,
+    2.49,
+    1.371,
+    1.729
+   ]
+  },
+  "Gear_LineBevelSouth": {
+   "role": "gear",
+   "location": [
+    11.47,
+    1.18,
+    1.55
+   ],
+   "axis": null,
+   "radius": 0.18,
+   "teeth": 10,
+   "bbox": [
+    11.293,
+    11.647,
+    1.11,
+    1.27,
+    1.371,
+    1.729
+   ]
+  },
+  "Gear_MastBevelLow": {
+   "role": "gear",
+   "location": [
+    11.47,
+    1.0,
+    1.73
+   ],
+   "axis": null,
+   "radius": 0.18,
+   "teeth": 10,
+   "bbox": [
+    11.291,
+    11.649,
+    0.823,
+    1.177,
+    1.66,
+    1.82
+   ]
+  },
+  "Gear_MastBevelTop": {
+   "role": "gear",
+   "location": [
+    11.47,
+    1.0,
+    4.4
+   ],
+   "axis": null,
+   "radius": 0.15,
+   "teeth": 8,
+   "bbox": [
+    11.324,
+    11.616,
+    0.854,
+    1.146,
+    4.31,
+    4.47
    ]
   },
   "Gear_PillarCrown": {
    "role": "gear",
    "location": [
-    4.3,
-    6.3,
+    3.72,
+    6.95,
     2.35
    ],
    "axis": "Z",
    "radius": 0.5,
    "teeth": 22,
    "bbox": [
-    3.802,
-    4.798,
-    5.8,
-    6.8,
+    3.222,
+    4.218,
+    6.45,
+    7.45,
     2.27,
     2.43
+   ]
+  },
+  "Gear_PitWheel": {
+   "role": "gear",
+   "location": [
+    9.3,
+    6.97,
+    1.3
+   ],
+   "axis": null,
+   "radius": 0.42,
+   "teeth": 16,
+   "bbox": [
+    8.883,
+    9.717,
+    6.88,
+    7.04,
+    0.883,
+    1.717
    ]
   },
   "Gear_StartRing": {
    "role": "gear",
    "location": [
     3.3,
-    3.85,
-    0.12
+    4.0,
+    -0.03
    ],
    "axis": "Z",
    "radius": 0.42,
@@ -1686,29 +1543,48 @@
    "bbox": [
     2.883,
     3.717,
-    3.433,
-    4.267,
-    0.04,
-    0.2
+    3.583,
+    4.417,
+    -0.075,
+    0.015
    ]
   },
-  "Gear_Winch": {
+  "Gear_Wallower": {
    "role": "gear",
    "location": [
-    10.98,
-    1.0,
-    4.45
+    9.3,
+    7.15,
+    1.72
    ],
-   "axis": "X",
+   "axis": null,
+   "radius": 0.18,
+   "teeth": 7,
+   "bbox": [
+    9.12,
+    9.479,
+    6.971,
+    7.324,
+    1.65,
+    1.81
+   ]
+  },
+  "Gear_WinchBevel": {
+   "role": "gear",
+   "location": [
+    11.32,
+    1.0,
+    4.7
+   ],
+   "axis": null,
    "radius": 0.3,
    "teeth": 16,
    "bbox": [
-    10.91,
-    11.05,
+    11.23,
+    11.39,
     0.702,
     1.298,
-    4.152,
-    4.748
+    4.402,
+    4.998
    ]
   },
   "Lift_Cage": {
@@ -1722,75 +1598,113 @@
    "radius": null,
    "teeth": null,
    "bbox": [
-    9.03,
-    10.57,
-    0.23,
-    1.77,
+    9.065,
+    10.535,
+    0.265,
+    1.735,
     -0.18,
-    0.88
+    1.13
    ]
   },
-  "Shaft_LiftVertical": {
-   "role": "shaft",
+  "Millstone_Runner": {
+   "role": "millstone",
    "location": [
-    10.98,
-    1.0,
-    3.05
+    9.3,
+    7.17,
+    2.3
    ],
    "axis": null,
    "radius": null,
    "teeth": null,
    "bbox": [
-    10.895,
-    11.065,
-    0.915,
-    1.085,
-    1.75,
-    4.35
+    9.1,
+    9.5,
+    6.97,
+    7.37,
+    2.25,
+    2.375
    ]
   },
-  "Shaft_LineToLift": {
+  "Shaft_Line": {
    "role": "shaft",
    "location": [
-    10.98,
-    1.64,
+    11.47,
+    1.8,
     1.55
    ],
    "axis": null,
    "radius": null,
    "teeth": null,
    "bbox": [
-    10.895,
-    11.065,
-    1.0,
-    2.28,
+    11.385,
+    11.555,
+    1.22,
+    2.38,
     1.465,
     1.635
    ]
   },
-  "Shaft_MainToPillar": {
+  "Shaft_Mast": {
    "role": "shaft",
    "location": [
-    6.7,
-    5.62,
-    0.86
+    11.47,
+    1.0,
+    3.065
    ],
    "axis": null,
    "radius": null,
    "teeth": null,
    "bbox": [
-    4.3,
-    9.1,
-    5.535,
-    5.705,
-    0.775,
-    0.945
+    11.385,
+    11.555,
+    0.915,
+    1.085,
+    1.75,
+    4.38
+   ]
+  },
+  "Shaft_Millstone": {
+   "role": "shaft",
+   "location": [
+    9.3,
+    7.15,
+    2.055
+   ],
+   "axis": null,
+   "radius": null,
+   "teeth": null,
+   "bbox": [
+    9.224,
+    9.377,
+    7.074,
+    7.227,
+    1.75,
+    2.36
+   ]
+  },
+  "Shaft_Winch": {
+   "role": "shaft",
+   "location": [
+    10.98,
+    1.0,
+    4.7
+   ],
+   "axis": null,
+   "radius": null,
+   "teeth": null,
+   "bbox": [
+    10.66,
+    11.3,
+    0.898,
+    1.102,
+    4.598,
+    4.802
    ]
   },
   "Wheel_East": {
    "role": "water_wheel",
    "location": [
-    12.0,
+    12.15,
     2.6,
     1.55
    ],
@@ -1798,8 +1712,8 @@
    "radius": 0.74,
    "teeth": null,
    "bbox": [
-    11.7,
-    12.3,
+    11.85,
+    12.45,
     1.847,
     3.353,
     0.797,
@@ -1809,18 +1723,18 @@
   "Wheel_Main": {
    "role": "water_wheel",
    "location": [
-    9.32,
-    6.38,
+    9.3,
+    6.125,
     1.3
    ],
    "axis": "Y",
    "radius": 1.02,
    "teeth": null,
    "bbox": [
-    8.287,
-    10.353,
-    6.015,
-    6.745,
+    8.267,
+    10.333,
+    5.76,
+    6.49,
     0.267,
     2.333
    ]
@@ -1830,7 +1744,7 @@
    "location": [
     2.5,
     2.5,
-    0.05
+    0.1
    ],
    "axis": "Y",
    "radius": 0.48,
@@ -1840,569 +1754,593 @@
     2.993,
     2.25,
     2.75,
-    -0.443,
-    0.543
+    -0.393,
+    0.593
    ]
   }
  },
  "gear_pairs": [
   {
-   "a": "Gear_EastDrive",
-   "b": "Gear_LineBevel",
-   "centre_distance": 0.356,
-   "ideal_spur_distance": 0.515,
-   "axes": "crossed 90 deg",
-   "plane_offset": null,
+   "a": "Gear_CrankPinion",
+   "b": "Gear_PillarCrown",
+   "kinds": [
+    "spur",
+    "spur"
+   ],
+   "verdict": "MESHES (spur pair, coplanar)",
+   "centre_distance": 0.648,
+   "ideal_spur_distance": 0.648,
+   "apex_gap": null,
+   "axes": "parallel",
+   "plane_offset": 0.0,
    "pitch_mm": [
-    119,
-    115
+    143,
+    143
    ]
   },
   {
-   "a": "Gear_LineDrop",
-   "b": "Gear_MainAxle",
-   "centre_distance": 0.459,
-   "ideal_spur_distance": 0.442,
-   "axes": "parallel",
-   "plane_offset": 0.13,
+   "a": "Gear_EastBevel",
+   "b": "Gear_LineBevelNorth",
+   "kinds": [
+    "bevel",
+    "bevel"
+   ],
+   "verdict": "MESHES (bevel pair, common apex, 90 deg)",
+   "centre_distance": 0.255,
+   "ideal_spur_distance": 0.331,
+   "apex_gap": 0.0,
+   "axes": "crossed 90 deg",
+   "plane_offset": null,
    "pitch_mm": [
-    126,
-    126
+    113,
+    113
+   ]
+  },
+  {
+   "a": "Gear_LineBevelSouth",
+   "b": "Gear_MastBevelLow",
+   "kinds": [
+    "bevel",
+    "bevel"
+   ],
+   "verdict": "MESHES (bevel pair, common apex, 90 deg)",
+   "centre_distance": 0.255,
+   "ideal_spur_distance": 0.331,
+   "apex_gap": 0.0,
+   "axes": "crossed 90 deg",
+   "plane_offset": null,
+   "pitch_mm": [
+    113,
+    113
+   ]
+  },
+  {
+   "a": "Gear_MastBevelTop",
+   "b": "Gear_WinchBevel",
+   "kinds": [
+    "bevel",
+    "bevel"
+   ],
+   "verdict": "MESHES (bevel pair, common apex, 90 deg)",
+   "centre_distance": 0.335,
+   "ideal_spur_distance": 0.414,
+   "apex_gap": 0.0,
+   "axes": "crossed 90 deg",
+   "plane_offset": null,
+   "pitch_mm": [
+    118,
+    118
+   ]
+  },
+  {
+   "a": "Gear_PitWheel",
+   "b": "Gear_Wallower",
+   "kinds": [
+    "bevel",
+    "bevel"
+   ],
+   "verdict": "MESHES (bevel pair, common apex, 90 deg)",
+   "centre_distance": 0.457,
+   "ideal_spur_distance": 0.552,
+   "apex_gap": 0.0,
+   "axes": "crossed 90 deg",
+   "plane_offset": null,
+   "pitch_mm": [
+    165,
+    162
    ]
   }
  ],
  "mechanism_interference": [
   {
    "moving": "Axle_East",
-   "with": "M_Workshop",
-   "faces": 86
-  },
-  {
-   "moving": "Axle_East",
    "with": "Mechanism_Supports",
-   "faces": 67
+   "faces": 84,
+   "intended_contact": true
   },
   {
    "moving": "Axle_East",
-   "with": "Gear_EastDrive",
-   "faces": 72
+   "with": "Gear_EastBevel",
+   "faces": 68,
+   "intended_contact": true
   },
   {
    "moving": "Axle_East",
    "with": "Wheel_East",
-   "faces": 108
+   "faces": 72,
+   "intended_contact": true
   },
   {
    "moving": "Axle_Main",
    "with": "M_Workshop",
-   "faces": 98
-  },
-  {
-   "moving": "Axle_Main",
-   "with": "Masonry_UpperTerraces",
-   "faces": 5
+   "faces": 116,
+   "intended_contact": true
   },
   {
    "moving": "Axle_Main",
    "with": "Mechanism_Supports",
-   "faces": 90
+   "faces": 60,
+   "intended_contact": true
   },
   {
    "moving": "Axle_Main",
-   "with": "Gear_MainAxle",
-   "faces": 100
+   "with": "Gear_PitWheel",
+   "faces": 72,
+   "intended_contact": true
   },
   {
    "moving": "Axle_Main",
    "with": "Wheel_Main",
-   "faces": 72
+   "faces": 72,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gate_MiddleShutter",
+   "with": "Flumes_And_Channels",
+   "faces": 104,
+   "intended_contact": true
   },
   {
    "moving": "Gate_MiddleShutter",
    "with": "Gate_MiddleShutter_Frame",
-   "faces": 32
-  },
-  {
-   "moving": "Gate_StreamSluice",
-   "with": "Gate_StreamSluice_Frame",
-   "faces": 32
-  },
-  {
-   "moving": "Gate_StreamSluice",
-   "with": "Masonry_LowerFoundations",
-   "faces": 40
+   "faces": 32,
+   "intended_contact": true
   },
   {
    "moving": "Gear_CorridorTrigger",
    "with": "L_HiddenCorridor",
-   "faces": 27
+   "faces": 16,
+   "intended_contact": true
   },
   {
    "moving": "Gear_CorridorTrigger",
    "with": "Plate_CorridorRing",
-   "faces": 246
+   "faces": 423,
+   "intended_contact": true
   },
   {
-   "moving": "Gear_EastDrive",
-   "with": "M_Workshop",
-   "faces": 368
+   "moving": "Gear_CrankPinion",
+   "with": "Gear_Pillar",
+   "faces": 48,
+   "intended_contact": true
   },
   {
-   "moving": "Gear_EastDrive",
-   "with": "Axle_East",
-   "faces": 72
+   "moving": "Gear_CrankPinion",
+   "with": "Gear_PillarCrown",
+   "faces": 26,
+   "intended_contact": true
   },
   {
-   "moving": "Gear_EastDrive",
-   "with": "Gear_LineBevel",
-   "faces": 18
+   "moving": "Gear_LineBevelNorth",
+   "with": "Shaft_Line",
+   "faces": 12,
+   "intended_contact": true
   },
   {
-   "moving": "Gear_LiftBevel",
-   "with": "Shaft_LiftVertical",
-   "faces": 36
+   "moving": "Gear_LineBevelSouth",
+   "with": "Shaft_Line",
+   "faces": 12,
+   "intended_contact": true
   },
   {
-   "moving": "Gear_LineBevel",
-   "with": "M_Workshop",
-   "faces": 90
+   "moving": "Gear_MastBevelLow",
+   "with": "Shaft_Mast",
+   "faces": 12,
+   "intended_contact": true
   },
   {
-   "moving": "Gear_LineBevel",
-   "with": "Gear_EastDrive",
-   "faces": 18
-  },
-  {
-   "moving": "Gear_LineBevel",
-   "with": "Shaft_LineToLift",
-   "faces": 12
-  },
-  {
-   "moving": "Gear_MainAxle",
-   "with": "M_Workshop",
-   "faces": 48
-  },
-  {
-   "moving": "Gear_MainAxle",
-   "with": "Masonry_UpperTerraces",
-   "faces": 26
-  },
-  {
-   "moving": "Gear_MainAxle",
-   "with": "Axle_Main",
-   "faces": 100
+   "moving": "Gear_MastBevelTop",
+   "with": "Shaft_Mast",
+   "faces": 16,
+   "intended_contact": true
   },
   {
    "moving": "Gear_PillarCrown",
    "with": "Gear_Pillar",
-   "faces": 80
+   "faces": 80,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_StartRing",
+   "with": "L_Start",
+   "faces": 16,
+   "intended_contact": true
   },
   {
    "moving": "Gear_StartRing",
    "with": "Plate_StartRing",
-   "faces": 52
+   "faces": 409,
+   "intended_contact": true
   },
   {
-   "moving": "Gear_Winch",
-   "with": "Shaft_LiftVertical",
-   "faces": 56
+   "moving": "Gear_Wallower",
+   "with": "Shaft_Millstone",
+   "faces": 28,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_WinchBevel",
+   "with": "Shaft_Winch",
+   "faces": 28,
+   "intended_contact": true
   },
   {
    "moving": "Lift_Cage",
    "with": "Lift_Gate_North",
-   "faces": 78
+   "faces": 82,
+   "intended_contact": true
   },
   {
    "moving": "Lift_Cage",
    "with": "Lift_Gate_West",
-   "faces": 78
+   "faces": 82,
+   "intended_contact": true
   },
   {
-   "moving": "Lift_Cage",
+   "moving": "Millstone_Runner",
+   "with": "Shaft_Millstone",
+   "faces": 36,
+   "intended_contact": true
+  },
+  {
+   "moving": "Shaft_Line",
+   "with": "Mechanism_Supports",
+   "faces": 48,
+   "intended_contact": true
+  },
+  {
+   "moving": "Shaft_Mast",
+   "with": "Mechanism_Supports",
+   "faces": 84,
+   "intended_contact": true
+  },
+  {
+   "moving": "Shaft_Millstone",
+   "with": "Millstone_Floor",
+   "faces": 48,
+   "intended_contact": true
+  },
+  {
+   "moving": "Shaft_Winch",
    "with": "Lift_Tower",
-   "faces": 80
-  },
-  {
-   "moving": "Lift_Gate_North",
-   "with": "Lift_Cage",
-   "faces": 78
-  },
-  {
-   "moving": "Lift_Gate_West",
-   "with": "Lift_Cage",
-   "faces": 78
-  },
-  {
-   "moving": "Shaft_LiftVertical",
-   "with": "Gear_LiftBevel",
-   "faces": 36
-  },
-  {
-   "moving": "Shaft_LiftVertical",
-   "with": "Gear_Winch",
-   "faces": 56
-  },
-  {
-   "moving": "Shaft_LiftVertical",
-   "with": "Lift_Tower",
-   "faces": 72
-  },
-  {
-   "moving": "Shaft_LineToLift",
-   "with": "Masonry_UpperTerraces",
-   "faces": 18
-  },
-  {
-   "moving": "Shaft_LineToLift",
-   "with": "Mechanism_Supports",
-   "faces": 97
-  },
-  {
-   "moving": "Shaft_LineToLift",
-   "with": "Gear_LineBevel",
-   "faces": 12
-  },
-  {
-   "moving": "Shaft_MainToPillar",
-   "with": "Masonry_MiddleArcade",
-   "faces": 56
-  },
-  {
-   "moving": "Wheel_East",
-   "with": "Flumes_And_Channels",
-   "faces": 22
-  },
-  {
-   "moving": "Wheel_East",
-   "with": "Mechanism_Supports",
-   "faces": 90
-  },
-  {
-   "moving": "Wheel_East",
-   "with": "Axle_East",
-   "faces": 108
-  },
-  {
-   "moving": "Wheel_Main",
-   "with": "M_Workshop",
-   "faces": 1347
-  },
-  {
-   "moving": "Wheel_Main",
-   "with": "Flumes_And_Channels",
-   "faces": 146
-  },
-  {
-   "moving": "Wheel_Main",
-   "with": "Masonry_MiddleArcade",
-   "faces": 769
-  },
-  {
-   "moving": "Wheel_Main",
-   "with": "Mechanism_Supports",
-   "faces": 346
-  },
-  {
-   "moving": "Wheel_Main",
-   "with": "Axle_Main",
-   "faces": 72
-  },
-  {
-   "moving": "Wheel_Stream",
-   "with": "Masonry_LowerFoundations",
-   "faces": 118
+   "faces": 24,
+   "intended_contact": true
   }
  ],
+ "mechanism_interference_unintended": [],
  "lift_travel": [
   {
    "z": 0.0,
-   "touches": [
-    "Lift_Tower"
-   ]
+   "touches": []
+  },
+  {
+   "z": 0.05,
+   "touches": []
   },
   {
    "z": 0.1,
-   "touches": [
-    "Lift_Tower"
-   ]
+   "touches": []
+  },
+  {
+   "z": 0.15,
+   "touches": []
   },
   {
    "z": 0.2,
-   "touches": [
-    "Lift_Tower"
-   ]
+   "touches": []
+  },
+  {
+   "z": 0.25,
+   "touches": []
   },
   {
    "z": 0.3,
-   "touches": [
-    "Lift_Tower"
-   ]
+   "touches": []
+  },
+  {
+   "z": 0.35,
+   "touches": []
   },
   {
    "z": 0.4,
-   "touches": [
-    "Lift_Tower"
-   ]
+   "touches": []
+  },
+  {
+   "z": 0.45,
+   "touches": []
   },
   {
    "z": 0.5,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower"
-   ]
+   "touches": []
+  },
+  {
+   "z": 0.55,
+   "touches": []
   },
   {
    "z": 0.6,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower"
-   ]
+   "touches": []
+  },
+  {
+   "z": 0.65,
+   "touches": []
   },
   {
    "z": 0.7,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 0.75,
+   "touches": []
   },
   {
    "z": 0.8,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 0.85,
+   "touches": []
   },
   {
    "z": 0.9,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 0.95,
+   "touches": []
   },
   {
    "z": 1.0,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 1.05,
+   "touches": []
   },
   {
    "z": 1.1,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 1.15,
+   "touches": []
   },
   {
    "z": 1.2,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 1.25,
+   "touches": []
   },
   {
    "z": 1.3,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 1.35,
+   "touches": []
   },
   {
    "z": 1.4,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 1.45,
+   "touches": []
   },
   {
    "z": 1.5,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 1.55,
+   "touches": []
   },
   {
    "z": 1.6,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 1.65,
+   "touches": []
   },
   {
    "z": 1.7,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 1.75,
+   "touches": []
   },
   {
    "z": 1.8,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 1.85,
+   "touches": []
   },
   {
    "z": 1.9,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 1.95,
+   "touches": []
   },
   {
    "z": 2.0,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 2.05,
+   "touches": []
   },
   {
    "z": 2.1,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 2.15,
+   "touches": []
   },
   {
    "z": 2.2,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 2.25,
+   "touches": []
   },
   {
    "z": 2.3,
-   "touches": [
-    "Bridge_LiftMiddle",
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 2.35,
+   "touches": []
   },
   {
    "z": 2.4,
-   "touches": [
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 2.45,
+   "touches": []
   },
   {
    "z": 2.5,
-   "touches": [
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 2.55,
+   "touches": []
   },
   {
    "z": 2.6,
-   "touches": [
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 2.65,
+   "touches": []
   },
   {
    "z": 2.7,
-   "touches": [
-    "Lift_Tower",
-    "Masonry_UpperTerraces"
-   ]
+   "touches": []
+  },
+  {
+   "z": 2.75,
+   "touches": []
   },
   {
    "z": 2.8,
-   "touches": [
-    "Lift_Tower",
-    "U_LiftWalk"
-   ]
+   "touches": []
   }
  ],
  "lift_cage": {
   "deck_size": [
-   1.54,
-   1.54
+   1.47,
+   1.47
   ],
   "bbox_at_Z0": [
-   9.03,
-   10.57,
-   0.23,
-   1.77,
+   9.065,
+   10.535,
+   0.265,
+   1.735,
    -0.18,
-   0.88
+   1.13
   ],
-  "clear_height_under_crossbar": 0.7
+  "clear_height_under_crossbar": 0.95
  },
  "camera_occlusion_iso": {
   "main_lower": {
    "samples": 44,
    "fully_hidden": 0,
    "hidden_pct": 0,
-   "top_blockers": [
-    [
-     "Bridge_StreamWest",
-     2
-    ]
-   ]
+   "top_blockers": []
   },
   "main_middle": {
-   "samples": 33,
-   "fully_hidden": 3,
-   "hidden_pct": 9,
+   "samples": 28,
+   "fully_hidden": 1,
+   "hidden_pct": 4,
    "top_blockers": [
     [
      "M_Workshop",
-     6
-    ],
-    [
-     "M_GearTerrace",
-     6
-    ],
-    [
-     "Bridge_LiftMiddle",
-     2
+     4
     ],
     [
      "Lift_Tower",
      2
     ],
     [
-     "Masonry_UpperTerraces",
+     "M_GearTerrace",
+     2
+    ],
+    [
+     "Bridge_LiftMiddle",
+     1
+    ]
+   ]
+  },
+  "middle_under_walk": {
+   "samples": 13,
+   "fully_hidden": 2,
+   "hidden_pct": 15,
+   "top_blockers": [
+    [
+     "Timber_WalkSupports",
+     3
+    ],
+    [
+     "Lift_Tower",
+     2
+    ],
+    [
+     "Bridge_LiftMiddle",
      1
     ]
    ]
   },
   "main_upper": {
-   "samples": 58,
-   "fully_hidden": 6,
-   "hidden_pct": 10,
+   "samples": 54,
+   "fully_hidden": 4,
+   "hidden_pct": 7,
    "top_blockers": [
     [
-     "U_LiftWalk",
-     15
-    ],
-    [
      "U_PoolDeck",
-     8
+     6
     ],
     [
-     "Flumes_And_Channels",
-     5
+     "U_LiftWalk",
+     4
     ],
     [
      "Lift_Tower",
+     4
+    ],
+    [
+     "Flumes_And_Channels",
      4
     ],
     [
@@ -2413,20 +2351,16 @@
   },
   "secret_corridor": {
    "samples": 17,
-   "fully_hidden": 13,
-   "hidden_pct": 76,
+   "fully_hidden": 14,
+   "hidden_pct": 82,
    "top_blockers": [
     [
      "M_Workshop",
-     22
+     23
     ],
     [
      "Masonry_MiddleArcade",
-     4
-    ],
-    [
-     "Crate_Workshop",
-     1
+     5
     ]
    ]
   }
@@ -2434,35 +2368,35 @@
  "water": {
   "Water_EastFlume": {
    "x": [
-    11.84,
-    12.18
+    11.99,
+    12.33
    ],
    "y": [
     2.75,
-    6.0
+    5.5
    ],
    "z": [
     2.696,
     2.704
    ],
    "w": 0.34,
-   "l": 3.25
+   "l": 2.75
   },
   "Water_MiddleChannel": {
    "x": [
-    4.06,
-    8.34
+    6.58,
+    7.96
    ],
    "y": [
-    6.21,
-    6.64
+    6.03,
+    6.37
    ],
    "z": [
-    1.426,
-    1.434
+    1.427,
+    1.433
    ],
-   "w": 0.43,
-   "l": 4.28
+   "w": 0.34,
+   "l": 1.38
   },
   "Water_MillPond": {
    "x": [
@@ -2474,8 +2408,8 @@
     13.4
    ],
    "z": [
-    2.845,
-    2.855
+    4.045,
+    4.055
    ],
    "w": 1.25,
    "l": 2.4
@@ -2495,6 +2429,22 @@
    ],
    "w": 0.38,
    "l": 1.9
+  },
+  "Water_PondLink": {
+   "x": [
+    9.21,
+    9.49
+   ],
+   "y": [
+    9.75,
+    12.25
+   ],
+   "z": [
+    3.995,
+    4.004
+   ],
+   "w": 0.28,
+   "l": 2.5
   },
   "Water_Spillway": {
    "x": [
@@ -2546,179 +2496,195 @@
   },
   "Water_UpperPool": {
    "x": [
-    10.55,
-    11.85
+    10.84,
+    11.81
    ],
    "y": [
-    6.0,
-    7.8
+    6.04,
+    7.76
    ],
    "z": [
-    2.977,
-    2.983
+    3.117,
+    3.123
    ],
-   "w": 1.3,
-   "l": 1.8
+   "w": 0.97,
+   "l": 1.72
   },
   "Water_WheelPit": {
    "x": [
-    8.45,
-    10.2
+    8.1,
+    10.5
    ],
    "y": [
-    6.0,
-    6.7
+    5.7,
+    6.55
    ],
    "z": [
     -0.453,
     -0.446
    ],
-   "w": 0.7,
-   "l": 1.75
+   "w": 0.85,
+   "l": 2.4
   },
   "Waterfall_EastFeed": {
    "x": [
-    11.84,
-    12.282
+    11.929,
+    12.33
    ],
    "y": [
-    2.399,
-    2.728
+    2.435,
+    2.717
    ],
    "z": [
-    1.905,
+    1.917,
     2.7
    ],
-   "w": 0.329,
-   "l": 0.442
+   "w": 0.282,
+   "l": 0.401
   },
   "Waterfall_EastWheel": {
    "x": [
-    12.603,
-    13.517
+    12.753,
+    13.49
    ],
    "y": [
-    1.899,
-    3.236
+    1.967,
+    3.232
    ],
    "z": [
     -7.095,
     1.8
    ],
-   "w": 0.914,
-   "l": 1.336
+   "w": 0.737,
+   "l": 1.264
   },
   "Waterfall_PondDrop": {
    "x": [
-    8.813,
-    9.361
+    8.792,
+    9.373
    ],
    "y": [
-    7.692,
-    8.01
+    7.734,
+    8.006
    ],
    "z": [
-    2.785,
+    2.784,
     3.9
    ],
-   "w": 0.318,
-   "l": 0.548
+   "w": 0.272,
+   "l": 0.581
+  },
+  "Waterfall_PondLink": {
+   "x": [
+    9.062,
+    9.44
+   ],
+   "y": [
+    9.64,
+    9.912
+   ],
+   "z": [
+    3.804,
+    4.124
+   ],
+   "w": 0.272,
+   "l": 0.378
   },
   "Waterfall_PoolOverflow": {
    "x": [
     12.111,
-    13.044
+    12.813
    ],
    "y": [
-    6.4,
-    7.624
+    6.308,
+    7.71
    ],
    "z": [
-    0.309,
+    0.304,
     2.95
    ],
-   "w": 0.933,
-   "l": 1.224
+   "w": 0.701,
+   "l": 1.402
   },
   "Waterfall_Spillway": {
    "x": [
-    5.988,
-    6.863
+    5.979,
+    6.804
    ],
    "y": [
-    -1.018,
+    -0.819,
     -0.095
    ],
    "z": [
-    -5.593,
+    -5.594,
     -0.2
    ],
-   "w": 0.876,
-   "l": 0.924
+   "w": 0.724,
+   "l": 0.825
   },
   "Waterfall_Spring": {
    "x": [
     -0.082,
-    0.619
+    0.499
    ],
    "y": [
-    2.055,
-    2.974
+    2.058,
+    2.905
    ],
    "z": [
     -0.271,
     0.9
    ],
-   "w": 0.701,
-   "l": 0.919
+   "w": 0.581,
+   "l": 0.847
   },
   "Waterfall_UpperEast": {
    "x": [
-    7.142,
-    7.789
+    7.26,
+    7.812
    ],
    "y": [
-    6.508,
-    7.342
+    6.104,
+    7.248
    ],
    "z": [
-    1.366,
-    2.85
+    1.36,
+    2.83
    ],
-   "w": 0.647,
-   "l": 0.834
+   "w": 0.552,
+   "l": 1.145
   },
   "Waterfall_UpperWest": {
    "x": [
-    5.003,
-    5.737
+    6.559,
+    7.094
    ],
    "y": [
-    6.49,
-    7.365
+    6.15,
+    7.272
    ],
    "z": [
-    1.355,
-    2.85
+    1.354,
+    2.83
    ],
-   "w": 0.733,
-   "l": 0.876
+   "w": 0.535,
+   "l": 1.123
   },
   "Waterfall_WheelFeed": {
    "x": [
-    8.496,
-    9.234
+    8.046,
+    8.369
    ],
    "y": [
-    6.187,
-    6.69
+    6.043,
+    6.399
    ],
    "z": [
-    0.209,
-    1.45
+    0.205,
+    1.43
    ],
-   "w": 0.503,
-   "l": 0.738
+   "w": 0.323,
+   "l": 0.356
   }
  },
  "markers": {
@@ -2735,7 +2701,7 @@
   "Marker_Goal": [
    2.4,
    8.6,
-   2.8
+   2.75
   ],
   "Marker_LiftStop_0": [
    9.8,

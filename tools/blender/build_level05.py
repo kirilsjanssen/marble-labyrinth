@@ -438,10 +438,11 @@ class Builder:
                 faces.append(self.bm.faces.new((a[j], b[j], b[(j + 1) % seg_minor], a[(j + 1) % seg_minor])))
         self._finish_faces(faces, mat, True)
 
-    def polygon_prism(self, outline, z0, z1, mat, transform=Matrix.Identity(4), smooth=False):
-        """Extrudes a 2D outline (counter-clockwise, XY) from z0 to z1."""
+    def polygon_prism(self, outline, z0, z1, mat, transform=Matrix.Identity(4), smooth=False, top_scale=1.0):
+        """Extrudes a 2D outline (counter-clockwise, XY) from z0 to z1; a
+        top_scale < 1 tapers it into a cone frustum (bevel gear teeth)."""
         bottom = [self.bm.verts.new(transform @ Vector((x, y, z0))) for x, y in outline]
-        top = [self.bm.verts.new(transform @ Vector((x, y, z1))) for x, y in outline]
+        top = [self.bm.verts.new(transform @ Vector((x * top_scale, y * top_scale, z1))) for x, y in outline]
         faces = [self.bm.faces.new(list(reversed(bottom))), self.bm.faces.new(top)]
         n = len(outline)
         for i in range(n):
@@ -519,27 +520,49 @@ LIFT = {"x0": 9.0, "x1": 10.6, "y0": 0.2, "y1": 1.8}
 
 DECKS = [
     # name, x0, x1, y0, y1, z, floor material, openings {side: [(a, b)]}, zone
-    ("L_Start", 0.0, 6.0, 3.0, 5.0, Z0, "Slate_Floor", {"S": [(4.0, 5.2)], "E": [(3.3, 4.7)]}, "Lower"),
-    ("L_Front", 3.5, 6.0, 0.0, 2.0, Z0, "Slate_Floor", {"N": [(4.0, 5.2)], "E": [(0.4, 1.6)]}, "Lower"),
-    ("L_FrontEast", 6.8, 9.0, 0.0, 2.0, Z0, "Slate_Floor", {"W": [(0.4, 1.6)], "E": [(0.25, 1.75)]}, "Lower"),
-    ("L_HiddenCorridor", 6.0, 9.0, 3.3, 4.7, Z0, "Slate_Floor", {"W": [(3.3, 4.7)], "E": [(3.3, 4.7)]}, "Lower"),
-    ("L_SecretAlcove", 9.0, 10.4, 2.9, 5.0, Z0, "Slate_Floor", {"W": [(3.3, 4.7)]}, "Lower"),
-    ("M_Workshop", 5.5, 11.2, 2.4, 6.8, Z1, "Slate_Floor", {"S": [(9.2, 10.4)], "W": [(5.4, 6.6)]}, "Middle"),
-    ("M_GearTerrace", 3.2, 5.5, 5.2, 7.4, Z1, "Slate_Floor", {"E": [(5.4, 6.6)]}, "Middle"),
-    ("U_LiftWalk", 9.4, 10.8, 1.8, 5.6, Z2, "Slate_Floor", {"S": [(9.5, 10.5)], "N": [(9.5, 10.7)]}, "Upper"),
+    # v2 (audit fixes): bridges and openings widened to >= 1.1-1.4 m clear;
+    # railing posts stand outside every opening; the corridor is 1.6 m wide.
+    ("L_Start", 0.0, 6.0, 3.0, 5.0, Z0, "Slate_Floor", {"S": [(3.9, 5.3)], "E": [(3.25, 4.75)]}, "Lower"),
+    ("L_Front", 3.5, 6.0, 0.0, 2.0, Z0, "Slate_Floor", {"N": [(3.9, 5.3)], "E": [(0.3, 1.7)]}, "Lower"),
+    ("L_FrontEast", 6.8, 9.0, 0.0, 2.0, Z0, "Slate_Floor", {"W": [(0.3, 1.7)], "E": [(0.25, 1.75)]}, "Lower"),
+    ("L_HiddenCorridor", 6.0, 9.0, 3.2, 4.8, Z0, "Slate_Floor", {"W": [(3.25, 4.75)], "E": [(3.25, 4.75)]}, "Lower"),
+    ("L_SecretAlcove", 9.0, 10.4, 2.9, 5.0, Z0, "Slate_Floor", {"W": [(3.25, 4.75)]}, "Lower"),
+    ("M_Workshop", 5.5, 11.2, 2.4, 6.8, Z1, "Slate_Floor", {"S": [(9.1, 10.5)], "W": [(5.25, 6.45)]}, "Middle"),
+    ("M_GearTerrace", 3.2, 5.5, 5.2, 7.4, Z1, "Slate_Floor", {"E": [(5.25, 6.45)]}, "Middle"),
+    ("U_LiftWalk", 9.35, 10.85, 1.8, 5.6, Z2, "Slate_Floor", {"S": [(9.4, 10.8)], "N": [(9.4, 10.8)]}, "Upper"),
     # The pool/valve link runs north of the front channel and under the pond aqueduct.
-    ("U_PoolDeck", 9.4, 12.0, 5.6, 9.1, Z2, "Slate_Floor", {"S": [(9.5, 10.7)], "W": [(8.0, 9.0)]}, "Upper"),
-    ("U_ValveDeck", 4.5, 9.4, 7.4, 9.8, Z2, "Slate_Floor", {"E": [(8.0, 9.0)], "W": [(7.6, 9.4)]}, "Upper"),
+    ("U_PoolDeck", 9.4, 12.0, 5.6, 9.3, Z2, "Slate_Floor", {"S": [(9.4, 10.8)], "W": [(8.05, 9.15)]}, "Upper"),
+    ("U_ValveDeck", 4.5, 9.4, 7.4, 9.8, Z2, "Slate_Floor", {"E": [(8.05, 9.15)], "W": [(7.6, 9.4)]}, "Upper"),
     ("U_GoalDeck", 1.0, 4.5, 7.0, 10.0, Z2, "Slate_Floor", {"E": [(7.6, 9.4)]}, "Upper"),
 ]
 
+# Spill notches in railings over a channel: water leaves the deck there, the
+# marble cannot (the channel lies between lane and notch). Not ball openings.
+SPILL_NOTCHES = {"U_ValveDeck": {"S": [(6.6, 7.05), (7.3, 7.75)]}}
+
+# Flush recesses (no boards) for pressure plates and the goal socket.
+INLAYS = {
+    "L_Start": [(2.8, 3.8, 3.5, 4.5)],
+    "L_FrontEast": [(7.4, 8.4, 0.5, 1.5)],
+    "L_HiddenCorridor": [(7.8, 8.6, 3.6, 4.4)],
+    "U_GoalDeck": [(1.72, 3.08, 7.92, 9.28)],
+}
+
+# Floor boards are left out where a channel trough is sunk into the deck.
+CUTOUTS = {
+    "M_Workshop": [(6.5, 8.0, 5.95, 6.45)],
+    "U_ValveDeck": [(4.6, 9.3, 7.45, 7.95)],
+}
+
 BRIDGES = [
-    ("Bridge_StreamWest", 4.0, 5.2, 2.0, 3.0, Z0, "Y"),
-    ("Bridge_Spillway", 6.0, 6.8, 0.4, 1.6, Z0, "X"),
-    ("Bridge_LiftMiddle", 9.2, 10.4, 1.8, 2.4, Z1, "Y"),
+    ("Bridge_StreamWest", 3.9, 5.3, 2.0, 3.0, Z0, "Y"),
+    ("Bridge_Spillway", 6.0, 6.8, 0.3, 1.7, Z0, "X"),
+    ("Bridge_LiftMiddle", 9.1, 10.5, 1.8, 2.4, Z1, "Y"),
 ]
 
-WHEEL_PIT = (8.35, 10.3, 5.95, 6.8)   # opening in M_Workshop for the main wheel
+# Wheel pit in M_Workshop: 2.5 m long so the 2.04 m wheel clears it by 0.23 m.
+WHEEL_PIT = (8.05, 10.55, 5.65, 6.6)
+WHEEL_MAIN = (9.3, 6.125, 1.3)
 
 
 def side_segments(a0, a1, openings):
@@ -554,7 +577,7 @@ def side_segments(a0, a1, openings):
     return [s for s in segments if s[1] - s[0] > 0.05]
 
 
-def build_deck(name, x0, x1, y0, y1, z, floor_mat, openings, zone, holes=()):
+def build_deck(name, x0, x1, y0, y1, z, floor_mat, openings, zone, holes=(), inlays=(), cutouts=()):
     b = Builder(name, collection("L05/Platforms/" + zone))
     # Floor boards run along the longer side, with hairline gaps and jitter.
     along_x = (x1 - x0) >= (y1 - y0)
@@ -570,19 +593,82 @@ def build_deck(name, x0, x1, y0, y1, z, floor_mat, openings, zone, holes=()):
         seg = 1.6 + (i % 3) * 0.55
         while cursor < length_total - 0.01:
             l = min(seg, length_total - cursor)
-            a = (x0 if along_x else y0) + cursor + l * 0.5
-            center = (a, c, z - 0.025) if along_x else (c, a, z - 0.025)
-            size = (l - 0.012, width - 0.014, 0.05) if along_x else (width - 0.014, l - 0.012, 0.05)
-            if not any(_inside(center, hole) for hole in holes):
+            start = (x0 if along_x else y0) + cursor
+            for p0, p1 in _board_pieces(start, start + l, c, width, along_x, list(holes) + list(inlays) + list(cutouts)):
+                a = (p0 + p1) / 2
+                center = (a, c, z - 0.025) if along_x else (c, a, z - 0.025)
+                size = (p1 - p0 - 0.012, width - 0.014, 0.05) if along_x else (width - 0.014, p1 - p0 - 0.012, 0.05)
                 b.box(center, size, floor_mat, bevel=0.008)
             cursor += l
             seg = 1.4 + RNG.random() * 1.2
-    # Joists and subfloor under the boards.
-    b.box(((x0 + x1) / 2, (y0 + y1) / 2, z - DECK_T * 0.5 - 0.025), (x1 - x0 - 0.1, y1 - y0 - 0.1, DECK_T - 0.05), "Wood_Dark", bevel=0.0)
+    # Joists and subfloor under the boards; open holes (the wheel pit) are
+    # cut through the subfloor too, so nothing crosses them.
+    for sx0, sx1, sy0, sy1 in _rect_minus((x0 + 0.05, x1 - 0.05, y0 + 0.05, y1 - 0.05), holes):
+        b.box(((sx0 + sx1) / 2, (sy0 + sy1) / 2, z - DECK_T * 0.5 - 0.025), (sx1 - sx0, sy1 - sy0, DECK_T - 0.05), "Wood_Dark", bevel=0.0)
     for hole in holes:
         _pit_frame(b, hole, z)
-    _deck_frame(b, x0, x1, y0, y1, z, openings)
+    for rect in inlays:
+        _inlay_frame(b, rect, z)
+    railing_gaps = {side: list(spans) for side, spans in openings.items()}
+    for side, spans in SPILL_NOTCHES.get(name, {}).items():
+        railing_gaps.setdefault(side, []).extend(spans)
+    _deck_frame(b, x0, x1, y0, y1, z, railing_gaps)
     return b.finish()
+
+
+def _board_pieces(a0, a1, c, width, along_x, rects):
+    """Splits one board [a0, a1] (at cross position c) around every rect."""
+    pieces = [(a0, a1)]
+    for rx0, rx1, ry0, ry1 in rects:
+        lo, hi = (rx0, rx1) if along_x else (ry0, ry1)
+        clo, chi = (ry0, ry1) if along_x else (rx0, rx1)
+        if c + width / 2 <= clo or c - width / 2 >= chi:
+            continue
+        nxt = []
+        for p0, p1 in pieces:
+            if p1 <= lo or p0 >= hi:
+                nxt.append((p0, p1))
+                continue
+            if p0 < lo:
+                nxt.append((p0, lo))
+            if p1 > hi:
+                nxt.append((hi, p1))
+        pieces = nxt
+    return [pc for pc in pieces if pc[1] - pc[0] > 0.06]
+
+
+def _rect_minus(rect, holes):
+    """Rectangle minus axis-aligned holes, as a list of rectangles."""
+    parts = [rect]
+    for hx0, hx1, hy0, hy1 in holes:
+        nxt = []
+        for x0, x1, y0, y1 in parts:
+            if hx1 <= x0 or hx0 >= x1 or hy1 <= y0 or hy0 >= y1:
+                nxt.append((x0, x1, y0, y1))
+                continue
+            if y0 < hy0:
+                nxt.append((x0, x1, y0, hy0))
+            if hy1 < y1:
+                nxt.append((x0, x1, hy1, y1))
+            if x0 < hx0:
+                nxt.append((x0, hx0, max(y0, hy0), min(y1, hy1)))
+            if hx1 < x1:
+                nxt.append((hx1, x1, max(y0, hy0), min(y1, hy1)))
+        parts = nxt
+    return parts
+
+
+def _board_hits(center, size, rect):
+    return not (center[0] + size[0] / 2 <= rect[0] or center[0] - size[0] / 2 >= rect[1] or center[1] + size[1] / 2 <= rect[2] or center[1] - size[1] / 2 >= rect[3])
+
+
+def _inlay_frame(b, rect, z):
+    """Flush iron rim around a recess; the recess floor is the subfloor 5 cm down."""
+    rx0, rx1, ry0, ry1 = rect
+    w = 0.05
+    for center, size in ((((rx0 + rx1) / 2, ry0 + w / 2), (rx1 - rx0, w, 0.05)), (((rx0 + rx1) / 2, ry1 - w / 2), (rx1 - rx0, w, 0.05)),
+                         ((rx0 + w / 2, (ry0 + ry1) / 2), (w, ry1 - ry0, 0.05)), ((rx1 - w / 2, (ry0 + ry1) / 2), (w, ry1 - ry0, 0.05))):
+        b.box((center[0], center[1], z - 0.025), size, "Iron", bevel=0.006)
 
 
 def _inside(center, hole):
@@ -614,8 +700,10 @@ def _railing(b, at, axis, s0, s1, z, t):
     rail = (length, 0.1, 0.09) if axis == "X" else (0.1, length, 0.09)
     b.box((mid[0], mid[1], z + RAIL_H - 0.045), rail, "Wood_Frame", bevel=0.02)
     posts = max(1, math.ceil(length / 1.3))
+    # Posts are inset from the segment ends so none of them narrows an opening.
+    inset = min(0.085, length / 2)
     for k in range(posts + 1):
-        a = s0 + length * k / posts
+        a = (s0 + inset) + (length - 2 * inset) * k / posts
         p = at(a)
         b.box((p[0], p[1], z + (RAIL_H + 0.06) / 2 - 0.03), (0.17, 0.17, RAIL_H + 0.06), "Wood_Frame", bevel=0.025)
         b.box((p[0], p[1], z + RAIL_H + 0.08), (0.21, 0.21, 0.09), "Brass", bevel=0.02)
@@ -633,16 +721,18 @@ def _pit_frame(b, hole, z):
 
 def build_bridge(name, x0, x1, y0, y1, z, along):
     b = Builder(name, collection("L05/Mechanisms/Bridges"))
+    # The lift bridge must not reach into the shaft (v1 beams overhung 0.10 m).
+    over = 0.0 if name == "Bridge_LiftMiddle" else 0.2
     if along == "Y":
         n = round((y1 - y0) / 0.2)
         for i in range(n):
             yc = y0 + (i + 0.5) * (y1 - y0) / n
             b.box(((x0 + x1) / 2, yc, z - 0.03 - RNG.random() * 0.01), (x1 - x0 + 0.1, (y1 - y0) / n - 0.02, 0.06), "Wood_Plank", rot=(0, RNG.uniform(-0.02, 0.02), 0), bevel=0.01)
         for x in (x0 + 0.06, x1 - 0.06):
-            b.box((x, (y0 + y1) / 2, z - 0.15), (0.14, y1 - y0 + 0.2, 0.2), "Wood_Frame", bevel=0.02)
+            b.box((x, (y0 + y1) / 2, z - 0.15), (0.14, y1 - y0 + over, 0.2), "Wood_Frame", bevel=0.02)
             b.box((x, (y0 + y1) / 2, z + 0.15), (0.12, y1 - y0, 0.3), "Wood_Frame", bevel=0.02)
             b.box((x, (y0 + y1) / 2, z + RAIL_H - 0.04), (0.1, y1 - y0, 0.08), "Wood_Frame", bevel=0.02)
-            for y in (y0, y1):
+            for y in (y0 + 0.08, y1 - 0.08):
                 b.box((x, y, z + RAIL_H / 2), (0.15, 0.15, RAIL_H + 0.1), "Wood_Frame", bevel=0.02)
                 b.box((x, y, z + RAIL_H + 0.08), (0.19, 0.19, 0.08), "Brass", bevel=0.015)
     else:
@@ -651,10 +741,10 @@ def build_bridge(name, x0, x1, y0, y1, z, along):
             xc = x0 + (i + 0.5) * (x1 - x0) / n
             b.box((xc, (y0 + y1) / 2, z - 0.03 - RNG.random() * 0.01), ((x1 - x0) / n - 0.02, y1 - y0 + 0.1, 0.06), "Wood_Plank", rot=(RNG.uniform(-0.02, 0.02), 0, 0), bevel=0.01)
         for y in (y0 + 0.06, y1 - 0.06):
-            b.box(((x0 + x1) / 2, y, z - 0.15), (x1 - x0 + 0.2, 0.14, 0.2), "Wood_Frame", bevel=0.02)
+            b.box(((x0 + x1) / 2, y, z - 0.15), (x1 - x0 + over, 0.14, 0.2), "Wood_Frame", bevel=0.02)
             b.box(((x0 + x1) / 2, y, z + 0.15), (x1 - x0, 0.12, 0.3), "Wood_Frame", bevel=0.02)
             b.box(((x0 + x1) / 2, y, z + RAIL_H - 0.04), (x1 - x0, 0.1, 0.08), "Wood_Frame", bevel=0.02)
-            for x in (x0, x1):
+            for x in (x0 + 0.08, x1 - 0.08):
                 b.box((x, y, z + RAIL_H / 2), (0.15, 0.15, RAIL_H + 0.1), "Wood_Frame", bevel=0.02)
                 b.box((x, y, z + RAIL_H + 0.08), (0.19, 0.19, 0.08), "Brass", bevel=0.015)
     return b.finish()
@@ -779,20 +869,21 @@ def build_foundations():
     middle = Builder("Masonry_MiddleArcade", col)
     zt = Z1 - DECK_T - 0.02
     masonry_wall(middle, (5.55, 2.45), (9.15, 2.45), rock_top, zt, 0.42, arches=[(0.85, 1.1, -0.2), (2.35, 1.1, 0.25)])
-    masonry_wall(middle, (6.0, 3.22), (9.0, 3.22), Z0, zt, 0.16)
-    masonry_wall(middle, (6.0, 4.78), (9.0, 4.78), Z0, zt, 0.16)
-    # The corridor arch (y 3.3-4.7) is the entrance of the hidden lower path.
-    masonry_wall(middle, (5.55, 2.45), (5.55, 6.75), rock_top, zt, 0.36, arches=[(1.55, 1.42, 0.42)])
+    masonry_wall(middle, (6.0, 3.12), (9.0, 3.12), Z0, zt, 0.16)
+    masonry_wall(middle, (6.0, 4.88), (9.0, 4.88), Z0, zt, 0.16)
+    # The corridor arch (y 3.25-4.75) is the entrance of the hidden lower path.
+    masonry_wall(middle, (5.55, 2.45), (5.55, 6.75), rock_top, zt, 0.36, arches=[(1.55, 1.5, 0.3)])
     masonry_wall(middle, (11.15, 2.45), (11.15, 6.75), rock_top, zt, 0.36, arches=[(2.0, 1.4, 0.0)])
-    masonry_wall(middle, (5.55, 6.75), (8.35, 6.75), rock_top, zt, 0.36)
-    masonry_wall(middle, (10.3, 6.75), (11.15, 6.75), rock_top, zt, 0.36)
+    # North wall is continuous; the main axle runs through it in a bearing.
+    masonry_wall(middle, (5.55, 6.75), (11.15, 6.75), rock_top, zt, 0.36)
     masonry_wall(middle, (3.25, 5.25), (3.25, 7.35), rock_top, zt, 0.32)
     masonry_wall(middle, (3.25, 7.35), (5.5, 7.35), rock_top, zt, 0.32)
     masonry_wall(middle, (3.25, 5.25), (5.5, 5.25), rock_top, zt, 0.32, arches=[(1.1, 0.9, Z0 - 0.4)])
-    # Wheel pit lining.
-    masonry_wall(middle, (8.35, 5.95), (8.35, 6.75), -0.6, zt, 0.24, mat="Stone_Wet")
-    masonry_wall(middle, (10.3, 5.95), (10.3, 6.75), -0.6, zt, 0.24, mat="Stone_Wet")
-    masonry_wall(middle, (8.35, 5.95), (10.3, 5.95), -0.6, zt, 0.24, mat="Stone_Wet")
+    # Wheel pit lining (2.5 m pit; the wheel clears every wall by >= 0.2 m).
+    px0, px1, py0, py1 = WHEEL_PIT
+    masonry_wall(middle, (px0 - 0.12, py0), (px0 - 0.12, py1 + 0.1), -0.6, zt, 0.24, mat="Stone_Wet")
+    masonry_wall(middle, (px1 + 0.12, py0), (px1 + 0.12, py1 + 0.1), -0.6, zt, 0.24, mat="Stone_Wet")
+    masonry_wall(middle, (px0 - 0.12, py0 - 0.12), (px1 + 0.12, py0 - 0.12), -0.6, zt, 0.24, mat="Stone_Wet")
     middle.finish()
 
     # Upper tier: tall walls with arches and buttresses.
@@ -802,10 +893,22 @@ def build_foundations():
     masonry_wall(upper, (1.05, 7.05), (3.2, 7.05), rock_top, zt, 0.42, arches=[(1.1, 1.0, Z1 - 0.1)])
     masonry_wall(upper, (1.05, 7.05), (1.05, 9.95), rock_top, zt, 0.42, arches=[(1.5, 1.2, Z1)])
     masonry_wall(upper, (1.05, 9.95), (9.4, 9.95), rock_top, zt, 0.42)
-    masonry_wall(upper, (11.95, 5.65), (11.95, 9.05), rock_top, zt, 0.42, arches=[(1.25, 1.1, Z1 + 0.2)])
-    masonry_wall(upper, (9.45, 9.05), (11.95, 9.05), rock_top, zt, 0.42)
-    for x, y in ((9.45, 5.65), (11.95, 5.65), (10.75, 1.85), (9.45, 1.85), (10.75, 3.7)):
-        stone_pier(upper, x, y, Z1, zt - 0.12, 0.42)
+    masonry_wall(upper, (11.95, 5.65), (11.95, 9.25), rock_top, zt, 0.42, arches=[(1.25, 1.1, Z1 + 0.2)])
+    masonry_wall(upper, (9.45, 9.25), (11.95, 9.25), rock_top, zt, 0.42)
+    stone_pier(upper, 11.95, 5.65, Z1, zt - 0.12, 0.42)
+    upper.finish()
+    # The lift walk stands on timber posts along its edges (under-walk lane 1.12 m)
+    # and on the lift tower's north header beam; no pier stands in the shaft.
+    walk = Builder("Timber_WalkSupports", collection("L05/Static_Architecture/Timber"))
+    for x in (9.4, 10.8):
+        for y in (3.7, 5.45):
+            walk.box((x, y, (Z1 + Z2 - DECK_T) / 2), (0.18, 0.18, Z2 - DECK_T - Z1), "Wood_Frame", bevel=0.02)
+            walk.box((x, y, Z2 - DECK_T - 0.05), (0.26, 0.26, 0.06), "Brass", bevel=0.01)
+            walk.box((x, y, Z1 + 0.04), (0.24, 0.24, 0.08), "Iron", bevel=0.01)
+    walk.box((9.4, 4.575, Z2 - DECK_T - 0.12), (0.14, 1.75, 0.14), "Wood_Frame", bevel=0.02)
+    walk.box((10.8, 4.575, Z2 - DECK_T - 0.12), (0.14, 1.75, 0.14), "Wood_Frame", bevel=0.02)
+    walk.finish()
+    upper = Builder("Masonry_Millhouse_Plinth", col)
     # Millhouse plinth.
     for p0, p1 in (((6.3, 9.85), (9.35, 9.85)), ((9.35, 9.85), (9.35, 12.05)), ((9.35, 12.05), (6.3, 12.05)), ((6.3, 12.05), (6.3, 9.85))):
         masonry_wall(upper, p0, p1, rock_top, Z2 + 0.32, 0.4)
@@ -945,20 +1048,30 @@ def water_surface(name, x0, x1, y0, y1, z):
     return b.finish()
 
 
-def flume(b, x0, x1, y0, y1, z_bed, depth=0.28, mat="Wood_Plank", posts_to=None):
-    """Open timber channel; the long axis is the larger extent."""
+def flume(b, x0, x1, y0, y1, z_bed, depth=0.28, mat="Wood_Plank", posts_to=None, notches=(), spill_depth=0.2, posts_from=None, caps=()):
+    """Open timber channel; the long axis is the larger extent. `notches` are
+    spill gaps (along the long axis) in the low-side wall, cut down to
+    `spill_depth` above the bed; `caps` closes the "start"/"end" of the run."""
     along_x = (x1 - x0) >= (y1 - y0)
     b.box(((x0 + x1) / 2, (y0 + y1) / 2, z_bed - 0.04), (x1 - x0, y1 - y0, 0.08), mat, bevel=0.01)
     if along_x:
         for y in (y0 + 0.04, y1 - 0.04):
-            b.box(((x0 + x1) / 2, y, z_bed + depth / 2), (x1 - x0, 0.08, depth), mat, bevel=0.01)
+            spans = [(x0, x1)] if (y > (y0 + y1) / 2 or not notches) else side_segments(x0, x1, list(notches))
+            for a0, a1 in spans:
+                b.box(((a0 + a1) / 2, y, z_bed + depth / 2), (a1 - a0, 0.08, depth), mat, bevel=0.01)
+            if y < (y0 + y1) / 2:
+                for a0, a1 in notches:
+                    b.box(((a0 + a1) / 2, y, z_bed + spill_depth / 2), (a1 - a0, 0.08, spill_depth), "Stone_Wet", bevel=0.01)
+        for which in caps:
+            x = x0 + 0.04 if which == "start" else x1 - 0.04
+            b.box((x, (y0 + y1) / 2, z_bed + depth / 2), (0.08, y1 - y0, depth), mat, bevel=0.01)
         span = x1 - x0
         for k in range(int(span / 0.9) + 1):
             x = x0 + 0.05 + k * min(0.9, span - 0.1)
             b.box((x, (y0 + y1) / 2, z_bed + depth * 0.5), (0.08, y1 - y0 + 0.14, depth + 0.1), "Wood_Frame", bevel=0.015)
             b.box((x, y0 - 0.03, z_bed + depth + 0.03), (0.1, 0.1, 0.06), "Brass", bevel=0.01)
             b.box((x, y1 + 0.03, z_bed + depth + 0.03), (0.1, 0.1, 0.06), "Brass", bevel=0.01)
-            if posts_to is not None:
+            if posts_to is not None and (posts_from is None or x >= posts_from):
                 b.box((x, (y0 + y1) / 2, (posts_to + z_bed) / 2), (0.12, 0.12, z_bed - posts_to), "Wood_Frame", bevel=0.02)
     else:
         for x in (x0 + 0.04, x1 - 0.04):
@@ -969,8 +1082,11 @@ def flume(b, x0, x1, y0, y1, z_bed, depth=0.28, mat="Wood_Plank", posts_to=None)
             b.box(((x0 + x1) / 2, y, z_bed + depth * 0.5), (x1 - x0 + 0.14, 0.08, depth + 0.1), "Wood_Frame", bevel=0.015)
             b.box((x0 - 0.03, y, z_bed + depth + 0.03), (0.1, 0.1, 0.06), "Brass", bevel=0.01)
             b.box((x1 + 0.03, y, z_bed + depth + 0.03), (0.1, 0.1, 0.06), "Brass", bevel=0.01)
-            if posts_to is not None:
+            if posts_to is not None and (posts_from is None or y >= posts_from):
                 b.box(((x0 + x1) / 2, y, (posts_to + z_bed) / 2), (0.12, 0.12, z_bed - posts_to), "Wood_Frame", bevel=0.02)
+        for which in caps:
+            y = y0 + 0.04 if which == "start" else y1 - 0.04
+            b.box(((x0 + x1) / 2, y, z_bed + depth / 2), (x1 - x0, 0.08, depth), mat, bevel=0.01)
 
 
 def waterfall(name, a0, a1, edge, z_top, z_bottom, outward, axis="X", thickness=0.05):
@@ -998,7 +1114,7 @@ def waterfall(name, a0, a1, edge, z_top, z_bottom, outward, axis="X", thickness=
     for k in range(int((a1 - a0) * 9) + 4):
         a = RNG.uniform(a0, a1)
         r = RNG.uniform(0.06, 0.16)
-        out = outward * (0.67 + RNG.uniform(-0.15, 0.25)) * min(1.0, (z_top - z_bottom) / 1.5)
+        out = outward * (0.67 + RNG.uniform(-0.06, 0.06)) * min(1.0, (z_top - z_bottom) / 1.5)
         c = (a, edge + out, z_bottom + r * 0.4) if axis == "X" else (edge + out, a, z_bottom + r * 0.4)
         tmp = bmesh.new()
         bmesh.ops.create_icosphere(tmp, subdivisions=1, radius=r)
@@ -1016,48 +1132,67 @@ def build_water():
     col = collection("L05/Static_Architecture/Channels")
     ch = Builder("Flumes_And_Channels", col)
     # Upper valve-deck channel along its front edge, fed from the mill pond.
-    flume(ch, 4.6, 9.3, 7.45, 7.95, Z2 - 0.18, depth=0.3, mat="Wood_Plank")
+    # v2: lane-side wall 0.27 m high (was 0.12) and two spill notches.
+    # Troughs sit on the subfloor (bed 5 cm below the floor) instead of
+    # cutting into it; lane-side walls stand 0.27 m above the floor.
+    flume(ch, 4.6, 9.3, 7.45, 7.95, Z2 - 0.05, depth=0.32, mat="Wood_Plank", notches=[(6.6, 7.05), (7.3, 7.75)], spill_depth=0.09, caps=("start",))
+    # Mill pond -> aqueduct link along the millhouse (v1 left a 2.3 m gap).
+    flume(ch, 9.15, 9.55, 9.75, 12.25, Z2 + 1.1, depth=0.26, mat="Wood_Plank")
+    for y in (10.3, 11.4):
+        ch.box((9.35, y, (Z2 + 0.32 + Z2 + 1.06) / 2), (0.12, 0.12, 0.74), "Wood_Frame", bevel=0.02)
     # Pond aqueduct on trestles: the marble rolls underneath (0.9 m clearance).
     flume(ch, 8.85, 9.35, 7.95, 9.85, Z2 + 0.9, depth=0.26, mat="Wood_Plank")
     for x in (8.8, 9.4):
         for y in (7.97, 9.75):
             ch.box((x, y, Z2 + 0.45), (0.12, 0.12, 0.9), "Wood_Frame", bevel=0.02)
             ch.box((x, y, Z2 + 0.02), (0.18, 0.18, 0.05), "Iron", bevel=0.01)
-    # Middle workshop channel feeding the main wheel.
-    flume(ch, 4.0, 8.4, 6.15, 6.7, Z1 - 0.2, depth=0.3, mat="Wood_Plank")
-    # Elevated flume from the upper pool down to the east wheel (aqueduct on posts).
-    flume(ch, 11.78, 12.24, 2.75, 6.0, Z2 - 0.32, depth=0.28, mat="Wood_Plank", posts_to=Z0 - 0.6)
+    # Middle workshop channel: starts east of the terrace link, ends 0.28 m
+    # before the wheel rim (breastshot spout); walls 0.25 m above the floor.
+    # Starts at x 6.5: the terrace link beside it keeps a 0.6 m buffer.
+    flume(ch, 6.5, 8.0, 5.95, 6.45, Z1 - 0.05, depth=0.3, mat="Wood_Plank", caps=("start",))
+    # Elevated flume from the upper pool down to the east wheel; no post stands
+    # inside the wheel (posts only from y >= 3.5).
+    flume(ch, 11.93, 12.39, 2.75, 5.55, Z2 - 0.32, depth=0.28, mat="Wood_Plank", posts_to=Z0 - 0.6, posts_from=3.5, caps=("end",))
+    # Pool outlet pipe through the deck edge onto the flume head.
+    pipe_from, pipe_to = Vector((11.7, 6.0, Z2 + 0.1)), Vector((12.16, 5.45, Z2 - 0.02))
+    d = pipe_to - pipe_from
+    ch.cylinder(((pipe_from + pipe_to) / 2), 0.07, d.length, "Iron", rot=Vector((0, 0, 1)).rotation_difference(d.normalized()).to_euler(), segments=12)
     ch.finish()
 
     water_surface("Water_UpperChannel", 4.66, 9.24, 7.51, 7.89, Z2 + 0.05)
     water_surface("Water_PondFeed", 8.91, 9.29, 7.95, 9.85, Z2 + 1.1)
-    water_surface("Water_MiddleChannel", 4.06, 8.34, 6.21, 6.64, Z1 + 0.03)
-    water_surface("Water_EastFlume", 11.84, 12.18, 2.75, 6.0, Z2 - 0.1)
+    water_surface("Water_PondLink", 9.21, 9.49, 9.75, 12.25, Z2 + 1.2)
+    water_surface("Water_MiddleChannel", 6.58, 7.96, 6.03, 6.37, Z1 + 0.03)
+    water_surface("Water_EastFlume", 11.99, 12.33, 2.75, 5.5, Z2 - 0.1)
     water_surface("Water_Stream", 0.0, 6.0, 2.06, 2.94, -0.18)
     water_surface("Water_Spillway", 6.06, 6.74, 0.0, 2.94, -0.2)
-    water_surface("Water_UpperPool", 10.55, 11.85, 6.0, 7.8, Z2 + 0.18)
-    water_surface("Water_MillPond", 6.6, 9.0, 12.15, 13.4, Z2 + 0.05)
-    water_surface("Water_WheelPit", 8.45, 10.2, 6.0, 6.7, -0.45)
+    water_surface("Water_UpperPool", 10.84, 11.81, 6.04, 7.76, Z2 + 0.32)
+    water_surface("Water_MillPond", 6.6, 9.0, 12.15, 13.4, Z2 + 1.25)
+    water_surface("Water_WheelPit", 8.1, 10.5, 5.7, 6.55, -0.45)
 
     # Waterfalls: upper channel spills twice into the middle channel; the
     # spillway drops off the front cliff; the east wheel tail falls far below.
     waterfall("Waterfall_PondDrop", 8.92, 9.28, 7.98, Z2 + 1.1, Z2 + 0.08, -0.25)
-    waterfall("Waterfall_UpperWest", 5.1, 5.7, 7.45, Z2 + 0.05, Z1 + 0.05, -1.0)
-    waterfall("Waterfall_UpperEast", 7.2, 7.7, 7.45, Z2 + 0.05, Z1 + 0.05, -1.0)
+    waterfall("Waterfall_PondLink", 9.2, 9.34, 9.78, Z2 + 1.2, Z2 + 1.1, -0.1)
+    # Spill notches -> middle channel (lands at y ~6.2, inside 6.03-6.37).
+    waterfall("Waterfall_UpperWest", 6.62, 7.03, 7.45, Z2 + 0.03, Z1 + 0.05, -1.85)
+    waterfall("Waterfall_UpperEast", 7.32, 7.73, 7.45, Z2 + 0.03, Z1 + 0.05, -1.85)
     waterfall("Waterfall_Spillway", 6.06, 6.74, 0.0, -0.2, -5.5, -1.0)
-    waterfall("Waterfall_EastFeed", 11.84, 12.18, 2.75, Z2 - 0.1, Z1 + 0.6, -0.6)
-    waterfall("Waterfall_EastWheel", 2.0, 3.2, 12.5, Z1 + 0.4, -7.0, 1.0, axis="Y")
+    waterfall("Waterfall_EastFeed", 11.99, 12.33, 2.75, Z2 - 0.1, Z1 + 0.6, -0.6)
+    waterfall("Waterfall_EastWheel", 2.0, 3.2, 12.65, Z1 + 0.4, -7.0, 1.0, axis="Y")
     waterfall("Waterfall_PoolOverflow", 6.4, 7.6, 12.0, Z2 + 0.15, Z1 - 1.0, 1.0, axis="Y")
     waterfall("Waterfall_Spring", 2.1, 2.9, -0.15, 0.9, -0.18, 1.0, axis="Y")
-    waterfall("Waterfall_WheelFeed", 6.2, 6.6, 8.4, Z1 + 0.05, Z0 + 0.3, 1.0, axis="Y")
+    waterfall("Waterfall_WheelFeed", 6.05, 6.35, 8.0, Z1 + 0.03, Z0 + 0.3, 0.45, axis="Y")
 
     # Upper pool basin and mill pond walls.
     pool = Builder("Basins", col)
-    for p0, p1 in (((10.5, 5.95), (11.9, 5.95)), ((11.9, 5.95), (11.9, 7.85)), ((11.9, 7.85), (10.5, 7.85)), ((10.5, 7.85), (10.5, 5.95))):
-        masonry_wall(pool, p0, p1, Z2 - 0.1, Z2 + 0.32, 0.18, backing=False)
-    pool.box((11.2, 6.9, Z2 - 0.02), (1.4, 1.9, 0.06), "Stone_Wet", bevel=0.0)
+    # v2: basin moved 0.25 m east (lane beside it 1.1 m) and its rim raised to 0.45 m.
+    for p0, p1 in (((10.75, 5.95), (11.9, 5.95)), ((11.9, 5.95), (11.9, 7.85)), ((11.9, 7.85), (10.75, 7.85)), ((10.75, 7.85), (10.75, 5.95))):
+        masonry_wall(pool, p0, p1, Z2 - 0.1, Z2 + 0.45, 0.18, backing=False)
+    pool.box((11.325, 6.9, Z2 - 0.02), (1.15, 1.9, 0.06), "Stone_Wet", bevel=0.0)
+    # Mill pond raised so it can feed the aqueduct by gravity (water at +1.25).
     for p0, p1 in (((6.5, 12.1), (9.1, 12.1)), ((9.1, 12.1), (9.1, 13.5)), ((9.1, 13.5), (6.5, 13.5)), ((6.5, 13.5), (6.5, 12.1))):
-        masonry_wall(pool, p0, p1, Z2 - 0.6, Z2 + 0.22, 0.25, backing=False)
+        masonry_wall(pool, p0, p1, -1.5, Z2 + 1.35, 0.25, backing=True)
     pool.finish()
 
 
@@ -1140,7 +1275,32 @@ def build_gear(name, center, radius, teeth, thickness, axis="Z", mat="Brass", co
     obj = b.finish()
     obj.location = Vector(center)
     obj["l05_role"] = "gear"
+    obj["l05_kind"] = "spur"
     obj["l05_axis"] = axis
+    obj["l05_axis_vec"] = list({"X": (1, 0, 0), "Y": (0, 1, 0), "Z": (0, 0, 1)}[axis])
+    obj["l05_radius"] = radius
+    obj["l05_teeth"] = teeth
+    obj["l05_thickness"] = thickness
+    return obj
+
+
+def build_bevel_gear(name, apex, apex_dir, radius, teeth, cone_distance, face=0.07, mat="Brass"):
+    """Bevel gear whose pitch cone points at `apex` along `apex_dir`.
+    Its large end lies `cone_distance` (= the mating gear's pitch radius)
+    from the apex, so two gears built on one apex mesh correctly."""
+    b = Builder(name, collection("L05/Mechanisms/Gears_Axles"))
+    a = Vector(apex_dir).normalized()
+    rot = Vector((0, 0, 1)).rotation_difference(a).to_matrix().to_4x4()
+    scale = (cone_distance - face) / cone_distance
+    b.polygon_prism(gear_outline(radius, teeth, radius * 0.14), 0.0, face, mat, rot, top_scale=scale)
+    b.polygon_prism([(math.cos(i / 24 * math.tau) * radius * 0.7, math.sin(i / 24 * math.tau) * radius * 0.7) for i in range(24)], -0.004, face * 0.6, "Iron", rot)
+    b.cylinder(rot @ Vector((0, 0, -0.04)), radius * 0.3, 0.1, mat, rot=Vector((0, 0, 1)).rotation_difference(a).to_euler(), segments=16)
+    obj = b.finish()
+    obj.location = Vector(apex) - a * cone_distance
+    obj["l05_role"] = "gear"
+    obj["l05_kind"] = "bevel"
+    obj["l05_axis_vec"] = list(a)
+    obj["l05_apex"] = list(apex)
     obj["l05_radius"] = radius
     obj["l05_teeth"] = teeth
     return obj
@@ -1168,73 +1328,127 @@ def bearing_block(b, center, axis="X"):
     b.box((center[0], center[1], center[2] - 0.5), (0.2, 0.2, 0.6), "Wood_Frame", bevel=0.02)
 
 
+def support_post(b, x, y, z_top, z_ground=-1.5, size=0.2):
+    """Timber post from the rock up to a bearing, with an iron foot."""
+    b.box((x, y, (z_top + z_ground) / 2), (size, size, z_top - z_ground), "Wood_Frame", bevel=0.02)
+    b.box((x, y, z_ground + 0.05), (size + 0.08, size + 0.08, 0.1), "Iron", bevel=0.01)
+
+
+def journal(b, center, along, length=0.1, size=0.2):
+    """Brass bearing journal clamped round a shaft (along = 'X'/'Y'/'Z')."""
+    dims = {"X": (length, size, size), "Y": (size, length, size), "Z": (size, size, length)}[along]
+    b.box(center, dims, "Brass", bevel=0.015)
+
+
 def build_mechanisms():
     static = Builder("Mechanism_Supports", collection("L05/Static_Architecture/Timber"))
-    # Main wheel (breastshot) in its pit at the end of the middle channel.
-    build_water_wheel("Wheel_Main", (9.32, 6.38, 1.3), 1.02, 0.55, axis="Y", paddles=16)
-    for y in (5.98, 6.78):
-        bearing_block(static, (9.32, y, 1.3))
-    build_shaft("Axle_Main", (9.32, 5.7, 1.3), (9.32, 7.1, 1.3), 0.07)
-    # East wheel (overshot) fed by the aqueduct flume from the upper pool.
-    build_water_wheel("Wheel_East", (12.0, 2.6, 1.55), 0.74, 0.42, axis="X", paddles=12)
-    build_shaft("Axle_East", (10.95, 2.6, 1.55), (12.45, 2.6, 1.55), 0.06)
-    bearing_block(static, (11.5, 2.6, 1.55))
-    bearing_block(static, (12.4, 2.6, 1.55))
-    for x in (11.5, 12.4):
-        static.box((x, 2.6, 0.1), (0.24, 0.24, 2.4), "Wood_Frame", bevel=0.02)
-    static.box((11.95, 2.6, -1.0), (1.3, 0.6, 0.3), "Stone_Masonry", bevel=0.03)
-    # Small stream wheel by the start (undershot), first sluice beside it.
-    build_water_wheel("Wheel_Stream", (2.5, 2.5, 0.05), 0.48, 0.32, axis="Y", paddles=10)
-    for y in (2.08, 2.92):
-        bearing_block(static, (2.5, y, 0.05))
+    wx, wy, wz = WHEEL_MAIN
+    # Main wheel (breastshot) in its 2.5 m pit; journals sit on the pit wall
+    # (south) and the deck's north wall.
+    build_water_wheel("Wheel_Main", WHEEL_MAIN, 1.02, 0.55, axis="Y", paddles=16)
+    journal(static, (wx, 5.6, wz), "Y", 0.12, 0.24)
+    journal(static, (wx, 6.72, wz), "Y", 0.12, 0.24)
+    build_shaft("Axle_Main", (wx, 5.56, wz), (wx, 7.05, wz), 0.07)
+    # Classic mill gearing on the axle's north end: bevel pit wheel ->
+    # bevel wallower -> vertical shaft -> runner millstone (the wheel's job).
+    apex_m = (wx, 7.15, wz)
+    build_bevel_gear("Gear_PitWheel", apex_m, (0, 1, 0), 0.42, 16, 0.18)
+    build_bevel_gear("Gear_Wallower", apex_m, (0, 0, -1), 0.18, 7, 0.42)
+    build_shaft("Shaft_Millstone", (wx, 7.15, wz + 0.45), (wx, 7.15, 2.36), 0.045)
+    mill = Builder("Millstone_Floor", collection("L05/Static_Architecture/Timber"))
+    mill.box((wx, 7.17, 2.08), (1.1, 0.46, 0.08), "Wood_Plank", bevel=0.01)
+    for x in (wx - 0.5, wx + 0.5):
+        support_post(mill, x, 7.32, 2.04, -1.5, 0.16)
+    mill.cylinder((wx, 7.17, 2.18), 0.2, 0.12, "Stone_Masonry", segments=24)
+    mill.cylinder((wx, 7.17, 2.62), 0.2, 0.22, "Wood_Plank", radius2=0.11, segments=12)
+    mill.finish()
+    runner = Builder("Millstone_Runner", collection("L05/Mechanisms/Gears_Axles"))
+    runner.cylinder((0, 0, 0), 0.2, 0.1, "Stone_Masonry", segments=24)
+    runner.cylinder((0, 0, 0.06), 0.05, 0.03, "Iron", segments=10)
+    ro = runner.finish()
+    ro.location = (wx, 7.17, 2.3)
+    ro["l05_role"] = "millstone"
+    ro["l05_axis_vec"] = [0, 0, 1]
 
-    # Gear train: east wheel axle -> line shaft -> lift winch (all real meshes).
-    build_gear("Gear_EastDrive", (11.2, 2.6, 1.55), 0.34, 18, 0.08, axis="X")
-    build_gear("Gear_LineBevel", (10.98, 2.32, 1.55), 0.22, 12, 0.07, axis="Y")
-    build_shaft("Shaft_LineToLift", (10.98, 2.28, 1.55), (10.98, 1.0, 1.55), 0.05)
-    build_gear("Gear_LiftBevel", (10.98, 1.0, 1.77), 0.22, 12, 0.07, axis="Z")
-    build_shaft("Shaft_LiftVertical", (10.98, 1.0, 1.75), (10.98, 1.0, 4.35), 0.05)
-    build_gear("Gear_Winch", (10.98, 1.0, 4.45), 0.3, 16, 0.08, axis="X")
-    for y in (1.8, 1.25):
-        bearing_block(static, (10.98, y, 1.55))
-    # Main wheel axle -> pillar gear on the middle terrace (drives the shutters).
-    build_gear("Gear_MainAxle", (9.32, 5.75, 1.3), 0.28, 14, 0.07, axis="Y")
-    build_gear("Gear_LineDrop", (9.32, 5.62, 0.86), 0.2, 10, 0.07, axis="Y")
-    build_shaft("Shaft_MainToPillar", (9.1, 5.62, 0.86), (4.3, 5.62, 0.86), 0.05)
-    build_gear("Gear_PillarCrown", (4.3, 6.3, Z1 + 0.95), 0.5, 22, 0.1, axis="Z")
+    # East wheel (overshot), moved 0.15 m east so its bevel gear clears the deck.
+    build_water_wheel("Wheel_East", (12.15, 2.6, 1.55), 0.74, 0.42, axis="X", paddles=12)
+    build_shaft("Axle_East", (11.6, 2.6, 1.55), (12.66, 2.6, 1.55), 0.06)
+    journal(static, (11.79, 2.6, 1.55), "X", 0.08, 0.18)
+    journal(static, (12.55, 2.6, 1.55), "X", 0.1, 0.18)
+    support_post(static, 11.79, 2.6, 1.45, -1.5, 0.16)
+    support_post(static, 12.55, 2.6, 1.45, -1.5, 0.16)
+    # Drive to the lift winch: three 90-degree bevel pairs (correct gear type
+    # for intersecting shafts), one line shaft, one vertical shaft, 2:1 at the top.
+    o1, o2, o3 = (11.47, 2.6, 1.55), (11.47, 1.0, 1.55), (11.47, 1.0, 4.7)
+    build_bevel_gear("Gear_EastBevel", o1, (-1, 0, 0), 0.18, 10, 0.18)
+    build_bevel_gear("Gear_LineBevelNorth", o1, (0, 1, 0), 0.18, 10, 0.18)
+    build_shaft("Shaft_Line", (11.47, 2.38, 1.55), (11.47, 1.22, 1.55), 0.05)
+    build_bevel_gear("Gear_LineBevelSouth", o2, (0, -1, 0), 0.18, 10, 0.18)
+    build_bevel_gear("Gear_MastBevelLow", o2, (0, 0, -1), 0.18, 10, 0.18)
+    build_shaft("Shaft_Mast", (11.47, 1.0, 1.75), (11.47, 1.0, 4.38), 0.05)
+    build_bevel_gear("Gear_MastBevelTop", o3, (0, 0, 1), 0.15, 8, 0.30)
+    build_bevel_gear("Gear_WinchBevel", o3, (1, 0, 0), 0.30, 16, 0.15)
+    build_shaft("Shaft_Winch", (10.66, 1.0, 4.7), (11.3, 1.0, 4.7), 0.06)
+    for y in (2.05, 1.45):
+        journal(static, (11.47, y, 1.55), "Y", 0.1, 0.16)
+        support_post(static, 11.47, y, 1.45, -1.5, 0.14)
+    # Drive mast beside the tower holds the vertical shaft in two journals.
+    support_post(static, 11.82, 1.0, 4.3, -1.5, 0.18)
+    for z in (2.6, 4.0):
+        static.box((11.65, 1.0, z), (0.3, 0.08, 0.08), "Iron", bevel=0.01)
+        journal(static, (11.47, 1.0, z), "Z", 0.1, 0.16)
+    # Small stream wheel by the start (undershot), raised 5 cm clear of the bed.
+    build_water_wheel("Wheel_Stream", (2.5, 2.5, 0.10), 0.48, 0.32, axis="Y", paddles=10)
+    for y in (2.08, 2.92):
+        bearing_block(static, (2.5, y, 0.10))
+
+    # Gear terrace: hand-cranked crown gear on a stone pillar (moved out of the
+    # channel to the terrace corner). Spur pair with equal 143 mm pitch.
+    build_gear("Gear_PillarCrown", (3.72, 6.95, Z1 + 0.95), 0.5, 22, 0.1, axis="Z")
+    build_gear("Gear_CrankPinion", (3.72 + 0.648, 6.95, Z1 + 0.95), 0.2045, 9, 0.1, axis="Z")
     pillar = Builder("Gear_Pillar", collection("L05/Static_Architecture/Stone"))
-    stone_pier(pillar, 4.3, 6.3, Z1, Z1 + 0.75, 0.55)
-    pillar.cylinder((4.3, 6.3, Z1 + 0.85), 0.08, 0.3, "Iron")
+    stone_pier(pillar, 3.72, 6.95, Z1, Z1 + 0.75, 0.55)
+    pillar.cylinder((3.72, 6.95, Z1 + 0.85), 0.08, 0.3, "Iron")
+    pillar.box((3.72 + 0.648, 6.95, Z1 + 0.42), (0.14, 0.14, 0.84), "Wood_Frame", bevel=0.02)
+    pillar.cylinder((3.72 + 0.648, 6.95, Z1 + 0.88), 0.05, 0.1, "Iron")
     pillar.finish()
+    crank = Builder("Crank_Handle", collection("L05/Mechanisms/Buttons_Levers"))
+    _box_matrix(crank, Matrix.Translation((0.14, 0, 0)), (0.28, 0.05, 0.05), "Red_Paint", bevel=0.015)
+    crank.cylinder((0.27, 0, 0.1), 0.035, 0.2, "Wood_Dark", segments=10)
+    co = crank.finish()
+    co.location = (3.72 + 0.648, 6.95, Z1 + 1.06)
+    co["l05_role"] = "lever"
     static.finish()
 
-    # Start-floor gear + ring button (pressure plate) and the sluice lever.
-    build_gear("Gear_StartRing", (3.3, 3.85, Z0 + 0.12), 0.42, 16, 0.1, axis="Z")
-    build_ring_plate("Plate_StartRing", (3.3, 3.85, Z0 + 0.2), 0.3, "Goal_Gold", "Iron")
+    # Flush plates: rings rise at most 1.5 cm above the floor (v1: 0.115-0.30 m).
+    build_gear("Gear_StartRing", (3.3, 4.0, Z0 - 0.03), 0.42, 16, 0.03, axis="Z")
+    build_ring_plate("Plate_StartRing", (3.3, 4.0, Z0 - 0.04), 0.3, "Goal_Gold", "Iron")
     build_lever("Lever_Sluice", (2.2, 4.55, Z0), yaw=0.4)
     build_lever("Lever_Secret", (9.9, 4.4, Z0), yaw=-1.2)
-    build_ring_plate("Plate_Cube", (7.9, 1.0, Z0 + 0.02), 0.34, "Plate_White", "Red_Paint")
+    build_ring_plate("Plate_Cube", (7.9, 1.0, Z0 - 0.04), 0.34, "Plate_White", "Red_Paint")
     build_valve("Valve_Diverter", (6.6, 7.7, Z2 + 0.1), "X")
-    build_valve("Valve_PoolSluice", (12.0, 6.05, Z2 + 0.2), "X")
-    build_sluice_gate("Gate_StreamSluice", (1.6, 2.5, -0.2), "Y", 0.9)
-    build_sluice_gate("Gate_MiddleShutter", (7.6, 4.2, Z1), "Y", 1.2, height=0.6)
+    build_valve("Valve_PoolSluice", (12.16, 5.3, Z2 - 0.05), "X")
+    build_sluice_gate("Gate_StreamSluice", (1.6, 2.5, -0.2), "Y", 0.72)
+    # The workshop shutter is now the wheel sluice in the middle channel.
+    build_sluice_gate("Gate_MiddleShutter", (7.88, 6.2, Z1 - 0.04), "Y", 0.4, height=0.32)
     build_corridor_dressing()
     build_crate("Crate_Cube", (5.0, 1.0, Z0 + 0.23), 0.45)
     build_crate("Crate_Workshop", (6.3, 3.0, Z1 + 0.25), 0.5)
     build_crate("Crate_ValveDeck", (8.1, 9.2, Z2 + 0.25), 0.5)
-    build_crate("Crate_Stack_A", (10.6, 5.2, Z1 + 0.25), 0.5)
-    build_crate("Crate_Stack_B", (10.6, 5.2, Z1 + 0.76), 0.5, yaw=0.3)
-    build_goal("Goal_Socket", (2.4, 8.6, Z2))
+    build_crate("Crate_Stack_A", (5.95, 3.62, Z1 + 0.25), 0.5)
+    build_crate("Crate_Stack_B", (5.95, 3.62, Z1 + 0.76), 0.5, yaw=0.3)
+    build_goal("Goal_Socket", (2.4, 8.6, Z2 - 0.05))
 
 
 def build_corridor_dressing():
     """Hidden lower path (reference panel 04): beams, lanterns, gear and ring."""
     b = Builder("Corridor_Beams_Lanterns", collection("L05/Static_Architecture/Timber"))
+    # Ceiling beams sit tight under the deck: 1.01 m clear (v1: 0.92 m).
     for x in (6.3, 7.2, 8.1, 8.9):
-        b.box((x, 4.0, Z1 - DECK_T - 0.12), (0.18, 1.6, 0.22), "Wood_Dark", bevel=0.02)
-        for y in (3.32, 4.68):
-            b.box((x, y, (Z1 - DECK_T) / 2), (0.16, 0.12, Z1 - DECK_T), "Wood_Frame", bevel=0.02)
-    for x, y in ((6.75, 3.4), (8.5, 4.6), (9.7, 4.85)):
+        b.box((x, 4.0, Z1 - DECK_T - 0.08), (0.18, 1.8, 0.14), "Wood_Dark", bevel=0.02)
+        for y in (3.16, 4.84):
+            b.box((x, y, (Z1 - DECK_T) / 2), (0.16, 0.1, Z1 - DECK_T), "Wood_Frame", bevel=0.02)
+    for x, y in ((6.75, 3.27), (8.5, 4.73), (9.7, 4.85)):
         b.box((x, y, 0.92), (0.05, 0.05, 0.25), "Iron", bevel=0.005)
         b.box((x, y, 0.72), (0.14, 0.14, 0.2), "Lantern_Glow", bevel=0.01)
         b.box((x, y, 0.84), (0.18, 0.18, 0.04), "Brass", bevel=0.008)
@@ -1246,15 +1460,17 @@ def build_corridor_dressing():
         lo.location = (x, y, 0.72)
         collection("L05/Lights_Cameras").objects.link(lo)
     b.finish()
-    build_gear("Gear_CorridorTrigger", (8.2, 3.75, Z0 + 0.1), 0.32, 14, 0.08, axis="Z")
-    build_ring_plate("Plate_CorridorRing", (8.2, 3.75, Z0 + 0.16), 0.24, "Goal_Gold", "Iron")
+    build_gear("Gear_CorridorTrigger", (8.2, 4.0, Z0 - 0.03), 0.32, 14, 0.03, axis="Z")
+    build_ring_plate("Plate_CorridorRing", (8.2, 4.0, Z0 - 0.04), 0.24, "Goal_Gold", "Iron")
 
 
 def build_ring_plate(name, center, radius, ring_mat, base_mat):
+    """Flush pressure plate: placed 4 cm below the floor, its ring tops out
+    1.5 cm above it, so balls roll and cubes slide over it."""
     b = Builder(name, collection("L05/Mechanisms/Buttons_Levers"))
-    b.cylinder((0, 0, 0.0), radius + 0.08, 0.05, base_mat, segments=28)
-    b.torus((0, 0, 0.04), radius, 0.055, ring_mat, seg_major=32, seg_minor=8)
-    b.cylinder((0, 0, 0.02), radius * 0.75, 0.03, "Slate_Floor", segments=28)
+    b.cylinder((0, 0, 0.0), radius + 0.08, 0.02, base_mat, segments=28)
+    b.torus((0, 0, 0.03), radius, 0.025, ring_mat, seg_major=32, seg_minor=8)
+    b.cylinder((0, 0, 0.012), radius * 0.8, 0.02, "Slate_Floor", segments=28)
     obj = b.finish()
     obj.location = Vector(center)
     obj["l05_role"] = "plate"
@@ -1351,11 +1567,13 @@ def build_crate(name, center, size, yaw=0.0):
 
 
 def build_goal(name, center):
+    """Recessed socket: placed 5 cm below the floor, the gold ring tops out
+    1 cm above it; the marble rolls in and settles in the 5 cm dish."""
     b = Builder(name, collection("L05/Mechanisms/Buttons_Levers"))
-    b.cylinder((0, 0, 0.02), 0.62, 0.05, "Iron", segments=36)
-    b.torus((0, 0, 0.07), 0.44, 0.08, "Goal_Gold", seg_major=40, seg_minor=10)
-    b.torus((0, 0, 0.07), 0.56, 0.025, "Brass", seg_major=40, seg_minor=6)
-    b.cylinder((0, 0, 0.03), 0.34, 0.04, "Slate_Floor", segments=36)
+    b.cylinder((0, 0, 0.01), 0.62, 0.02, "Iron", segments=36)
+    b.torus((0, 0, 0.02), 0.46, 0.04, "Goal_Gold", seg_major=40, seg_minor=10)
+    b.torus((0, 0, 0.015), 0.58, 0.02, "Brass", seg_major=40, seg_minor=6)
+    b.cylinder((0, 0, 0.021), 0.4, 0.004, "Slate_Floor", segments=36)
     obj = b.finish()
     obj.location = Vector(center)
     obj["l05_role"] = "goal_socket"
@@ -1384,6 +1602,9 @@ def build_lift():
             else:
                 m = Matrix.Translation((x1 + 0.16, (y0 + y1) / 2, (z0 + z1) / 2)) @ Matrix.Rotation(math.pi / 2, 4, "Z") @ Matrix.Rotation(-ang, 4, "Y")
             _box_matrix(tower, m, (diag, 0.08, 0.1), "Wood_Frame", bevel=0.015)
+    # North header under the walk's south edge (replaces the v1 piers in the shaft);
+    # it sits between the middle and upper doorways.
+    tower.box(((x0 + x1) / 2, y1 + 0.1, Z2 - DECK_T - 0.08), (x1 - x0 + 0.4, 0.2, 0.16), "Wood_Frame", bevel=0.02)
     # Header frame, pulley sheaves and winch drum.
     for y in (y0 - 0.1, y1 + 0.1):
         tower.box(((x0 + x1) / 2, y, top), (x1 - x0 + 0.4, 0.2, 0.2), "Wood_Frame", bevel=0.025)
@@ -1392,35 +1613,38 @@ def build_lift():
     tower.cylinder(((x0 + x1) / 2, (y0 + y1) / 2, top + 0.25), 0.22, x1 - x0 + 0.2, "Wood_Dark", axis="X", segments=18)
     for x in (x0 + 0.25, x1 - 0.25):
         tower.cylinder((x, (y0 + y1) / 2, top + 0.25), 0.27, 0.05, "Iron", axis="X", segments=20)
-    # Guide rails inside each corner.
-    for x in (x0 + 0.04, x1 - 0.04):
-        for y in (y0 + 0.04, y1 - 0.04):
+    # Guide rails on the shaft corners: 5 cm clear of the cage.
+    for x in (x0, x1):
+        for y in (y0, y1):
             tower.box((x, y, (top - 0.6) / 2 + 0.0), (0.05, 0.05, top + 0.6), "Iron", bevel=0.005)
-    # Counterweight with iron bands on the east face.
-    tower.box((x1 + 0.38, (y0 + y1) / 2, 2.4), (0.3, 0.5, 0.7), "Stone_Masonry", bevel=0.03)
+    # Counterweight on the south face (v1 sat on the drive shaft's path).
+    tower.box(((x0 + x1) / 2, y0 - 0.32, 2.4), (0.5, 0.3, 0.7), "Stone_Masonry", bevel=0.03)
     for z in (2.15, 2.65):
-        tower.box((x1 + 0.38, (y0 + y1) / 2, z), (0.33, 0.53, 0.05), "Iron", bevel=0.005)
+        tower.box(((x0 + x1) / 2, y0 - 0.32, z), (0.53, 0.33, 0.05), "Iron", bevel=0.005)
+    for x in ((x0 + x1) / 2 - 0.3, (x0 + x1) / 2 + 0.3):
+        tower.box((x, y0 - 0.32, (top + 0.2) / 2), (0.03, 0.03, top - 0.2), "Iron", bevel=0.0)
     tower.finish()
 
     cage = Builder("Lift_Cage", collection("L05/Mechanisms/Lift"))
-    w, d = x1 - x0 - 0.12, y1 - y0 - 0.12
+    w, d = x1 - x0 - 0.16, y1 - y0 - 0.16
     for k in range(6):
         cage.box((0, -d / 2 + (k + 0.5) * d / 6, -0.03), (w, d / 6 - 0.015, 0.06), "Wood_Plank", bevel=0.008)
     cage.box((0, 0, -0.12), (w, d, 0.12), "Wood_Dark", bevel=0.01)
     # Fixed lips on the closed south and east sides; corner posts with brass.
     cage.box((0, -d / 2 + 0.05, 0.14), (w, 0.1, 0.28), "Wood_Frame", bevel=0.02)
     cage.box((w / 2 - 0.05, 0, 0.14), (0.1, d, 0.28), "Wood_Frame", bevel=0.02)
+    # Crossbar 1.0 m up: 0.95 m clear for the marble, cubes and 0.75 m pyramids.
     for sx in (-1, 1):
         for sy in (-1, 1):
-            cage.box((sx * (w / 2 - 0.05), sy * (d / 2 - 0.05), 0.35), (0.12, 0.12, 0.7), "Wood_Frame", bevel=0.02)
-            cage.box((sx * (w / 2 - 0.05), sy * (d / 2 - 0.05), 0.73), (0.16, 0.16, 0.07), "Brass", bevel=0.015)
-    cage.box((0, 0, 0.75), (w, 0.1, 0.1), "Wood_Frame", bevel=0.02)
-    cage.cylinder((0, 0, 0.83), 0.06, 0.1, "Iron", segments=10)
+            cage.box((sx * (w / 2 - 0.06), sy * (d / 2 - 0.06), 0.5), (0.12, 0.12, 1.0), "Wood_Frame", bevel=0.02)
+            cage.box((sx * (w / 2 - 0.06), sy * (d / 2 - 0.06), 1.03), (0.15, 0.15, 0.06), "Brass", bevel=0.015)
+    cage.box((0, 0, 1.0), (w, 0.1, 0.1), "Wood_Frame", bevel=0.02)
+    cage.cylinder((0, 0, 1.08), 0.06, 0.1, "Iron", segments=10)
     cage_obj = cage.finish()
     cage_obj.location = ((x0 + x1) / 2, (y0 + y1) / 2, Z0)
     cage_obj["l05_role"] = "lift_deck"
     cage_obj["l05_floors"] = [Z0, Z1, Z2]
-    for gate_name, at, axis in (("Lift_Gate_West", (x0 + 0.06, (y0 + y1) / 2, Z0), "Y"), ("Lift_Gate_North", ((x0 + x1) / 2, y1 - 0.06, Z0), "X")):
+    for gate_name, at, axis in (("Lift_Gate_West", (x0 + 0.11, (y0 + y1) / 2, Z0), "Y"), ("Lift_Gate_North", ((x0 + x1) / 2, y1 - 0.11, Z0), "X")):
         g = Builder(gate_name, collection("L05/Mechanisms/Lift"))
         for k in range(3):
             size = (0.05, d - 0.2, 0.06) if axis == "Y" else (w - 0.2, 0.05, 0.06)
@@ -1429,9 +1653,9 @@ def build_lift():
         go.location = at
         go["l05_role"] = "lift_gate"
     chain = Builder("Lift_Chain", collection("L05/Mechanisms/Lift"))
-    links = int((top + 0.25 - 0.85) / 0.09)
+    links = int((top + 0.25 - 1.12) / 0.09)
     for k in range(links):
-        z = 0.85 + k * 0.09
+        z = 1.12 + k * 0.09
         chain.torus((0, 0, z), 0.035, 0.009, "Iron", axis="X" if k % 2 else "Y", seg_major=10, seg_minor=4)
     co = chain.finish()
     co.location = ((x0 + x1) / 2, (y0 + y1) / 2, Z0)
@@ -1842,7 +2066,7 @@ def build_cameras():
 def build_markers():
     col = collection("L05/Game_Markers")
     empty("Marker_BallStart", (0.8, 4.0, Z0 + 0.33), col, "SPHERE", 0.33)
-    empty("Marker_Goal", (2.4, 8.6, Z2), col, "CIRCLE", 0.45)
+    empty("Marker_Goal", (2.4, 8.6, Z2 - 0.05), col, "CIRCLE", 0.45)
     empty("Marker_CubeStart", (5.0, 1.0, Z0 + 0.23), col, "CUBE", 0.22)
     for i, z in enumerate((Z0, Z1, Z2)):
         empty("Marker_LiftStop_%d" % i, ((LIFT["x0"] + LIFT["x1"]) / 2, (LIFT["y0"] + LIFT["y1"]) / 2, z), col, "ARROWS", 0.4)
@@ -1944,7 +2168,7 @@ def main():
     build_materials()
     for spec in DECKS:
         holes = (WHEEL_PIT,) if spec[0] == "M_Workshop" else ()
-        build_deck(*spec, holes=holes)
+        build_deck(*spec, holes=holes, inlays=INLAYS.get(spec[0], ()), cutouts=CUTOUTS.get(spec[0], ()))
     for spec in BRIDGES:
         build_bridge(*spec)
     build_foundations()
