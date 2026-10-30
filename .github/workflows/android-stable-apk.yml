@@ -98,7 +98,7 @@ jobs:
           grep -Fqx "version/name=\"$MARBLE_VERSION_NAME\"" export_presets.cfg
           echo "Android versionCode=$version_code"
 
-      - name: Test both levels, Physics Lab and build signed stable APK
+      - name: Test levels, Physics Lab, Water Lab and build signed stable APK
         shell: bash
         env:
           GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ runner.temp }}/MarbleLabyrinth-stable.p12

@@ -8,6 +8,8 @@ on:
       - feature/stage-3-android-debug-apk
       - feature/stage-4-mobile-controls
       - feature/p1-physics-lab
+      - feature/p2-water-lab
+      - feature/p6-rewards
 
 permissions:
   contents: read
@@ -109,7 +111,7 @@ jobs:
           echo "Android Debug versionCode=$version_code"
           echo "Android Debug versionName=0.3.0-debug.$GITHUB_RUN_NUMBER"
 
-      - name: Test both levels, Physics Lab and build APK
+      - name: Test levels, Physics Lab, Water Lab and build APK
         shell: bash
         run: tools/build_android_debug.sh
 
