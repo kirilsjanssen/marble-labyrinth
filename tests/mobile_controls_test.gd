@@ -54,8 +54,13 @@ func _run() -> void:
 	if not _require(game.drag_tilt.x > 0.80, "Left drag must produce a strong physical tilt"):
 		return
 
+	var marble_before: Vector3 = game.ball.global_position
 	await _wait_physics_frames(30)
 	if not _require(game.board.rotation.z < -0.12, "Screen drag must rotate the physics board"):
+		return
+	if not _require(game.ball.global_position.distance_to(marble_before) > 0.10, "Touch tilt must physically MOVE the rigid marble, not only rotate the board"):
+		return
+	if not _require(game.ball.linear_velocity.length() > 0.08, "Physical marble must have measurable momentum"):
 		return
 
 	var camera_touch := InputEventScreenTouch.new()
@@ -94,7 +99,7 @@ func _run() -> void:
 	game._layout_hud(Vector2(800.0, 600.0))
 	if not _require(game.button_row.position.y > game.info_panel.position.y + 70.0, "HUD controls must use second row on narrow screens"):
 		return
-	print("MOBILE CONTROLS PASS: touch capture, left tilt, camera orbit, simultaneous multitouch, release, HUD layout and sensor mapping")
+	print("MOBILE CONTROLS PASS: touch capture, REAL MARBLE MOTION, camera orbit, simultaneous multitouch, release, HUD layout and sensor mapping")
 	quit(0)
 
 
