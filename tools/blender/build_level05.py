@@ -21,6 +21,14 @@ from mathutils import Matrix, Vector, noise
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 BLEND_PATH = os.path.join(ROOT, "assets", "blender", "level05_alpine_watermill.blend")
+MOBILE_BLEND_PATH = os.path.join(ROOT, "assets", "blender", "level05_alpine_watermill_mobile.blend")
+# --mobile: same layout and RNG (identical dimensions), but no bevels on stone
+# and thin pieces, low-poly vegetation and no distant peaks (Godot uses a
+# panorama sky instead). tools/blender/export_level05_mobile.py takes it on.
+MOBILE = "--mobile" in sys.argv
+STONE_MATS = {"Stone_Masonry", "Stone_Wet", "Mortar_Moss", "Slate_Floor"}
+WALLS = []     # masonry_wall calls, for the Godot box colliders
+FLUMES = []    # flume calls, likewise
 RENDER_DIR = os.path.join(ROOT, "assets", "blender", "renders", "level05")
 
 Z0, Z1, Z2 = 0.0, 1.4, 2.8
@@ -212,7 +220,7 @@ def _scroll(mapping, axis, speed):
 
 
 def mat_pbr(name, key, tile=1.0, hue=0.0, sat=1.0, val=1.0, jitter=(0.015, 0.1, 0.2), rough=(1.0, 0.0), metal=0.0,
-            normal=1.0, board=False, up=None):
+            normal=1.0, board=False, up=None, ao=0.0, wear=0.0, coat=0.0, up_tex=None):
     """Image PBR from the Level 05 Luma set (assets/luma/level05: albedo from
     Luma, normal/roughness derived - see PROVENANCE.json). Builder UVs are
     metres per piece with U along its longest side, so `tile` is the repeat in
@@ -236,6 +244,31 @@ def mat_pbr(name, key, tile=1.0, hue=0.0, sat=1.0, val=1.0, jitter=(0.015, 0.1, 
         links.new(_math(mat, "MULTIPLY_ADD", rnd.outputs["Fac"], 2.0 * amount, centre - amount), hsv.inputs[socket])
     links.new(albedo.outputs["Color"], hsv.inputs["Color"])
     color = hsv.outputs["Color"]
+    if ao > 0.0:
+        # v4: local AO darkens joints, gaps and inner corners (depth, mass).
+        occ = nodes.new("ShaderNodeAmbientOcclusion")
+        occ.only_local = True
+        occ.samples = 8
+        occ.inputs["Distance"].default_value = 0.14
+        shade = _map_range(mat, occ.outputs["AO"], 0.0, 1.0, 1.0 - ao, 1.0)
+        color = _mix(mat, shade, (0.0, 0.0, 0.0), color)
+    if wear > 0.0:
+        # v4: worn, sun-bleached arrises: Cycles pointiness lifts convex edges.
+        geo_w = nodes.new("ShaderNodeNewGeometry")
+        edge = _map_range(mat, geo_w.outputs["Pointiness"], 0.5, 0.56, 0.0, wear)
+        color = _mix(mat, edge, color, _mix(mat, 1.0, color, (1.6, 1.35, 1.1), "MULTIPLY"))
+    if up_tex:
+        # v4: a second Luma texture (meadow) on up-facing surfaces.
+        up_alb = _tex(mat, os.path.join(TEX_DIR, up_tex + "_albedo.jpg"), vec, location=(-800, 900))
+        geo_u = nodes.new("ShaderNodeNewGeometry")
+        sep_u = nodes.new("ShaderNodeSeparateXYZ")
+        links.new(geo_u.outputs["Normal"], sep_u.inputs["Vector"])
+        brk = nodes.new("ShaderNodeTexNoise")
+        brk.inputs["Scale"].default_value = 0.35
+        brk.inputs["Detail"].default_value = 6.0
+        links.new(geo_u.outputs["Position"], brk.inputs["Vector"])
+        f_u = _math(mat, "MULTIPLY_ADD", brk.outputs["Fac"], 0.6, sep_u.outputs["Z"])
+        color = _mix(mat, _map_range(mat, f_u, 0.95, 1.12), color, up_alb.outputs["Color"])
     if up:
         # Moss/grass on up-facing surfaces, broken up by noise.
         up_color, lo, hi = up
@@ -257,6 +290,58 @@ def mat_pbr(name, key, tile=1.0, hue=0.0, sat=1.0, val=1.0, jitter=(0.015, 0.1, 
     links.new(normal_t.outputs["Color"], nmap.inputs["Color"])
     links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
     _set(bsdf, "Metallic", metal)
+    if coat > 0.0:
+        # Oiled / damp timber: a thin clear coat catches the warm sun.
+        _set(bsdf, "Coat Weight", coat)
+        _set(bsdf, "Coat Roughness", 0.22)
+    MATS[name] = mat
+    return mat
+
+
+def mat_brass(name, color=(0.95, 0.64, 0.24), glow=0.0):
+    """v4 polished brass/bronze: a clean golden F0 (only 20 % of the Luma
+    albedo, so no blotches), fine brushed normal, roughness 0.18-0.3, and a
+    Bevel normal that rounds every edge into a bright rim highlight."""
+    mat, bsdf = _new_material(name)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    mapping = _uv_mapping(mat, (1.0 / 0.6, 1.0 / 0.6))
+    vec = mapping.outputs["Vector"]
+    albedo = _tex(mat, os.path.join(TEX_DIR, "brass_albedo.jpg"), vec, location=(-800, 300))
+    rough_t = _tex(mat, os.path.join(TEX_DIR, "brass_rough.jpg"), vec, True, (-800, 0))
+    normal_t = _tex(mat, os.path.join(TEX_DIR, "brass_normal.png"), vec, True, (-800, -300))
+    color_out = _mix(mat, 0.2, color, _mix(mat, 1.0, albedo.outputs["Color"], (1.05, 0.83, 0.55), "MULTIPLY"))
+    links.new(color_out, bsdf.inputs["Base Color"])
+    links.new(_math(mat, "MULTIPLY_ADD", rough_t.outputs["Color"], 0.6, 0.02, clamp=True), bsdf.inputs["Roughness"])
+    nmap = nodes.new("ShaderNodeNormalMap")
+    nmap.uv_map = "UVMap"
+    nmap.inputs["Strength"].default_value = 0.3
+    links.new(normal_t.outputs["Color"], nmap.inputs["Color"])
+    bevel = nodes.new("ShaderNodeBevel")
+    bevel.samples = 6
+    bevel.inputs["Radius"].default_value = 0.008
+    links.new(nmap.outputs["Normal"], bevel.inputs["Normal"])
+    links.new(bevel.outputs["Normal"], bsdf.inputs["Normal"])
+    _set(bsdf, "Metallic", 1.0)
+    if glow > 0.0:
+        _set(bsdf, "Emission Color", (1.0, 0.66, 0.2, 1.0))
+        _set(bsdf, "Emission Strength", glow)
+    MATS[name] = mat
+    return mat
+
+
+def mat_glow(name, color, strength):
+    """Lamp glass / lit windows: pure emission, so the point light placed
+    inside a lantern cannot blow its own glass out to white."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    for node in list(nodes):
+        nodes.remove(node)
+    out = nodes.new("ShaderNodeOutputMaterial")
+    emit = nodes.new("ShaderNodeEmission")
+    emit.inputs["Color"].default_value = (*color, 1.0)
+    emit.inputs["Strength"].default_value = strength
+    links.new(emit.outputs["Emission"], out.inputs["Surface"])
     MATS[name] = mat
     return mat
 
@@ -301,7 +386,7 @@ WATER_LAYERS = {
     "fall_body": {"tile_u": 0.6, "tile_v": 1.2, "speed_a": 1.7, "speed_b": 2.4},
     "fall_foam": {"tile_u": 0.5, "tile_v": 0.9, "speed_a": 2.8, "speed_b": 2.1},
 }
-WATER_COLOR = (0.02, 0.36, 0.40)
+WATER_COLOR = (0.015, 0.46, 0.52)       # v4: brighter alpine turquoise
 
 
 def mat_water_surface(name, layers):
@@ -327,12 +412,17 @@ def mat_water_surface(name, layers):
     body = _mix(mat, 0.5, body, WATER_COLOR)
     color = _mix(mat, foam, body, (0.9, 0.96, 1.0))
     links.new(color, bsdf.inputs["Base Color"])
-    links.new(_math(mat, "MULTIPLY_ADD", foam, 0.45, 0.03), bsdf.inputs["Roughness"])
+    links.new(_math(mat, "MULTIPLY_ADD", foam, 0.45, 0.015), bsdf.inputs["Roughness"])
     links.new(_math(mat, "MULTIPLY_ADD", foam, -0.7, 0.85), bsdf.inputs["Transmission Weight"])
     _set(bsdf, "IOR", 1.333)
     # Self-glow keeps shallow channels turquoise from above (dark beds behind).
-    links.new(body, bsdf.inputs["Emission Color"])
-    _set(bsdf, "Emission Strength", 0.55)
+    # Depth read: the glow is deeper teal looking straight down, lighter and
+    # more reflective at grazing angles (Fresnel through Layer Weight).
+    facing = nodes.new("ShaderNodeLayerWeight")
+    facing.inputs["Blend"].default_value = 0.35
+    deep = _mix(mat, facing.outputs["Facing"], _mix(mat, 1.0, body, (0.45, 0.75, 0.8), "MULTIPLY"), body)
+    links.new(deep, bsdf.inputs["Emission Color"])
+    _set(bsdf, "Emission Strength", 0.75)
     ripples = nodes.new("ShaderNodeTexNoise")
     ripples.noise_dimensions = "4D"
     ripples.inputs["Scale"].default_value = 5.0
@@ -366,17 +456,17 @@ def mat_waterfall(name, layer):
     if layer == "fall_body":
         color = _mix(mat, 0.5, tex_a.outputs["Color"], tex_b.outputs["Color"])
         color = _mix(mat, 0.25, color, WATER_COLOR)
-        alpha = _math(mat, "MULTIPLY", _math(mat, "MAXIMUM", tex_a.outputs["Alpha"], tex_b.outputs["Alpha"]), 0.88)
+        alpha = _math(mat, "MULTIPLY", _math(mat, "MAXIMUM", tex_a.outputs["Alpha"], tex_b.outputs["Alpha"]), 0.95, clamp=True)
         links.new(color, bsdf.inputs["Base Color"])
         links.new(color, bsdf.inputs["Emission Color"])
-        _set(bsdf, "Emission Strength", 0.4)
+        _set(bsdf, "Emission Strength", 0.65)
         _set(bsdf, "Roughness", 0.12)
         _set(bsdf, "Transmission Weight", 0.35)
     else:
-        alpha = _math(mat, "MULTIPLY", _math(mat, "MAXIMUM", tex_a.outputs["Color"], tex_b.outputs["Color"]), 0.95, clamp=True)
-        _set(bsdf, "Base Color", (0.92, 0.97, 1.0, 1.0))
-        _set(bsdf, "Emission Color", (0.85, 0.95, 1.0, 1.0))
-        _set(bsdf, "Emission Strength", 0.45)
+        alpha = _math(mat, "MULTIPLY", _math(mat, "MAXIMUM", tex_a.outputs["Color"], tex_b.outputs["Color"]), 1.25, clamp=True)
+        _set(bsdf, "Base Color", (0.95, 0.98, 1.0, 1.0))
+        _set(bsdf, "Emission Color", (0.88, 0.96, 1.0, 1.0))
+        _set(bsdf, "Emission Strength", 0.7)
         _set(bsdf, "Roughness", 0.45)
     links.new(alpha, bsdf.inputs["Alpha"])
     _set(bsdf, "IOR", 1.333)
@@ -424,12 +514,12 @@ def mat_mountain(name):
     lower flanks, and aerial haze by camera distance."""
     mat, bsdf = _new_material(name)
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
-    mapping = _uv_mapping(mat, (1.0 / 22.0, 1.0 / 22.0))
-    albedo = _tex(mat, os.path.join(TEX_DIR, "rock_moss_albedo.jpg"), mapping.outputs["Vector"], location=(-800, 300))
-    normal_t = _tex(mat, os.path.join(TEX_DIR, "rock_moss_normal.png"), mapping.outputs["Vector"], True, (-800, -300))
+    mapping = _uv_mapping(mat, (1.0 / 64.0, 1.0 / 64.0))
+    albedo = _tex(mat, os.path.join(TEX_DIR, "peak_rock_albedo.jpg"), mapping.outputs["Vector"], location=(-800, 300))
+    normal_t = _tex(mat, os.path.join(TEX_DIR, "peak_rock_normal.png"), mapping.outputs["Vector"], True, (-800, -300))
     hsv = nodes.new("ShaderNodeHueSaturation")
-    hsv.inputs["Saturation"].default_value = 0.55
-    hsv.inputs["Value"].default_value = 0.42
+    hsv.inputs["Saturation"].default_value = 0.85
+    hsv.inputs["Value"].default_value = 0.8
     links.new(albedo.outputs["Color"], hsv.inputs["Color"])
     geo = nodes.new("ShaderNodeNewGeometry")
     sep_n = nodes.new("ShaderNodeSeparateXYZ")
@@ -440,15 +530,15 @@ def mat_mountain(name):
     breakup.inputs["Scale"].default_value = 0.035
     breakup.inputs["Detail"].default_value = 8.0
     links.new(geo.outputs["Position"], breakup.inputs["Vector"])
-    alt = _map_range(mat, sep_p.outputs["Z"], -74.0, -28.0)
+    alt = _map_range(mat, sep_p.outputs["Z"], -70.0, -10.0)
     s1 = _math(mat, "MULTIPLY_ADD", alt, 0.95, sep_n.outputs["Z"])
     s2 = _math(mat, "MULTIPLY_ADD", breakup.outputs["Fac"], 0.8, s1)
-    snow = _map_range(mat, s2, 1.95, 2.12)
-    forest = _math(mat, "MULTIPLY", _map_range(mat, sep_p.outputs["Z"], -70.0, -84.0), _map_range(mat, sep_n.outputs["Z"], 0.45, 0.75))
-    color = _mix(mat, forest, hsv.outputs["Color"], (0.02, 0.045, 0.025))
-    color = _mix(mat, snow, color, (0.86, 0.9, 0.97))
+    snow = _map_range(mat, s2, 1.86, 2.0)
+    forest = _math(mat, "MULTIPLY", _map_range(mat, sep_p.outputs["Z"], -66.0, -82.0), _map_range(mat, sep_n.outputs["Z"], 0.45, 0.75))
+    color = _mix(mat, forest, hsv.outputs["Color"], (0.025, 0.06, 0.025))
+    color = _mix(mat, snow, color, (0.92, 0.95, 1.0))
     cam = nodes.new("ShaderNodeCameraData")
-    haze = _map_range(mat, cam.outputs["View Distance"], 80.0, 330.0, 0.06, 0.45)
+    haze = _map_range(mat, cam.outputs["View Distance"], 90.0, 380.0, 0.04, 0.38)
     haze_color = (0.56, 0.68, 0.86)
     color = _mix(mat, haze, color, haze_color)
     links.new(color, bsdf.inputs["Base Color"])
@@ -501,44 +591,52 @@ def mat_card(name, image, strength, haze=0.0, haze_color=(0.56, 0.68, 0.86)):
 
 def build_materials():
     # Timber: aged dark oak (Luma) graded per role; decks use the board atlas.
-    mat_pbr("Wood_Frame", "wood_beam", 1.4, hue=0.008, sat=1.2, val=1.75, jitter=(0.012, 0.12, 0.3), normal=0.9)
-    mat_pbr("Wood_Plank", "wood_board", board=True, sat=1.05, val=0.95, jitter=(0.012, 0.1, 0.25), normal=0.8)
-    mat_pbr("Deck_Board", "wood_board", board=True, sat=1.0, val=0.92, jitter=(0.015, 0.12, 0.3), normal=0.8)
-    mat_pbr("Wood_Dark", "wood_beam", 1.4, sat=1.0, val=0.85, jitter=(0.01, 0.1, 0.2))
-    mat_pbr("Wood_Weathered", "wood_beam", 1.2, hue=-0.01, sat=0.8, val=1.45, jitter=(0.01, 0.12, 0.3), rough=(1.0, 0.06))
+    # v4 roles: railings/frames warm honey oak with worn arrises; deck boards
+    # saturated and oiled (coat); structural beams and joists dark heavy oak.
+    mat_pbr("Wood_Frame", "wood_beam", 1.0, hue=0.012, sat=1.3, val=1.95, jitter=(0.012, 0.12, 0.3), normal=0.75, ao=0.45, wear=0.35, coat=0.12)
+    mat_pbr("Wood_Plank", "wood_board", board=True, sat=1.15, val=1.0, jitter=(0.012, 0.1, 0.25), normal=1.0, ao=0.4, coat=0.2)
+    mat_pbr("Deck_Board", "wood_board", board=True, sat=1.2, val=1.08, jitter=(0.015, 0.12, 0.3), normal=1.0, ao=0.5, wear=0.2, coat=0.25, rough=(0.85, 0.0))
+    mat_pbr("Wood_Dark", "wood_beam", 1.4, sat=1.1, val=0.8, jitter=(0.01, 0.1, 0.2), normal=1.2, ao=0.5)
+    mat_pbr("Wood_Weathered", "wood_beam", 1.2, hue=0.0, sat=1.0, val=1.45, jitter=(0.01, 0.12, 0.3), rough=(1.0, 0.06), normal=1.2, ao=0.5, wear=0.25)
     # Stone: wet granite masonry with mossy joints; corridor flags polished darker.
-    mat_pbr("Slate_Floor", "stone_masonry", 1.6, sat=0.7, val=0.55, jitter=(0.01, 0.1, 0.2), rough=(0.75, 0.0))
-    mat_pbr("Stone_Masonry", "stone_masonry", 2.2, sat=1.0, val=0.95, jitter=(0.015, 0.15, 0.3))
-    mat_pbr("Stone_Wet", "stone_masonry", 2.2, sat=1.15, val=0.62, jitter=(0.01, 0.1, 0.2), rough=(0.55, 0.0))
-    mat_pbr("Rock_Moss", "rock_moss", 3.0, val=0.85, jitter=(0.01, 0.1, 0.15), normal=1.3, up=((0.42, 0.72, 0.2), 0.55, 0.85))
+    # Stone: deeper normals, AO in the joints, moss creeping over block tops.
+    mat_pbr("Slate_Floor", "stone_masonry", 1.6, sat=0.7, val=0.5, jitter=(0.01, 0.1, 0.2), rough=(0.5, 0.0), normal=1.2, ao=0.4)
+    mat_pbr("Stone_Masonry", "stone_masonry", 2.2, sat=1.05, val=1.0, jitter=(0.015, 0.15, 0.32), normal=1.7, ao=0.55, up=((0.38, 0.62, 0.16), 0.62, 0.9))
+    mat_pbr("Stone_Wet", "stone_masonry", 2.2, sat=1.15, val=0.6, jitter=(0.01, 0.1, 0.2), rough=(0.45, 0.0), normal=1.5, ao=0.55, up=((0.35, 0.58, 0.15), 0.6, 0.9))
+    mat_pbr("Mortar_Moss", "rock_moss", 0.9, hue=0.02, sat=1.2, val=0.42, jitter=(0.01, 0.1, 0.1), normal=0.8, ao=0.6)
+    mat_pbr("Rock_Moss", "rock_moss", 3.0, val=0.85, jitter=(0.01, 0.1, 0.15), normal=1.4, ao=0.35, up_tex="meadow")
     # Metals: brass is fully metallic with the golden albedo as its F0.
-    mat_pbr("Brass", "brass", 0.8, val=1.0, jitter=(0.008, 0.08, 0.12), rough=(0.85, 0.0), metal=1.0, normal=0.5)
+    mat_brass("Brass")
     mat_metal("Iron", (0.20, 0.20, 0.21), 0.45)
     mat_simple("Red_Paint", (0.55, 0.05, 0.03), 0.35)
-    mat_pbr("Roof_Slate", "roof_slate", 2.4, sat=0.9, val=0.36, jitter=(0.03, 0.2, 0.25))
-    mat_pbr("Roof_Shingle", "roof_slate", 2.4, hue=0.03, sat=1.5, val=0.32, jitter=(0.03, 0.2, 0.2))
-    mat_simple("Window_Glow", (1.0, 0.62, 0.25), 0.3, emission=(1.0, 0.55, 0.18), strength=9.0)
-    mat_simple("Lantern_Glow", (1.0, 0.7, 0.3), 0.2, emission=(1.0, 0.52, 0.16), strength=9.0)
-    gold = mat_pbr("Goal_Gold", "brass", 0.6, val=1.08, jitter=(0.0, 0.0, 0.0), rough=(0.6, 0.0), metal=1.0, normal=0.4)
-    bsdf = gold.node_tree.nodes["Principled BSDF"]
-    _set(bsdf, "Emission Color", (1.0, 0.66, 0.2, 1.0))
-    _set(bsdf, "Emission Strength", 0.6)
+    mat_pbr("Roof_Slate", "roof_slate", 2.4, sat=0.95, val=0.4, jitter=(0.03, 0.2, 0.3), normal=1.4, ao=0.5, up=((0.45, 0.6, 0.25), 0.8, 0.98))
+    mat_pbr("Roof_Shingle", "roof_slate", 2.4, hue=0.03, sat=1.5, val=0.34, jitter=(0.03, 0.2, 0.2), normal=1.4, ao=0.5)
+    # Glows stay below clipping so lamps read as warm glass, not white boxes.
+    mat_glow("Window_Glow", (1.0, 0.4, 0.09), 2.2)
+    mat_glow("Lantern_Glow", (1.0, 0.36, 0.06), 2.6)
+    mat_brass("Goal_Gold", (1.0, 0.72, 0.3), glow=0.5)
     mat_simple("Plate_White", (0.85, 0.82, 0.78), 0.4)
     mat_simple("Banner_Red", (0.45, 0.03, 0.03), 0.7)
+    mat_simple("Petal_Red", (0.7, 0.03, 0.025), 0.55)
+    mat_simple("Petal_Pink", (0.85, 0.22, 0.3), 0.55)
+    mat_simple("Petal_White", (0.9, 0.88, 0.8), 0.55)
+    leaf = mat_simple("Leaf_Green", (0.035, 0.12, 0.02), 0.6)
+    _set(leaf.node_tree.nodes["Principled BSDF"], "Subsurface Weight", 0.15)
+    mat_spray("Chimney_Smoke", 0.3, mist=True)
     grass = mat_simple("Grass", (0.07, 0.17, 0.03), 0.85)
     _set(grass.node_tree.nodes["Principled BSDF"], "Subsurface Weight", 0.1)
     mat_pbr("Bark", "wood_beam", 0.7, sat=0.9, val=0.7)
-    mat_pbr("Fir_Needles", "fir_needles", 0.3, sat=1.15, val=1.1, jitter=(0.025, 0.15, 0.35))
-    mat_pbr("Fir_Needles_Far", "fir_needles", 0.5, hue=0.03, sat=0.8, val=1.15, jitter=(0.02, 0.1, 0.3))
+    mat_pbr("Fir_Needles", "fir_needles", 0.3, hue=-0.01, sat=1.25, val=1.7, jitter=(0.025, 0.15, 0.35))
+    mat_pbr("Fir_Needles_Far", "fir_needles", 0.5, hue=0.03, sat=0.9, val=1.6, jitter=(0.02, 0.1, 0.3))
     mat_water_surface("Water", "channel")
     mat_water_surface("Water_Still", "still")
     mat_waterfall("Waterfall_Body", "fall_body")
     mat_waterfall("Waterfall_Foam", "fall_foam")
-    mat_spray("Water_Spray", 0.9)
+    mat_spray("Water_Spray", 0.6)
     mat_spray("Water_FoamPatch", 0.8)
     mat_spray("Water_Mist", 0.45, mist=True)
     mat_mountain("Mountain_Snow")
-    mat_card("Cloud_Card", os.path.join(TEX_DIR, "parallax", "cloud_bank.png"), 2.0, haze=0.05)
+    mat_card("Cloud_Card", os.path.join(TEX_DIR, "parallax", "cloud_bank.png"), 2.6, haze=0.0)
     mat_card("Forest_Card", os.path.join(TEX_DIR, "parallax", "mid_forest_slopes.png"), 0.55, haze=0.4)
     mat_simple("Marble_Steel", (0.8, 0.82, 0.85), 0.08, metal=1.0)
 
@@ -573,6 +671,8 @@ class Builder:
 
     def box(self, center, size, mat, rot=(0.0, 0.0, 0.0), bevel=0.02, smooth=False):
         size = Vector(size)
+        if MOBILE and (mat in STONE_MATS or min(size) < 0.07):
+            bevel = 0.0
         matrix = Matrix.Translation(Vector(center)) @ _euler(rot) @ Matrix.Diagonal((*size, 1.0))
         result = bmesh.ops.create_cube(self.bm, size=1.0, matrix=matrix)
         verts = result["verts"]
@@ -985,6 +1085,7 @@ def build_bridge(name, x0, x1, y0, y1, z, along):
 
 def masonry_wall(b, p0, p1, z0, z1, thick, mat="Stone_Masonry", course=0.3, arches=(), backing=True):
     """Coursed stone wall from p0 to p1 (XY). `arches` = [(along, span, spring_z)]."""
+    WALLS.append([list(p0[:2]), list(p1[:2]), z0, z1, thick, [list(a) for a in arches]])
     p0, p1 = Vector((p0[0], p0[1], 0)), Vector((p1[0], p1[1], 0))
     d = p1 - p0
     length = d.length
@@ -1001,10 +1102,10 @@ def masonry_wall(b, p0, p1, z0, z1, thick, mat="Stone_Masonry", course=0.3, arch
         for a0, a1, top in cuts + [(length, length, z1)]:
             if a0 - cursor > 0.05:
                 core = p0 + d * ((cursor + max(a0, cursor)) / 2)
-                b.box((core.x, core.y, (z0 + z1) / 2), (a0 - cursor - 0.02, thick - 0.07, z1 - z0 - 0.02), "Stone_Wet", rot=(0, 0, yaw), bevel=0.0)
+                b.box((core.x, core.y, (z0 + z1) / 2), (a0 - cursor - 0.02, thick - 0.07, z1 - z0 - 0.02), "Mortar_Moss", rot=(0, 0, yaw), bevel=0.0)
             if a1 > a0 and z1 - top > 0.05:
                 core = p0 + d * ((a0 + a1) / 2)
-                b.box((core.x, core.y, (top + z1) / 2), (a1 - a0, thick - 0.07, z1 - top), "Stone_Wet", rot=(0, 0, yaw), bevel=0.0)
+                b.box((core.x, core.y, (top + z1) / 2), (a1 - a0, thick - 0.07, z1 - top), "Mortar_Moss", rot=(0, 0, yaw), bevel=0.0)
             cursor = max(cursor, a1)
     rows = max(1, round((z1 - z0) / course))
     h = (z1 - z0) / rows
@@ -1057,12 +1158,14 @@ def _arch_ring(b, center, d, yaw, span, spring, thick, mat):
 
 
 def _box_matrix(b, matrix, size, mat, bevel=0.03):
+    if MOBILE and (mat in STONE_MATS or min(size) < 0.07):
+        bevel = 0.0
     m = matrix @ Matrix.Diagonal((*size, 1.0))
     result = bmesh.ops.create_cube(b.bm, size=1.0, matrix=m)
     verts = result["verts"]
     faces = list({f for v in verts for f in v.link_faces})
     edges = list({e for f in faces for e in f.edges})
-    bev = bmesh.ops.bevel(b.bm, geom=edges + verts, offset=min(bevel, min(size) * 0.45), segments=1, profile=0.5, affect="EDGES", clamp_overlap=True)
+    bev = bmesh.ops.bevel(b.bm, geom=edges + verts, offset=min(bevel, min(size) * 0.45), segments=1, profile=0.5, affect="EDGES", clamp_overlap=True) if bevel > 0.0 else {"verts": verts, "faces": []}
     faces = [f for f in {f for v in bev["verts"] for f in v.link_faces} | set(bev["faces"]) | set(f for f in faces if f.is_valid) if f.is_valid]
     b._finish_faces(faces, mat, False)
     b.box_uv(faces, matrix.to_3x3().normalized(), matrix.to_translation(), Vector(size), mat)
@@ -1159,6 +1262,12 @@ def _inset(p, q, amount):
 # ----------------------------------------------------------------------------
 
 FOOTPRINT = (-0.8, 12.8, -0.8, 12.8)
+# No trees in these XY boxes: the wheel and lift close-up sightlines.
+NO_TREES = ((12.6, 18.5, -4.5, 4.8), (3.5, 9.8, -8.0, -0.6))
+
+
+def _tree_blocked(x, y):
+    return any(a <= x <= b and c <= y <= d for a, b, c, d in NO_TREES)
 
 
 def ground_height(x, y):
@@ -1176,7 +1285,7 @@ def ground_height(x, y):
 
 def build_ground():
     col = collection("L05/Terrain")
-    size, res = 80.0, 150
+    size, res = 80.0, (80 if MOBILE else 150)
     bm = bmesh.new()
     verts = []
     for j in range(res + 1):
@@ -1302,6 +1411,7 @@ def flume(b, x0, x1, y0, y1, z_bed, depth=0.28, mat="Wood_Plank", posts_to=None,
     spill gaps (along the long axis) in the low-side wall, cut down to
     `spill_depth` above the bed; `caps` closes the "start"/"end" of the run."""
     along_x = (x1 - x0) >= (y1 - y0)
+    FLUMES.append([x0, x1, y0, y1, z_bed, depth, [list(n) for n in notches], spill_depth, list(caps)])
     b.box(((x0 + x1) / 2, (y0 + y1) / 2, z_bed - 0.04), (x1 - x0, y1 - y0, 0.08), mat, bevel=0.01)
     if along_x:
         for y in (y0 + 0.04, y1 - 0.04):
@@ -1401,6 +1511,25 @@ def waterfall(name, a0, a1, edge, z_top, z_bottom, outward, axis="X", thickness=
     w = (a1 - a0) + 0.5
     quad = [(-w / 2, 0.0), (w / 2, 0.0), (w / 2, h), (-w / 2, h)]
     verts = [((mid + u, edge + land, z_bottom + v) if axis == "X" else (edge + land, mid + u, z_bottom + v)) for u, v in quad]
+    b.raw(verts, [(0, 1, 2, 3)], "Water_Mist", uvs=[(0, 0), (1, 0), (1, 1), (0, 1)])
+    # v4: extra churn and a crossed spray card make the landings read as power.
+    extra = random.Random(hash(name) & 0xFFFF)
+    for k in range(int((a1 - a0) * 10) + 5):
+        a = extra.uniform(a0 - 0.05, a1 + 0.05)
+        r = extra.uniform(0.05, 0.13) * (1.0 + scale * 0.6)
+        out = outward * (0.67 + extra.uniform(-0.12, 0.12)) * scale
+        c = (a, edge + out, z_bottom + r * 0.6) if axis == "X" else (edge + out, a, z_bottom + r * 0.6)
+        tmp = bmesh.new()
+        bmesh.ops.create_icosphere(tmp, subdivisions=2, radius=r)
+        mapping = {v: b.bm.verts.new(v.co + Vector(c)) for v in tmp.verts}
+        index = b._mi("Water_Spray")
+        for f in tmp.faces:
+            nf = b.bm.faces.new([mapping[v] for v in f.verts])
+            nf.material_index = index
+            nf.smooth = True
+        tmp.free()
+    quad = [(0.0, -w / 2), (0.0, w / 2), (h, w / 2), (h, -w / 2)]
+    verts = [((mid, edge + land + o, z_bottom + v) if axis == "X" else (edge + land + o, mid, z_bottom + v)) for v, o in quad]
     b.raw(verts, [(0, 1, 2, 3)], "Water_Mist", uvs=[(0, 0), (1, 0), (1, 1), (0, 1)])
     obj = b.finish()
     _wave(obj, 0.012, 0.25)
@@ -1751,8 +1880,8 @@ def build_corridor_dressing():
         b.box((x, y, 0.72), (0.14, 0.14, 0.2), "Lantern_Glow", bevel=0.01)
         b.box((x, y, 0.84), (0.18, 0.18, 0.04), "Brass", bevel=0.008)
         light = bpy.data.lights.new("Corridor_Lantern", "POINT")
-        light.energy = 45
-        light.color = (1.0, 0.6, 0.28)
+        light.energy = 70
+        light.color = (1.0, 0.58, 0.25)
         light.shadow_soft_size = 0.08
         lo = bpy.data.objects.new("Corridor_Lantern", light)
         lo.location = (x, y, 0.72)
@@ -1964,6 +2093,7 @@ def build_lift():
 # Summit millhouse: timber frame, plank walls, door, glowing windows, tile roof
 # ----------------------------------------------------------------------------
 
+GEAR_KEEP_OUT = ((3.72, 6.95, Z1 + 0.95, 0.5), (3.72 + 0.648, 6.95, Z1 + 0.95, 0.21))
 LANTERN_DECKS = ("L_Start", "L_Front", "L_FrontEast", "M_Workshop", "M_GearTerrace", "U_PoolDeck", "U_ValveDeck", "U_GoalDeck")
 
 
@@ -1989,6 +2119,10 @@ def build_lanterns():
             px = cx + (0.085 if cx == x0 else -0.085)
             py = cy + (0.08 if cy == y0 else -0.08)
             zt = z + RAIL_H + 0.125
+            # Keep clear of rotating gears (v4 dressing audit: the gear-terrace
+            # corner lamp sat inside Gear_PillarCrown's 0.5 m sweep).
+            if any(math.hypot(px - gx, py - gy) < gr + 0.25 and abs(zt + 0.13 - gz) < gr + 0.2 for gx, gy, gz, gr in GEAR_KEEP_OUT):
+                continue
             b.box((px, py, zt + 0.015), (0.13, 0.13, 0.03), "Iron", bevel=0.005)
             b.box((px, py, zt + 0.11), (0.1, 0.1, 0.16), "Lantern_Glow", bevel=0.008)
             for dx in (-0.055, 0.055):
@@ -2006,6 +2140,102 @@ def build_lanterns():
             count += 1
     b.finish()
     return count
+
+
+def _blob(b, center, radius, mat, subdiv=1, squash=1.0):
+    tmp = bmesh.new()
+    bmesh.ops.create_icosphere(tmp, subdivisions=max(0, subdiv - 1) if MOBILE else subdiv, radius=radius)
+    mapping = {v: b.bm.verts.new(Vector((v.co.x, v.co.y, v.co.z * squash)) + Vector(center)) for v in tmp.verts}
+    index = b._mi(mat)
+    for f in tmp.faces:
+        nf = b.bm.faces.new([mapping[v] for v in f.verts])
+        nf.material_index = index
+        nf.smooth = True
+    tmp.free()
+
+
+def _lantern(b, at, hang=False, light_w=14.0):
+    """Brass-framed glass lantern; `hang` adds an iron bracket arm above it."""
+    x, y, z = at
+    b.box((x, y, z + 0.015), (0.13, 0.13, 0.03), "Iron", bevel=0.005)
+    b.box((x, y, z + 0.11), (0.1, 0.1, 0.16), "Lantern_Glow", bevel=0.008)
+    for dx in (-0.055, 0.055):
+        for dy in (-0.055, 0.055):
+            b.box((x + dx, y + dy, z + 0.11), (0.018, 0.018, 0.17), "Brass", bevel=0.003)
+    b.box((x, y, z + 0.21), (0.16, 0.16, 0.04), "Brass", bevel=0.01)
+    b.box((x, y, z + 0.25), (0.05, 0.05, 0.05), "Brass", bevel=0.01)
+    if hang:
+        b.box((x, y, z + 0.34), (0.02, 0.02, 0.14), "Iron", bevel=0.0)
+    light = bpy.data.lights.new("Dressing_Lantern", "POINT")
+    light.energy = light_w
+    light.color = (1.0, 0.6, 0.28)
+    light.shadow_soft_size = 0.05
+    lo = bpy.data.objects.new("Dressing_Lantern", light)
+    lo.location = (x, y, z + 0.11)
+    collection("L05/Lights_Cameras").objects.link(lo)
+
+
+def build_dressing():
+    """v4 hero dressing (reference: geraniums, lamps, firewood, smoke). Every
+    piece sits on walls, post caps or the millhouse plinth, outside all lanes;
+    `audit_level05.py --with-dressing` proves it by treating it as solid."""
+    rng = random.Random(4404)
+    col = collection("L05/Dressing/Millhouse")
+    fl = Builder("Dressing_Flowers", col)
+    for top, d, width in FLOWER_BOXES:
+        n = int(width / 0.09)
+        for k in range(n):
+            p = top + d * (-width / 2 + 0.06 + k * (width - 0.12) / max(1, n - 1))
+            p = p + Vector((rng.uniform(-0.02, 0.02), rng.uniform(-0.02, 0.02), 0.0))
+            _blob(fl, p + Vector((0, 0, 0.04)), rng.uniform(0.05, 0.07), "Leaf_Green", 1, 0.8)
+            petal = rng.choice(("Petal_Red", "Petal_Red", "Petal_Red", "Petal_Pink", "Petal_White"))
+            for j in range(3):
+                q = p + Vector((rng.uniform(-0.04, 0.04), rng.uniform(-0.04, 0.04), 0.09 + rng.uniform(0, 0.04)))
+                _blob(fl, q, rng.uniform(0.022, 0.032), petal, 1)
+    # Potted geraniums, a barrel and a firewood stack on the plinth margins
+    # (x 6.3-6.55 west of the house, 9.1-9.35 east of it: no lane up there).
+    zp = Z2 + 0.32
+    for px, py in ((6.43, 10.0), (9.22, 10.0), (9.22, 11.95)):
+        fl.cylinder((px, py, zp + 0.09), 0.1, 0.18, "Roof_Shingle", radius2=0.075, segments=12)
+        _blob(fl, (px, py, zp + 0.24), 0.11, "Leaf_Green", 1, 0.8)
+        for j in range(5):
+            _blob(fl, (px + rng.uniform(-0.07, 0.07), py + rng.uniform(-0.07, 0.07), zp + 0.31 + rng.uniform(0, 0.05)), 0.035, "Petal_Red", 1)
+    fl.cylinder((9.22, 11.2, zp + 0.22), 0.11, 0.44, "Wood_Dark", radius2=0.1, segments=14)
+    for z in (0.08, 0.36):
+        fl.torus((9.22, 11.2, zp + z), 0.115, 0.008, "Iron", axis="Z", seg_major=16, seg_minor=4)
+    for row in range(4):
+        for k in range(9 - row):
+            y = 10.35 + (k + 0.5 * row) * 0.15
+            fl.cylinder((6.43, y, zp + 0.06 + row * 0.11), 0.055, 0.22, "Bark", axis="X", segments=8)
+    fl.finish()
+    # Lanterns: lift tower (outer east posts) and bridge corner caps.
+    lamps = Builder("Dressing_Lanterns", collection("L05/Dressing/Lanterns"))
+    x1, y0, y1 = LIFT["x1"], LIFT["y0"], LIFT["y1"]
+    for z in (Z1 + 0.62, Z2 + 0.62):
+        for y in (y0 - 0.1, y1 + 0.1):
+            lamps.box((x1 + 0.3, y, z + 0.4), (0.3, 0.04, 0.04), "Iron", bevel=0.0)
+            _lantern(lamps, (x1 + 0.42, y, z), hang=True, light_w=18.0)
+    for name, bx0, bx1, by0, by1, z, along in BRIDGES:
+        if along == "Y":
+            caps = [(bx0 + 0.06, by0 + 0.08), (bx1 - 0.06, by1 - 0.08)]
+        else:
+            caps = [(bx0 + 0.08, by0 + 0.06), (bx1 - 0.08, by1 - 0.06)]
+        for cx, cy in caps:
+            _lantern(lamps, (cx, cy, z + RAIL_H + 0.12), light_w=12.0)
+    lamps.finish()
+    # Chimney smoke: soft drifting cards above the stack.
+    smoke = Builder("Dressing_ChimneySmoke", col)
+    sx, sy, sz = 9.1 - 0.55, 11.85 - 0.5, Z2 + 0.32 + 2.0 + 2.2
+    for k in range(4):
+        h = 0.9 + k * 0.35
+        w = 0.5 + k * 0.25
+        cx, cy, cz = sx - k * 0.25, sy + k * 0.15, sz + k * 0.55
+        yaw = k * 0.8
+        dx, dy = math.cos(yaw) * w / 2, math.sin(yaw) * w / 2
+        verts = [(cx - dx, cy - dy, cz), (cx + dx, cy + dy, cz), (cx + dx, cy + dy, cz + h), (cx - dx, cy - dy, cz + h)]
+        smoke.raw(verts, [(0, 1, 2, 3)], "Chimney_Smoke", uvs=[(0, 0), (1, 0), (1, 1), (0, 1)])
+    so = smoke.finish()
+    so.visible_shadow = False
 
 
 def build_millhouse():
@@ -2096,6 +2326,9 @@ def _wall_spans(a, openings, wall_h):
     return [s for s in spans if s[1] - s[0] > 0.02]
 
 
+FLOWER_BOXES = []    # (top centre, along-wall direction, width) for the dressing pass
+
+
 def _openings_detail(b, p0, p1, openings, zf, facing):
     p0, p1 = Vector((*p0, 0)), Vector((*p1, 0))
     d = (p1 - p0).normalized()
@@ -2126,6 +2359,7 @@ def _openings_detail(b, p0, p1, openings, zf, facing):
             # Flower box under the window.
             fb = c + out * 0.15
             b.box((fb.x, fb.y, zf + z0 - 0.16), (width, 0.16, 0.14), "Wood_Plank", rot=(0, 0, yaw), bevel=0.01)
+            FLOWER_BOXES.append((Vector((fb.x, fb.y, zf + z0 - 0.09)), d.copy(), width))
             for k in range(5):
                 fl = fb + d * (-width / 2 + 0.1 + k * (width - 0.2) / 4)
                 b.box((fl.x, fl.y, zf + z0 - 0.05), (0.09, 0.09, 0.09), "Grass" if k % 2 else "Red_Paint", bevel=0.03)
@@ -2180,12 +2414,12 @@ def fir_mesh(name, height, seed, far=False):
     rng = random.Random(seed)
     b = Builder(name, collection("L05/Vegetation/_Fir_Variants"))
     b.cylinder((0, 0, height * 0.2), height * 0.035, height * 0.4, "Bark", segments=7)
-    tiers = 8 if not far else 5
+    tiers = (8 if not far else 5) if not MOBILE else (4 if not far else 3)
     for t in range(tiers):
         f = t / tiers
         z = height * (0.18 + 0.78 * f)
         radius = height * 0.36 * (1.0 - f) ** 0.95 + height * 0.04
-        branches = 9 if not far else 6
+        branches = (9 if not far else 6) if not MOBILE else 5
         droop = radius * 0.55
         index = b._mi("Fir_Needles_Far" if far else "Fir_Needles")
         offset = rng.random() * math.tau
@@ -2204,7 +2438,7 @@ def fir_mesh(name, height, seed, far=False):
                 nf.material_index = index
                 nf.smooth = True
         # Dense inner cone so tiers never look hollow.
-        b.cylinder((0, 0, z - droop * 0.45), radius * 0.55, droop * 1.2, "Fir_Needles_Far" if far else "Fir_Needles", radius2=radius * 0.12, segments=8)
+        b.cylinder((0, 0, z - droop * 0.45), radius * 0.55, droop * 1.2, "Fir_Needles_Far" if far else "Fir_Needles", radius2=radius * 0.12, segments=5 if MOBILE else 8, caps=not MOBILE)
     b.cylinder((0, 0, height * 1.0), height * 0.05, height * 0.12, "Fir_Needles", radius2=0.0, segments=6)
     obj = b.finish()
     obj.hide_render = True
@@ -2222,6 +2456,8 @@ def scatter_firs():
 
     def place(x, y, h, pool):
         src = rng.choice(pool)
+        if _tree_blocked(x, y):
+            return
         obj = bpy.data.objects.new(src.name.replace("_Variant", ""), src.data)
         z = ground_height(x, y) - 0.1
         obj.location = (x, y, z)
@@ -2244,6 +2480,8 @@ def scatter_firs():
             x, y = rng.uniform(-4, 14), rng.uniform(-6, -1.6)
         if fx0 - 0.4 < x < fx1 + 0.4 and fy0 - 0.4 < y < fy1 + 0.4:
             continue
+        if _tree_blocked(x, y):
+            continue
         dist = max(0.0, max(fx0 - x, x - fx1, fy0 - y, y - fy1))
         h = rng.uniform(1.6, 3.6) * (1.0 + dist * 0.04)
         if y < 0 and x < 8:
@@ -2260,6 +2498,50 @@ def scatter_firs():
         a = rng.uniform(-0.3, 1.9)
         r = rng.uniform(24, 40)
         place(6 + math.cos(a) * r, 6 + math.sin(a) * r, rng.uniform(3.0, 6.0), far)
+    return placed
+
+
+def scatter_near_forest():
+    """v4: denser, taller conifers and shrubs hugging the summit flanks
+    (reference: firs left and right of the mill). Kept out of the camera's
+    south-west sightlines so no lane is hidden."""
+    variants = [bpy.data.objects["Fir_Variant_%d" % i].data for i in range(5)]
+    col = collection("L05/Vegetation/Firs_Near")
+    rng = random.Random(8484)
+    fx0, fx1, fy0, fy1 = FOOTPRINT
+    placed = 0
+    for k in range(260):
+        band = rng.random()
+        if band < 0.38:
+            x, y = rng.uniform(-6.0, -1.3), rng.uniform(5.5, 17.0)
+        elif band < 0.75:
+            x, y = rng.uniform(13.3, 19.0), rng.uniform(-3.0, 14.0)
+        else:
+            x, y = rng.uniform(-2.0, 15.0), rng.uniform(13.4, 19.0)
+        if fx0 - 0.5 < x < fx1 + 0.5 and fy0 - 0.5 < y < fy1 + 0.5 or _tree_blocked(x, y):
+            continue
+        dist = max(0.0, max(fx0 - x, x - fx1, fy0 - y, y - fy1))
+        h = rng.uniform(2.4, 4.8) * (1.0 + dist * 0.05)
+        obj = bpy.data.objects.new("Fir_Near", rng.choice(variants))
+        obj.location = (x, y, ground_height(x, y) - 0.1)
+        obj.rotation_euler = (rng.uniform(-0.05, 0.05), rng.uniform(-0.05, 0.05), rng.random() * math.tau)
+        obj.scale = (h * rng.uniform(0.8, 1.1), h * rng.uniform(0.8, 1.1), h)
+        col.objects.link(obj)
+        placed += 1
+    shrubs = Builder("Shrubs_Flowers", collection("L05/Vegetation"))
+    for k in range(420):
+        x, y = rng.uniform(fx0 - 7, fx1 + 7), rng.uniform(fy0 - 7, fy1 + 7)
+        if fx0 + 0.2 < x < fx1 - 0.2 and fy0 + 0.2 < y < fy1 - 0.2:
+            continue
+        z = ground_height(x, y)
+        r = rng.uniform(0.12, 0.32)
+        for j in range(3):
+            _blob(shrubs, (x + rng.uniform(-r, r), y + rng.uniform(-r, r), z + r * 0.5), r * rng.uniform(0.6, 1.0), "Fir_Needles" if rng.random() < 0.5 else "Leaf_Green", 1, 0.75)
+        if rng.random() < 0.45:
+            petal = rng.choice(("Petal_White", "Petal_Pink", "Petal_White"))
+            for j in range(6):
+                _blob(shrubs, (x + rng.uniform(-0.35, 0.35), y + rng.uniform(-0.35, 0.35), z + 0.05), 0.025, petal, 1)
+    shrubs.finish()
     return placed
 
 
@@ -2296,11 +2578,13 @@ def build_mountains():
     specs = [
         # centre (x, y), radius, height, seed
         ((150, 120), 55, 70, 1), ((210, 40), 60, 78, 2), ((60, 200), 55, 58, 3), ((230, -40), 55, 66, 4), ((180, 190), 50, 62, 5), ((-60, 210), 60, 48, 6), ((260, 120), 60, 74, 7),
+        # v4: a ring all round, so the Godot panorama has Alps in every direction (CHASE).
+        ((-170, -40), 60, 66, 8), ((-80, -190), 60, 72, 9), ((90, -200), 55, 60, 10), ((-200, 90), 55, 58, 11),
     ]
     peaks = []
     for k, (c, radius, height, seed) in enumerate(specs):
         bm = bmesh.new()
-        res = 70
+        res = 110
         grid = []
         for j in range(res + 1):
             row = []
@@ -2315,7 +2599,8 @@ def build_mountains():
                     ridge += (1.0 - abs(noise.noise(Vector((u * freq + seed * 1.7, v * freq, seed))))) ** 2 * amp
                     amp *= 0.5
                     freq *= 2.1
-                h = max(0.0, 1.0 - r) ** 1.15 * height * (0.45 + ridge * 0.45)
+                # v4: sharper Alpine horns - steeper flanks, stronger aretes, taller.
+                h = max(0.0, 1.0 - r) ** 1.55 * height * 1.12 * (0.3 + ridge * 0.7)
                 row.append(bm.verts.new((x, y, h - 95)))
             grid.append(row)
         for j in range(res):
@@ -2343,7 +2628,7 @@ def _mountain_forests(peaks):
     count = 0
     for peak in peaks:
         for v in peak.data.vertices:
-            if not (-93.0 < v.co.z < -64.0) or v.normal.z < 0.6 or rng.random() > 0.11:
+            if not (-93.0 < v.co.z < -62.0) or v.normal.z < 0.55 or rng.random() > 0.06:
                 continue
             obj = bpy.data.objects.new("Fir_Mountain", rng.choice(far))
             h = rng.uniform(7.0, 12.0) * (1.0 - (v.co.z + 93.0) / 60.0)
@@ -2410,7 +2695,7 @@ def build_world_and_lights():
                 setattr(sky, attr, value)
             except Exception:
                 pass
-    bg.inputs["Strength"].default_value = 0.3
+    bg.inputs["Strength"].default_value = 0.34
     links.new(sky.outputs["Color"], bg.inputs["Color"])
     # Camera rays see the painted Luma sky (wrapped twice around the horizon,
     # golden glow at the horizon); lighting still comes from the physical sky.
@@ -2441,8 +2726,15 @@ def build_world_and_lights():
     painted.image = _image(os.path.join(TEX_DIR, "parallax", "sky_clouds.jpg"))
     links.new(uvw.outputs["Vector"], painted.inputs["Vector"])
     bg_cam = nodes.new("ShaderNodeBackground")
-    bg_cam.inputs["Strength"].default_value = 0.85
-    links.new(painted.outputs["Color"], bg_cam.inputs["Color"])
+    bg_cam.inputs["Strength"].default_value = 1.15
+    # The painted strip covers about -27..+30 deg; above it fade to a deep
+    # zenith blue, below the horizon to valley haze (full 360x180 for the
+    # Godot panorama, no smeared rows).
+    zenith = _map_range(world, sep.outputs["Z"], 0.36, 0.5)
+    sky_col = _mix(world, zenith, painted.outputs["Color"], (0.13, 0.3, 0.62))
+    nadir = _map_range(world, sep.outputs["Z"], -0.2, -0.45)
+    sky_col = _mix(world, nadir, sky_col, (0.5, 0.6, 0.74))
+    links.new(sky_col, bg_cam.inputs["Color"])
     path = nodes.new("ShaderNodeLightPath")
     mix = nodes.new("ShaderNodeMixShader")
     links.new(path.outputs["Is Camera Ray"], mix.inputs["Fac"])
@@ -2452,11 +2744,12 @@ def build_world_and_lights():
 
     # Low golden sun (warm key) ...
     sun = bpy.data.lights.new("Alpine_Sun", "SUN")
-    sun.energy = 4.2
-    sun.color = (1.0, 0.84, 0.62)
+    sun.energy = 5.6
+    sun.color = (1.0, 0.8, 0.55)
     sun.angle = math.radians(1.5)
     so = bpy.data.objects.new("Alpine_Sun", sun)
-    so.rotation_euler = (math.radians(58), 0, math.radians(-145))
+    # v4: lower, more side-on golden sun from the right of the hero view.
+    so.rotation_euler = (math.radians(60), 0, math.radians(-118))
     collection("L05/Lights_Cameras").objects.link(so)
     # ... cold bounce from the snowfields behind the summit ...
     cold = bpy.data.lights.new("Mountain_Cold_Fill", "AREA")
@@ -2501,13 +2794,25 @@ def add_camera(name, location, target, lens=40.0, ortho=None):
 
 
 def build_cameras():
+    hero = add_camera("Cam_00_Hero", (-14.2, -14.8, 12.2), (6.4, 6.3, 2.4), 32)
+    # Lens shift lifts the frame so the peaks and sky sit above the mill
+    # (reference hero board) without changing the viewing angle much.
+    hero.data.shift_y = 0.05
     return {
+        "00_hero": hero,
         "01_isometric_overview": add_camera("Cam_01_Isometric", (-11.0, -11.6, 13.0), (6.4, 6.2, 0.6), 36),
         "02_top_lanes": add_camera("Cam_02_Top", (6.0, 6.0, 40.0), (6.0, 6.0001, 0.0), ortho=25.5),
         "03_side_wheels_lift": add_camera("Cam_03_Side", (19.5, -5.5, 4.5), (10.2, 3.2, 1.3), 34),
         "04_mill_aqueducts_falls": add_camera("Cam_04_Mill", (3.2, 3.6, 6.4), (7.6, 9.6, 3.4), 30),
         "05_hidden_corridor": add_camera("Cam_05_Corridor", (4.9, 4.05, 0.42), (9.6, 3.95, 0.3), 22),
+        # v4 hero close-ups (reference panels "water wheel" and "lift").
+        "06_water_wheel_mechanics": add_camera("Cam_06_Wheel", (15.2, -2.4, 3.3), (12.0, 2.6, 1.5), 32),
+        "07_lift": add_camera("Cam_07_Lift", (5.6, -4.9, 2.4), (9.8, 1.0, 2.6), 28),
     }
+
+
+# Per-shot exposure: interiors are graded up instead of over-lighting them.
+CAMERA_EXPOSURE = {"05_hidden_corridor": 0.9, "06_water_wheel_mechanics": 0.15, "07_lift": 0.2}
 
 
 def build_markers():
@@ -2565,7 +2870,32 @@ def configure_render(samples):
         scene.view_settings.look = "AgX - Punchy"
     except TypeError:
         pass
-    scene.view_settings.exposure = -0.85
+    scene.view_settings.exposure = BASE_EXPOSURE
+    _bloom(scene)
+
+
+BASE_EXPOSURE = -0.7
+
+
+def _bloom(scene):
+    """Soft bloom so lanterns, windows and wet highlights glow (compositor)."""
+    try:
+        tree = bpy.data.node_groups.new("L05_Compositor", "CompositorNodeTree")
+        tree.interface.new_socket("Image", in_out="OUTPUT", socket_type="NodeSocketColor")
+        rl = tree.nodes.new("CompositorNodeRLayers")
+        glare = tree.nodes.new("CompositorNodeGlare")
+        for name, value in (("Type", "Bloom"), ("Quality", "High"), ("Threshold", 1.2), ("Strength", 0.35), ("Size", 0.6)):
+            if name in glare.inputs:
+                try:
+                    glare.inputs[name].default_value = value
+                except Exception as error:
+                    print("glare", name, error)
+        out = tree.nodes.new("NodeGroupOutput")
+        tree.links.new(rl.outputs["Image"], glare.inputs["Image"])
+        tree.links.new(glare.outputs[0], out.inputs[0])
+        scene.compositing_node_group = tree
+    except Exception as error:
+        print("L05 bloom unavailable:", error)
 
 
 def render_all(cameras, only=None, out_dir=RENDER_DIR):
@@ -2575,6 +2905,7 @@ def render_all(cameras, only=None, out_dir=RENDER_DIR):
         if only and key not in only:
             continue
         scene.camera = cam
+        scene.view_settings.exposure = BASE_EXPOSURE + CAMERA_EXPOSURE.get(key, 0.0)
         scene.render.filepath = os.path.join(out_dir, "L05_%s.png" % key)
         bpy.ops.render.render(write_still=True)
         print("L05 rendered", scene.render.filepath)
@@ -2673,16 +3004,28 @@ def main():
     build_lift()
     build_millhouse()
     build_lanterns()
+    build_dressing()
     build_ground()
     build_cliffs()
     scatter_firs()
+    scatter_near_forest()
     scatter_grass()
-    build_mountains()
+    if not MOBILE:
+        build_mountains()
     build_world_and_lights()
     build_markers()
     cameras = build_cameras()
     validate_layout()
     configure_render(samples)
+    if MOBILE:
+        scene = bpy.context.scene
+        scene["l05_walls"] = json.dumps(WALLS)
+        scene["l05_flumes"] = json.dumps(FLUMES)
+        bpy.ops.wm.save_as_mainfile(filepath=MOBILE_BLEND_PATH, compress=True)
+        bpy.ops.file.make_paths_relative()
+        bpy.ops.wm.save_mainfile(compress=True)
+        print("L05 mobile saved", MOBILE_BLEND_PATH)
+        argv = [a for a in argv if a not in ("--save", "--render")]
     if "--save" in argv:
         os.makedirs(os.path.dirname(BLEND_PATH), exist_ok=True)
         bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH, compress=True)

@@ -48,7 +48,9 @@ void fragment() {
 	u = u > 1.0 ? 2.0 - u : u;
 	vec4 color;
 	if (use_texture) {
-		color = texture(layer_texture, vec2(u, UV.y));
+		// V is clamped: the sampler repeats, and a wrapped top row would draw a
+		// hairline of the layer's opaque bottom across the sky.
+		color = texture(layer_texture, vec2(u, clamp(UV.y, 0.004, 0.996)));
 		if (UV.y > solid_below) {
 			float blend = smoothstep(solid_below, solid_below + 0.06, UV.y);
 			color = vec4(mix(color.rgb * color.a + ground_color.rgb * (1.0 - color.a), ground_color.rgb, blend), 1.0);

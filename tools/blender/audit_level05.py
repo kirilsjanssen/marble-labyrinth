@@ -56,7 +56,7 @@ def r3(v):
 meshes = [o for o in bpy.data.objects if o.type == "MESH" and not o.hide_render]
 groups = defaultdict(list)
 for o in meshes:
-    for root in ("Platforms", "Static_Architecture", "Mechanisms", "Water", "Terrain", "Vegetation", "Background", "Game_Markers"):
+    for root in ("Platforms", "Static_Architecture", "Mechanisms", "Water", "Terrain", "Vegetation", "Background", "Game_Markers", "Dressing"):
         if in_tree(o, root):
             groups[root].append(o)
             break
@@ -104,6 +104,10 @@ report["floors"] = floors
 
 # ------------------------------------------------------- solid BVH (lanes) ----
 SOLID_ROOTS = ("Platforms", "Static_Architecture", "Mechanisms", "Terrain")
+# --with-dressing: also treat decorative props (lanterns, flowers, deco gears)
+# as solid, to prove none of them reaches into a lane or a mechanism.
+if "--with-dressing" in sys.argv:
+    SOLID_ROOTS += ("Dressing",)
 # Crates are RigidBodies the marble pushes; lift gates open at every stop.
 DYNAMIC_PREFIXES = ("Crate_", "Lift_Gate_")
 solid_objs = [o for root in SOLID_ROOTS for o in groups[root] if not o.name.startswith("Lift_Chain")]

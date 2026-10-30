@@ -1,9 +1,9 @@
 {
   "note": "Blender 5 v3 water look for Godot 4 (StandardMaterial3D / ShaderMaterial). UV units are metres; scroll = speed / tile texture units per second along +U (surfaces) or +V offset (falls, V = -metres fallen).",
   "colour_linear": [
-    0.02,
-    0.36,
-    0.4
+    0.015,
+    0.46,
+    0.52
   ],
   "ior": 1.333,
   "layers": {

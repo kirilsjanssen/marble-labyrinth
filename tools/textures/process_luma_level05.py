@@ -147,6 +147,15 @@ def rough_needles(a, h):
     return 0.72 + 0.12 * np.clip(-h, 0, 3) / 3
 
 
+def rough_peak(a, h):
+    snow = smoothstep(0.6, 0.8, luminance(a))
+    return np.clip(0.86 - 0.36 * snow + 0.06 * np.clip(-h, 0, 3) / 3, 0.4, 0.95)
+
+
+def rough_meadow(a, h):
+    return 0.82 + 0.1 * np.clip(-h, 0, 3) / 3
+
+
 MATERIALS = [
     # key, raw name, de-light strength, normal strength, roughness fn, albedo target mean (linear-ish sRGB) or None
     ("wood_beam", "beams_dark_oak", 0.6, 3.5, rough_wood_beam, None),
@@ -156,6 +165,9 @@ MATERIALS = [
     ("brass", "brass_bronze", 1.0, 1.2, rough_brass, (0.95, 0.80, 0.46)),   # sRGB mean ~ gold-brass F0
     ("rock_moss", "alpine_rock_moss", 0.5, 5.0, rough_rock, None),
     ("fir_needles", "fir_needles", 0.5, 3.0, rough_needles, None),
+    # v4: snowy granite for the peaks, meadow for the summit's flat tops.
+    ("peak_rock", "peak_rock_snow", 0.5, 4.5, rough_peak, None),
+    ("meadow", "alpine_meadow", 0.5, 2.5, rough_meadow, None),
 ]
 
 PLANK_GAPS = None   # detected from the image

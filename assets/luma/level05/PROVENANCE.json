@@ -3,7 +3,7 @@
   "model": "uni-1",
   "generated": "2026-10-30",
   "credits_each": 30,
-  "credits_total": 360,
+  "credits_total": 420,
   "generations": {
     "roof_tiles_graphite": {
       "id": "f1bb33df-4812-47fc-980a-5853097e84a6",
@@ -76,6 +76,18 @@
       "model": "uni-1",
       "aspect_ratio": "3:1",
       "prompt": "Wide horizontal strip of mid-distance alpine hills, grey rocky slopes and cliffs covered with dense dark green fir and spruce forest, light atmospheric haze, isolated on a pure solid white background with no sky, painterly stylized game parallax layer, no text"
+    },
+    "peak_rock_snow": {
+      "id": "c8febf5f-3df4-4908-913b-403440933672",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "prompt": "Seamless tileable texture of a high alpine mountain face seen from the front: dark blue-grey fractured granite cliffs with crisp white snow lying in ledges and gullies, strong contrast, even diffuse light, no sky, no shadows from perspective, orthographic, no text, game PBR albedo"
+    },
+    "alpine_meadow": {
+      "id": "d87d53f0-e9b1-4e10-9e56-55a3337590ee",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "prompt": "Seamless tileable texture of a lush alpine meadow seen from above: short vivid green grass, cushions of moss, tiny white and yellow wildflowers, a few small grey pebbles, even diffuse lighting, no shadows, orthographic, no text, game PBR albedo"
     }
   },
   "reused_from_level04": {
@@ -143,6 +155,26 @@
       ],
       "delight": 0.5,
       "normal_strength": 3.0
+    },
+    "peak_rock": {
+      "source": "peak_rock_snow",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 0.5,
+      "normal_strength": 4.5
+    },
+    "meadow": {
+      "source": "alpine_meadow",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 0.5,
+      "normal_strength": 2.5
     },
     "wood_board": {
       "source": "deck_planks",
