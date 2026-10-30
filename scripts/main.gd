@@ -720,7 +720,7 @@ func _build_hud() -> void:
 	mode_button = _hud_button("BOARD: DRAG", Vector2(155.0, 44.0))
 	mode_button.pressed.connect(_cycle_control_mode)
 	button_row.add_child(mode_button)
-	calibrate_button = _hud_button("CALIBRATE", Vector2(94.0, 44.0))
+	calibrate_button = _hud_button(_ui_text("CALIBRATE", "КАЛИБР.", "KALIBR."), Vector2(94.0, 44.0))
 	calibrate_button.pressed.connect(_on_calibrate_pressed)
 	button_row.add_child(calibrate_button)
 	view_button = _hud_button(_ui_text("VIEW", "ВИД", "ANS."), Vector2(55.0, 44.0))
@@ -814,6 +814,8 @@ func _build_controls_help(panel_style: StyleBoxFlat) -> void:
 		"СЛЕВА: веди пальцем — наклоняется ВСЯ ДОСКА.\nШар катится сам, ты не толкаешь его напрямую.\nСПРАВА: веди пальцем — поворачивается только КАМЕРА.\nРЕЖИМ «ПАЛЕЦ» — рекомендуемый.\n«ТЕЛЕФОН» — наклон корпуса после калибровки.\n«ВИД» — вернуть исходную камеру.",
 		"LINKS: Mit dem Finger das BRETT NEIGEN. Die Kugel rollt selbst.\nRECHTS: Nur die KAMERA drehen.\nFINGER = empfohlen.\nHANDY = Neigungssensor (vorher kalibrieren).\nANSICHT = Kamera zurücksetzen."
 	)
+	content.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.custom_minimum_size = Vector2(500.0, 0.0)
 	content.add_theme_font_size_override("font_size", 18)
 	content.add_theme_color_override("font_color", Color("dde5ef"))
 	stack.add_child(content)
@@ -855,7 +857,7 @@ func _update_touch_help() -> void:
 	if touch_help_left:
 		touch_help_left.text = _ui_text("PHONE TILT\nFinger drag off", "НАКЛОН ТЕЛЕФОНА\nЖест слева отключён", "HANDY NEIGEN\nFingersteuerung aus") if control_mode == ControlMode.SENSOR else _ui_text("TILT THE BOARD\nBall rolls naturally", "НАКЛОН ДОСКИ\nШар катится по уклону", "BRETT NEIGEN\nKugel rollt selbst")
 	if touch_help_right:
-		touch_help_right.text = "CAMERA\nDrag to look around"
+		touch_help_right.text = _ui_text("CAMERA\nDrag to look around", "КАМЕРА\nПроведи для обзора", "KAMERA\nWischen zum Drehen")
 
 
 func _hud_button(label_text: String, minimum_size: Vector2) -> Button:
