@@ -32,6 +32,8 @@ func _run() -> void:
 	var tilt_rotated: Vector2 = game._screen_drag_to_board_tilt(Vector2.RIGHT)
 	if not _require(tilt_first.distance_to(tilt_rotated) > 0.5, "Board tilt direction must respond to camera orbit"):
 		return
+	if not _require(game._board_tilt_to_screen(tilt_rotated).x > 0.70, "Visual thumb must still point right for a rightward screen swipe after orbit"):
+		return
 	game._reset_camera_view()
 	game._update_camera()
 	game._layout_hud(Vector2(1280.0, 720.0))
