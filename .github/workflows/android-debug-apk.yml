@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feature/stage-3-android-debug-apk
+      - feature/stage-4-mobile-controls
 
 permissions:
   contents: read
