@@ -5,6 +5,7 @@ extends Node3D
 const Level01 = preload("res://scripts/levels/level_01.gd")
 const Level02 = preload("res://scripts/levels/level_02.gd")
 const ClockworkMechanismsScript = preload("res://scripts/components/clockwork_mechanisms.gd")
+const TiltStickIndicatorScript = preload("res://scripts/components/tilt_stick_indicator.gd")
 const LEVEL_SOURCES := [Level01, Level02]
 
 const MAX_TILT := deg_to_rad(15.0)
@@ -28,6 +29,11 @@ var camera: Camera3D
 var status_label: Label
 var hint_label: Label
 var mode_button: Button
+var calibrate_button: Button
+var view_button: Button
+var help_button: Button
+var help_overlay: ColorRect
+var tilt_indicator: Control
 var level_selector: OptionButton
 var completion_overlay: CenterContainer
 var completion_title: Label
@@ -68,6 +74,7 @@ var transient_message_time := 0.0
 
 
 func _ready() -> void:
+	control_mode = _default_control_mode(OS.get_name())
 	_build_materials()
 	_build_environment()
 	_build_camera()
@@ -126,7 +133,7 @@ func _input(event: InputEvent) -> void:
 		var start: Vector2 = touch_start[event.index]
 		if event.index == tilt_touch_index:
 			if control_mode != ControlMode.SENSOR:
-				drag_tilt = ((event.position - start) / TOUCH_TILT_DISTANCE).limit_length(1.0)
+				drag_tilt = _screen_drag_to_board_tilt((event.position - start) / TOUCH_TILT_DISTANCE)
 		else:
 			_orbit_camera(event.relative, 0.009)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
@@ -136,7 +143,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _touch_on_hud(point: Vector2) -> bool:
-	if completion_overlay and completion_overlay.visible:
+	if (completion_overlay and completion_overlay.visible) or (help_overlay and help_overlay.visible):
 		return true
 	return (info_panel != null and info_panel.get_global_rect().has_point(point)) or (button_row != null and button_row.get_global_rect().has_point(point))
 
@@ -164,7 +171,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 			_orbit_camera(event.relative, 0.008)
 		elif OS.get_name() != "Android" and mouse_tilt_active and control_mode != ControlMode.SENSOR:
-			drag_tilt = ((event.position - mouse_tilt_origin) / TOUCH_TILT_DISTANCE).limit_length(1.0)
+			drag_tilt = _screen_drag_to_board_tilt((event.position - mouse_tilt_origin) / TOUCH_TILT_DISTANCE)
 	elif event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			orbit_distance = maxf(10.5, orbit_distance - 0.7)
@@ -238,6 +245,11 @@ func _calibrate_sensor(show_feedback: bool) -> void:
 			_show_message("Motion sensor unavailable. Choose TOUCH control.", 3.5)
 
 
+func _default_control_mode(platform_name: String) -> ControlMode:
+	# Auto could silently mix drag and phone gyro, making the ball look unpredictable.
+	return ControlMode.TOUCH if platform_name == "Android" else ControlMode.AUTO
+
+
 func _cycle_control_mode() -> void:
 	control_mode = ((control_mode + 1) % ControlMode.size()) as ControlMode
 	drag_tilt = Vector2.ZERO
@@ -246,11 +258,38 @@ func _cycle_control_mode() -> void:
 	if control_mode == ControlMode.SENSOR:
 		_calibrate_sensor(false)
 	_update_mode_button()
+	_update_touch_help()
 
 
 func _orbit_camera(relative: Vector2, sensitivity: float) -> void:
 	yaw -= relative.x * sensitivity
 	pitch = clampf(pitch + relative.y * sensitivity * 0.75, deg_to_rad(24.0), deg_to_rad(74.0))
+
+
+func _screen_drag_to_board_tilt(screen_drag: Vector2) -> Vector2:
+	# A direction on the screen must have the same meaning even after orbiting.
+	# Convert the projected camera axes into board-local horizontal force axes.
+	if camera == null or board == null:
+		return screen_drag.limit_length(1.0)
+	var screen_right := camera.global_basis.x
+	var screen_down := -camera.global_basis.y
+	var world_direction := screen_right * screen_drag.x + screen_down * screen_drag.y
+	world_direction.y = 0.0
+	if world_direction.length_squared() < 0.0001:
+		return screen_drag.limit_length(1.0)
+	var board_local := board.global_basis.inverse() * world_direction.normalized()
+	return Vector2(board_local.x, board_local.z) * minf(screen_drag.length(), 1.0)
+
+
+func _board_tilt_to_screen(tilt: Vector2) -> Vector2:
+	# The on-screen thumb should follow the gesture, not board-local axes.
+	if camera == null or board == null or tilt.length_squared() < 0.0001:
+		return tilt
+	var world_direction := board.global_basis * Vector3(tilt.x, 0.0, tilt.y)
+	var screen_direction := Vector2(world_direction.dot(camera.global_basis.x), world_direction.dot(-camera.global_basis.y))
+	if screen_direction.length_squared() < 0.0001:
+		return Vector2.ZERO
+	return screen_direction.normalized() * minf(tilt.length(), 1.0)
 
 
 func _build_materials() -> void:
@@ -650,25 +689,33 @@ func _build_hud() -> void:
 	status_label.add_theme_color_override("font_color", Color("f3dfb6"))
 	text_stack.add_child(status_label)
 	hint_label = Label.new()
-	hint_label.text = "LEFT DRAG: TILT  •  RIGHT DRAG: CAMERA"
+	hint_label.text = _ui_text("LEFT: TILT BOARD  •  RIGHT: CAMERA", "СЛЕВА: НАКЛОН ДОСКИ  •  СПРАВА: КАМЕРА", "LINKS: BRETT NEIGEN  •  RECHTS: KAMERA")
 	hint_label.add_theme_font_size_override("font_size", 14)
 	hint_label.add_theme_color_override("font_color", Color("9fb3c9"))
 	text_stack.add_child(hint_label)
 
 	touch_help_left = Label.new()
-	touch_help_left.text = "◉  DRAG TO TILT"
-	touch_help_left.add_theme_font_size_override("font_size", 18)
+	touch_help_left.text = "TILT BOARD\nBall rolls on its own"
+	touch_help_left.add_theme_font_size_override("font_size", 17)
 	touch_help_left.add_theme_color_override("font_color", Color("d1a05a", 0.83))
 	touch_help_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	touch_help_left.visible = OS.get_name() == "Android"
 	hud_root.add_child(touch_help_left)
 	touch_help_right = Label.new()
-	touch_help_right.text = "DRAG TO ORBIT  ◉"
-	touch_help_right.add_theme_font_size_override("font_size", 18)
+	touch_help_right.text = _ui_text("CAMERA\nDrag to look around", "КАМЕРА\nПроведи для обзора", "KAMERA\nWischen zum Drehen")
+	touch_help_right.add_theme_font_size_override("font_size", 17)
+	touch_help_right.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	touch_help_right.add_theme_color_override("font_color", Color("a6bad1", 0.78))
 	touch_help_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	touch_help_right.visible = OS.get_name() == "Android"
 	hud_root.add_child(touch_help_right)
+
+	tilt_indicator = TiltStickIndicatorScript.new()
+	tilt_indicator.name = "TiltThumbIndicator"
+	tilt_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tilt_indicator.size = Vector2(120.0, 120.0)
+	tilt_indicator.visible = OS.get_name() == "Android"
+	hud_root.add_child(tilt_indicator)
 
 	button_row = HBoxContainer.new()
 	button_row.add_theme_constant_override("separation", 8)
@@ -681,13 +728,19 @@ func _build_hud() -> void:
 	level_selector.add_item("LEVEL 2 — FACTORY")
 	level_selector.item_selected.connect(_on_level_selected)
 	button_row.add_child(level_selector)
-	mode_button = _hud_button("CONTROL: AUTO", Vector2(128.0, 44.0))
+	mode_button = _hud_button("BOARD: DRAG", Vector2(155.0, 44.0))
 	mode_button.pressed.connect(_cycle_control_mode)
 	button_row.add_child(mode_button)
-	var calibrate_button := _hud_button("CALIBRATE", Vector2(94.0, 44.0))
+	calibrate_button = _hud_button(_ui_text("CALIBRATE", "КАЛИБР.", "KALIBR."), Vector2(94.0, 44.0))
 	calibrate_button.pressed.connect(_on_calibrate_pressed)
 	button_row.add_child(calibrate_button)
-	var reset_button := _hud_button("RESET", Vector2(80.0, 44.0))
+	view_button = _hud_button(_ui_text("VIEW", "ВИД", "ANS."), Vector2(55.0, 44.0))
+	view_button.pressed.connect(_reset_camera_view)
+	button_row.add_child(view_button)
+	help_button = _hud_button("?", Vector2(42.0, 44.0))
+	help_button.pressed.connect(_show_controls_help)
+	button_row.add_child(help_button)
+	var reset_button := _hud_button(_ui_text("RESET", "СБРОС", "NEUSTART"), Vector2(80.0, 44.0))
 	reset_button.pressed.connect(_on_reset_pressed)
 	button_row.add_child(reset_button)
 
@@ -726,9 +779,96 @@ func _build_hud() -> void:
 	next_level_button.pressed.connect(_advance_level)
 	completion_stack.add_child(next_level_button)
 	completion_overlay.hide()
+	_build_controls_help(panel_style)
 	get_viewport().size_changed.connect(_layout_hud)
-	_layout_hud()
 	_update_mode_button()
+	_update_touch_help()
+	_layout_hud()
+	if OS.get_name() == "Android" and not FileAccess.file_exists("user://controls_help_seen.cfg"):
+		_show_controls_help()
+
+
+func _build_controls_help(panel_style: StyleBoxFlat) -> void:
+	help_overlay = ColorRect.new()
+	help_overlay.name = "ControlsHelpOverlay"
+	help_overlay.color = Color(0.0, 0.0, 0.0, 0.74)
+	help_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	help_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hud_root.add_child(help_overlay)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	help_overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(580.0, 280.0)
+	var style := panel_style.duplicate() as StyleBoxFlat
+	style.bg_color = Color(0.035, 0.055, 0.083, 0.98)
+	style.border_color = Color("e4ae59")
+	style.set_border_width_all(2)
+	style.content_margin_left = 24.0
+	style.content_margin_right = 24.0
+	style.content_margin_top = 20.0
+	style.content_margin_bottom = 20.0
+	panel.add_theme_stylebox_override("panel", style)
+	center.add_child(panel)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 14)
+	panel.add_child(stack)
+	var title := Label.new()
+	title.text = _ui_text("HOW TO CONTROL THE MARBLE", "КАК УПРАВЛЯТЬ ШАРИКОМ", "SO STEUERST DU DIE KUGEL")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color("ffd28a"))
+	stack.add_child(title)
+	var content := Label.new()
+	content.text = _ui_text(
+		"LEFT: drag to TILT THE WHOLE BOARD. The ball rolls by itself.\nRIGHT: drag to rotate the CAMERA only.\nDRAG = finger control (recommended).\nPHONE = phone tilt (calibrate first).\nVIEW = restore the starting camera angle.",
+		"СЛЕВА: веди пальцем — наклоняется ВСЯ ДОСКА.\nШар катится сам, ты не толкаешь его напрямую.\nСПРАВА: веди пальцем — поворачивается только КАМЕРА.\nРЕЖИМ «ПАЛЕЦ» — рекомендуемый.\n«ТЕЛЕФОН» — наклон корпуса после калибровки.\n«ВИД» — вернуть исходную камеру.",
+		"LINKS: Mit dem Finger das BRETT NEIGEN. Die Kugel rollt selbst.\nRECHTS: Nur die KAMERA drehen.\nFINGER = empfohlen.\nHANDY = Neigungssensor (vorher kalibrieren).\nANSICHT = Kamera zurücksetzen."
+	)
+	content.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.custom_minimum_size = Vector2(500.0, 0.0)
+	content.add_theme_font_size_override("font_size", 18)
+	content.add_theme_color_override("font_color", Color("dde5ef"))
+	stack.add_child(content)
+	var close := _hud_button(_ui_text("GOT IT / PLAY", "ПОНЯТНО / ИГРАТЬ", "VERSTANDEN / SPIELEN"), Vector2(210.0, 52.0))
+	close.pressed.connect(_close_controls_help)
+	stack.add_child(close)
+	help_overlay.hide()
+
+
+func _show_controls_help() -> void:
+	if help_overlay:
+		help_overlay.show()
+
+
+func _close_controls_help() -> void:
+	if help_overlay:
+		help_overlay.hide()
+	var file := FileAccess.open("user://controls_help_seen.cfg", FileAccess.WRITE)
+	if file:
+		file.store_string("seen=1")
+
+
+func _reset_camera_view() -> void:
+	yaw = deg_to_rad(32.0)
+	pitch = deg_to_rad(52.0)
+	orbit_distance = 13.6
+
+
+func _ui_text(english: String, russian: String, german: String) -> String:
+	var locale := TranslationServer.get_locale().left(2).to_lower()
+	if locale == "ru":
+		return russian
+	if locale == "de":
+		return german
+	return english
+
+
+func _update_touch_help() -> void:
+	if touch_help_left:
+		touch_help_left.text = _ui_text("PHONE TILT\nFinger drag off", "НАКЛОН ТЕЛЕФОНА\nЖест слева отключён", "HANDY NEIGEN\nFingersteuerung aus") if control_mode == ControlMode.SENSOR else _ui_text("TILT THE BOARD\nBall rolls naturally", "НАКЛОН ДОСКИ\nШар катится по уклону", "BRETT NEIGEN\nKugel rollt selbst")
+	if touch_help_right:
+		touch_help_right.text = _ui_text("CAMERA\nDrag to look around", "КАМЕРА\nПроведи для обзора", "KAMERA\nWischen zum Drehen")
 
 
 func _hud_button(label_text: String, minimum_size: Vector2) -> Button:
@@ -761,9 +901,11 @@ func _layout_hud(override_size := Vector2.ZERO) -> void:
 		info_panel.size = Vector2(available_width, 76.0)
 		button_row.position = Vector2(left, top + 84.0)
 	if touch_help_left:
-		touch_help_left.position = Vector2(left + 20.0, view_size.y - margins.w - 58.0)
+		touch_help_left.position = Vector2(left + 134.0, view_size.y - margins.w - 96.0)
 	if touch_help_right:
-		touch_help_right.position = Vector2(view_size.x - right - 185.0, view_size.y - margins.w - 58.0)
+		touch_help_right.position = Vector2(view_size.x - right - 235.0, view_size.y - margins.w - 96.0)
+	if tilt_indicator:
+		tilt_indicator.position = Vector2(left + 6.0, view_size.y - margins.w - 145.0)
 
 
 func _safe_viewport_margins(view_size: Vector2) -> Vector4:
@@ -836,22 +978,34 @@ func _update_hud() -> void:
 	if transient_message_time > 0.0:
 		hint_label.text = transient_message
 	else:
-		hint_label.text = "TILT %+.2f / %+.2f  •  PHONE OR LEFT DRAG" % [active_tilt.x, active_tilt.y] if OS.get_name() == "Android" else "Arrows / left drag: tilt  •  Right drag: orbit"
+		if OS.get_name() == "Android":
+			if control_mode == ControlMode.SENSOR:
+				hint_label.text = _ui_text("TILT PHONE = ROLL BALL  •  RIGHT = CAMERA", "НАКЛОНИ ТЕЛЕФОН — ШАР ПОКАТИТСЯ  •  СПРАВА КАМЕРА", "HANDY NEIGEN = KUGEL ROLLT  •  RECHTS KAMERA")
+			else:
+				hint_label.text = _ui_text("LEFT = TILT BOARD  •  RIGHT = CAMERA", "СЛЕВА НАКЛОН ДОСКИ  •  СПРАВА КАМЕРА", "LINKS = BRETT NEIGEN  •  RECHTS = KAMERA")
+		else:
+			hint_label.text = "Arrows / left drag: tilt the board  •  Right drag: camera"
+	if tilt_indicator and tilt_indicator.visible:
+		tilt_indicator.call("set_tilt", _board_tilt_to_screen(active_tilt))
 
 
 func _update_mode_button() -> void:
 	if mode_button:
-		mode_button.text = "CONTROL: " + _control_mode_name()
+		mode_button.text = _ui_text("BOARD: ", "ДОСКА: ", "BRETT: ") + _control_mode_name()
+	if calibrate_button:
+		calibrate_button.visible = control_mode != ControlMode.TOUCH
+	if button_row:
+		_layout_hud()
 
 
 func _control_mode_name() -> String:
 	match control_mode:
 		ControlMode.TOUCH:
-			return "TOUCH"
+			return _ui_text("DRAG", "ПАЛЕЦ", "FINGER")
 		ControlMode.SENSOR:
-			return "SENSOR"
+			return _ui_text("PHONE", "ТЕЛЕФОН", "HANDY")
 		_:
-			return "AUTO"
+			return _ui_text("AUTO", "АВТО", "AUTO")
 
 
 func _on_goal_entered(body: Node3D) -> void:

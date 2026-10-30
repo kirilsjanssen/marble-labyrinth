@@ -47,6 +47,10 @@ Missing floor sections are actual gaps rather than painted hazards. Falling into
 | Testing | Select level | HUD selector, `1`, `2`, or `L` |
 | Completion | Continue | Completion button, `N`, or Enter |
 
+**Important:** On Android, dragging the **left half tilts the entire board**. The ball is never moved directly: gravity, collisions and inertia make it roll. Dragging the **right half changes the camera only**. After rotating the camera, left drag is interpreted relative to the current screen view so left/right feel consistent.
+
+Android now defaults to **BOARD: DRAG** rather than mixed Auto mode. Tap the BOARD mode button to select finger drag, phone sensors or auto. The sensor option requires **Calibrate**; the calibration button is hidden in finger-only mode. The left corner shows a visible, non-intercepting gesture thumb that follows actual board tilt. **VIEW** restores the default camera angle; **?** opens the controls tutorial, which is also shown once on first Android launch. User-facing onboarding/help text is available in RU, DE and EN based on system locale.
+
 For sensor play, hold the phone in a comfortable neutral position and press **Calibrate**. The HUD uses viewport anchors and display-safe-area margins, and rearranges its top controls on narrower viewports.
 
 ## Architecture
