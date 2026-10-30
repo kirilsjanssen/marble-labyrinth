@@ -1,0 +1,51 @@
+{
+  "provider": "Luma Agents API (agents.lumalabs.ai/v1)",
+  "model": "uni-1",
+  "generated": "2026-10-30",
+  "credits_each": 30,
+  "generations": {
+    "alps_far": {
+      "name": "alps_far",
+      "id": "1be721e7-35c5-478d-b91d-e71a8e660b46",
+      "model": "uni-1",
+      "status": "completed",
+      "outputs": 1
+    },
+    "forest_ridge": {
+      "name": "forest_ridge",
+      "id": "5f0253e9-1950-4d77-b778-c0f0f34fffaa",
+      "model": "uni-1",
+      "status": "completed",
+      "outputs": 1
+    },
+    "water_foam": {
+      "name": "water_foam",
+      "id": "d62a66e2-fa2d-4c9c-b9b8-c0209c08c062",
+      "model": "uni-1",
+      "status": "completed",
+      "outputs": 1
+    },
+    "wet_stone": {
+      "name": "wet_stone",
+      "id": "858cb686-af06-4f29-b925-dc5fd7aa6f93",
+      "model": "uni-1",
+      "status": "completed",
+      "outputs": 1
+    },
+    "wood_planks": {
+      "name": "wood_planks",
+      "id": "053aa4fe-cd46-4b43-8e66-296b639e960c",
+      "model": "uni-1",
+      "status": "completed",
+      "outputs": 1
+    }
+  },
+  "processing": "resized for Android; forest_ridge white background keyed to alpha",
+  "prompts": {
+    "alps_far": "Seamless wide panorama of distant snowy Swiss Alps peaks and glaciers under a cold clear blue morning sky with soft white clouds, light atmospheric haze at the base, stylized painterly miniature diorama game backdrop (3:1)",
+    "forest_ridge": "Wide horizontal strip of dark green alpine spruce and fir forest on rocky mountain ridges with a narrow gorge, flat silhouette isolated on a pure solid white background (3:1)",
+    "wood_planks": "Seamless tileable top-down texture of old weathered natural wooden mill planks with subtle moss in the seams (1:1)",
+    "wet_stone": "Seamless tileable top-down texture of wet grey alpine granite cobbles and river stones with small moss patches (1:1)",
+    "water_foam": "Seamless tileable top-down texture of clear turquoise mountain stream water surface with white foam streaks and ripples (1:1)"
+  }
+}

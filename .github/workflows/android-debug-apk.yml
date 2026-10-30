@@ -12,6 +12,7 @@ on:
       - feature/p2-mobile-control-ux
       - feature/p2-goal-shapes-control
       - feature/level-03-vertical-liftworks
+      - feature/level-04-alpine-watermill
       - feature/p6-rewards
 
 permissions:
@@ -107,14 +108,14 @@ jobs:
           set -euo pipefail
           version_code=$((10000 + GITHUB_RUN_NUMBER))
           export MARBLE_VERSION_CODE="$version_code"
-          export MARBLE_VERSION_NAME="0.5.0-debug.$GITHUB_RUN_NUMBER"
+          export MARBLE_VERSION_NAME="0.6.0-debug.$GITHUB_RUN_NUMBER"
           perl -0pi -e 's/(name="Android Debug".*?version\/code=)\d+/${1}$ENV{MARBLE_VERSION_CODE}/s; s/(name="Android Debug".*?version\/name=")[^"]+/${1}$ENV{MARBLE_VERSION_NAME}/s' export_presets.cfg
           grep -Fqx "version/code=$version_code" export_presets.cfg
           grep -Fqx "version/name=\"$MARBLE_VERSION_NAME\"" export_presets.cfg
           echo "Android Debug versionCode=$version_code"
-          echo "Android Debug versionName=0.5.0-debug.$GITHUB_RUN_NUMBER"
+          echo "Android Debug versionName=0.6.0-debug.$GITHUB_RUN_NUMBER"
 
-      - name: Test levels 1-3, Physics Lab, Water Lab and build APK
+      - name: Test levels 1-4, Physics Lab, Water Lab and build APK
         shell: bash
         run: tools/build_android_debug.sh
 

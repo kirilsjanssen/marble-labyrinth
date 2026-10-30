@@ -5,12 +5,15 @@ extends Node3D
 const Level01 = preload("res://scripts/levels/level_01.gd")
 const Level02 = preload("res://scripts/levels/level_02.gd")
 const Level03 = preload("res://scripts/levels/level_03.gd")
+const Level04 = preload("res://scripts/levels/level_04.gd")
+const WatermillMechanismsScript = preload("res://scripts/mechanisms/watermill_mechanisms.gd")
+const AlpineParallaxControllerScript = preload("res://scripts/environment/alpine_parallax_controller.gd")
 const ClockworkMechanismsScript = preload("res://scripts/components/clockwork_mechanisms.gd")
 const LiftworksMechanismsScript = preload("res://scripts/mechanisms/liftworks_mechanisms.gd")
 const SmartCameraControllerScript = preload("res://scripts/camera/smart_camera_controller.gd")
 const TiltStickIndicatorScript = preload("res://scripts/components/tilt_stick_indicator.gd")
 const GoalSocketDetectorScript = preload("res://scripts/components/goal_socket_detector.gd")
-const LEVEL_SOURCES := [Level01, Level02, Level03]
+const LEVEL_SOURCES := [Level01, Level02, Level03, Level04]
 
 const MAX_TILT := deg_to_rad(15.0)
 const TILT_RESPONSE := 5.5
@@ -34,6 +37,8 @@ var board: AnimatableBody3D
 var ball: RigidBody3D
 var camera: Camera3D
 var smart_camera: SmartCameraController
+var alpine_environment: AlpineParallaxController
+var world_environment: Environment
 var camera_label: Label
 var camera_button: Button
 var status_label: Label
@@ -174,6 +179,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_load_level(1)
 			KEY_3:
 				_load_level(2)
+			KEY_4:
+				_load_level(3)
 			KEY_V:
 				_cycle_camera_preference()
 			KEY_L:
@@ -326,6 +333,13 @@ func _build_materials() -> void:
 		"goal": _emissive_material(Color("55e7a0"), 1.4),
 		"amber_glow": _emissive_material(Color("ffb64d"), 1.25),
 		"gate_glow": _emissive_material(Color("ff6258"), 1.25),
+		"wood": _textured("res://assets/luma/level04/wood_planks.jpg", Color("8a7560"), 0.0, 0.82, 0.9),
+		"wood_dark": _textured("res://assets/luma/level04/wood_planks.jpg", Color("4e3b2c"), 0.0, 0.86, 1.4),
+		"wet_stone": _textured("res://assets/luma/level04/wet_stone.jpg", Color("7c8790"), 0.05, 0.42, 0.55),
+		"granite": _textured("res://assets/luma/level04/wet_stone.jpg", Color("5d666e"), 0.05, 0.6, 1.2),
+		"bronze": _metal(Color("8c5a2b"), 0.85, 0.32),
+		"roof_tiles": _metal(Color("7a3b2a"), 0.05, 0.75),
+		"meadow": _metal(Color("31492a"), 0.0, 0.95),
 	}
 
 
@@ -333,6 +347,7 @@ func _build_environment() -> void:
 	var world := WorldEnvironment.new()
 	world.name = "WorkshopEnvironment"
 	var environment := Environment.new()
+	world_environment = environment
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = Color("080c12")
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -398,7 +413,15 @@ func _load_level(index: int) -> void:
 	_build_board()
 	_build_ball()
 	goal_detector.target_body = ball
-	if level_data.has("liftworks"):
+	_update_alpine_environment()
+	if level_data.has("watermill"):
+		var watermill := WatermillMechanismsScript.new() as WatermillMechanisms
+		watermill.name = "WatermillMechanisms"
+		board.add_child(watermill)
+		watermill.setup_watermill(level_data["watermill"], materials, ball, self)
+		watermill.state_changed.connect(_on_mechanism_message)
+		clockwork = watermill
+	elif level_data.has("liftworks"):
 		var liftworks := LiftworksMechanismsScript.new() as LiftworksMechanisms
 		liftworks.name = "LiftworksMechanisms"
 		board.add_child(liftworks)
@@ -427,10 +450,51 @@ func _load_level(index: int) -> void:
 	_update_hud()
 
 
+## Builds or removes the Alpine surroundings; other levels keep the dark studio.
+func _update_alpine_environment() -> void:
+	var wants_alpine: bool = level_data.get("alpine_environment", false)
+	if alpine_environment and is_instance_valid(alpine_environment) and not wants_alpine:
+		remove_child(alpine_environment)
+		alpine_environment.queue_free()
+		alpine_environment = null
+	if wants_alpine and alpine_environment == null:
+		alpine_environment = AlpineParallaxControllerScript.new() as AlpineParallaxController
+		alpine_environment.name = "AlpineParallax"
+		add_child(alpine_environment)
+		alpine_environment.setup(camera, Vector3(0.0, 0.0, 0.0), materials)
+	if world_environment:
+		if wants_alpine:
+			var sky := Sky.new()
+			var sky_material := ProceduralSkyMaterial.new()
+			sky_material.sky_top_color = Color("4f7fb8")
+			sky_material.sky_horizon_color = Color("c3d6e6")
+			sky_material.ground_bottom_color = Color("2b3a2c")
+			sky_material.ground_horizon_color = Color("9db3a8")
+			sky.sky_material = sky_material
+			world_environment.background_mode = Environment.BG_SKY
+			world_environment.sky = sky
+			world_environment.ambient_light_color = Color("9fb4c8")
+			world_environment.ambient_light_energy = 0.42
+		else:
+			world_environment.background_mode = Environment.BG_COLOR
+			world_environment.ambient_light_color = Color("8296ac")
+			world_environment.ambient_light_energy = 0.48
+
+
 func _update_level_lighting() -> void:
 	var warm_light := get_node_or_null("WarmBenchLight") as OmniLight3D
 	var rim_light := get_node_or_null("CoolRimLight") as OmniLight3D
-	if level_data.get("style", "workshop") == "clockwork":
+	var key_light := get_node_or_null("KeyLight") as DirectionalLight3D
+	if key_light:
+		var alpine: bool = level_data.get("style", "workshop") == "alpine"
+		# Cold mountain daylight for the watermill, warm bench light elsewhere.
+		key_light.light_color = Color("e6eeff") if alpine else Color("ffe2ae")
+		key_light.light_energy = 1.9 if alpine else 2.15
+	if level_data.get("style", "workshop") == "alpine":
+		warm_light.light_color = Color("ffc27a")
+		warm_light.light_energy = 1.6
+		rim_light.light_color = Color("8fb8e8")
+	elif level_data.get("style", "workshop") == "clockwork":
 		warm_light.light_color = Color("ffb247")
 		warm_light.light_energy = 2.8
 		rim_light.light_color = Color("6e9dc8")
@@ -455,6 +519,8 @@ func _build_board() -> void:
 		_add_box_part("FactoryBrassBand", Vector3(0.0, -0.60, 0.0), Vector3(9.82, 0.08, 9.82), materials.brass_dark, false)
 		for tile: Dictionary in level_data["floor_tiles"]:
 			var tile_material: Material = materials.steel if tile.get("elevated", false) else materials.deck
+			if tile.has("material"):
+				tile_material = materials[tile["material"]]
 			_add_box_part(tile["name"], tile["position"], tile["size"], tile_material, true)
 			_add_floor_tile_details(tile)
 		_build_factory_details()
@@ -559,7 +625,9 @@ func _add_wall(spec: Dictionary) -> void:
 	var at: Vector3 = spec["position"]
 	var size: Vector3 = spec["size"]
 	var accent: bool = spec.get("accent", false)
-	_add_box_part(wall_name, at, size, materials.wall, true)
+	_add_box_part(wall_name, at, size, materials[spec["material"]] if spec.has("material") else materials.wall, true)
+	if spec.get("plain", false):
+		return
 
 	var rail_size := Vector3(maxf(0.16, size.x * 0.86), 0.075, maxf(0.16, size.z * 0.86))
 	var rail_material: Material = materials.brass if accent else materials.brass_dark
@@ -769,6 +837,7 @@ func _build_hud() -> void:
 	level_selector.add_item("LEVEL 1 — WORKSHOP")
 	level_selector.add_item("LEVEL 2 — FACTORY")
 	level_selector.add_item("LEVEL 3 — LIFTWORKS")
+	level_selector.add_item("LEVEL 4 — WATERMILL")
 	level_selector.item_selected.connect(_on_level_selected)
 	button_row.add_child(level_selector)
 	mode_button = _hud_button("BOARD: DRAG", Vector2(155.0, 44.0))
@@ -1238,6 +1307,18 @@ func _metal(color: Color, metallic: float, roughness: float) -> StandardMaterial
 	material.albedo_color = color
 	material.metallic = metallic
 	material.roughness = roughness
+	return material
+
+
+## Generated (Luma) texture when imported, otherwise the flat fallback colour.
+## Triplanar mapping keeps planks and cobbles at a constant scale on every box.
+func _textured(path: String, tint: Color, metallic: float, roughness: float, scale: float) -> StandardMaterial3D:
+	var material := _metal(tint, metallic, roughness)
+	if ResourceLoader.exists(path):
+		material.albedo_texture = load(path)
+		material.albedo_color = tint.lightened(0.25)
+		material.uv1_triplanar = true
+		material.uv1_scale = Vector3.ONE * scale
 	return material
 
 

@@ -147,7 +147,7 @@ func _shutter_target_y(index: int) -> float:
 func _build_rotor(spec: Dictionary) -> void:
 	var body := AnimatableBody3D.new()
 	body.name = spec["name"]
-	body.sync_to_physics = true
+	body.sync_to_physics = false
 	body.position = spec["position"]
 	add_child(body)
 	rotor_bodies.append(body)
@@ -168,7 +168,7 @@ func _build_shutter(spec: Dictionary) -> void:
 	var at: Vector3 = spec["position"]
 	var body := AnimatableBody3D.new()
 	body.name = spec["name"]
-	body.sync_to_physics = true
+	body.sync_to_physics = false
 	body.position = Vector3(at.x, at.y + size.y * 0.5, at.z)
 	add_child(body)
 	_add_box_collision(body, Vector3.ZERO, size, 0.0, "ShutterCollision")

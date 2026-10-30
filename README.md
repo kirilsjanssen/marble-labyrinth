@@ -35,6 +35,32 @@ One continuous three-tier board (deck tops at 0.02 / 1.42 / 2.82) joined by a ph
 
 The lift deck is an `AnimatableBody3D` with side lips and deck doors. Each landing has its own gate, and call pads summon the lift. It carries any rigid body, so cubes and pyramids can ride too. Falling into the tier-2 gap returns the marble to the tier-2 landing without undoing solved mechanisms.
 
+### Level 4 — Alpine Watermill
+
+A three-tier watermill board (deck tops 0.02 / 1.42 / 2.82). Every mechanism hangs off one conservative `WaterNetwork`:
+
+```text
+cistern --sluice--> race --wheel buckets--> stream --ram pump--> cistern
+cistern --diverter--> float tank --drain--> stream
+```
+
+1. **Mountain stream (tier 1):** pull the SLUICE lever. Water now runs down the aqueduct onto the overshot wheel. Pass the stream paddle and cross the wooden bridge over the mill channel; the channel has real buoyancy, drag and current, and a fall returns the marble just after the lever. A secret millrace walkway bypasses the bridge.
+2. **The wheel turns only from the simulated flux** (NO WATER / LOW FLOW / WORKING / OVERLOAD). Its bevel gears and line shaft wind the lift winch: the lift climbs only while the wheel works, and it always descends under a brake, so it can never strand the marble.
+3. Shove the wooden cube onto the plate to open the MILL GATE, then ride the lift to tier 2.
+4. **Mill machinery (tier 2):** a camshaft and two timed sluice boards guard the corridor under the terrace. Here the smart camera switches to CHASE. Cross the float pontoon (flush at tier 2) and pull the DIVERTER. Water leaves the wheel, the tank fills, and the pontoon, released by the marble's weight, floats it up to tier 3.
+5. **Alpine millhouse (tier 3):** time the sweeper, hit the timer pad and pass the gate (or take the secret terrace run), then settle into the goal socket.
+
+Water visuals (`shaders/flow_water.gdshader`, `scripts/water/flow_water_surface.gd`) scroll two detail layers whose speed and direction come from the live flux. Surfaces of the cistern, tank and pool follow the simulated volume. Waterfalls fall at the rate of their channel.
+
+`scripts/environment/alpine_parallax_controller.gd` builds the surroundings. There are four cylindrical far layers that follow the camera by different amounts, each with a cap on how far it can shift: Luma snow peaks, haze ridges, and two Luma forest-ridge bands. Nearer layers are real 3D geometry: boulders, firs, moss and shrubs (MultiMesh), granite cliffs with waterfalls, and a mountain river.
+
+**Luma assets** live in `assets/luma/level04/`, with prompts listed in `PROVENANCE.json`. They were generated with the Luma Agents API (`uni-1`, 5 images, 150 credits): a far Alps panorama, a forest-ridge band keyed to alpha, wood planks, wet stone, and water/foam detail. The Luma key is read from the environment only and is not stored anywhere in the project.
+
+**Engineering fixes found by the physical playthrough (apply to levels 2–4):**
+- Mechanism bodies nested under the tilting board now use `sync_to_physics = false`. With `true`, tilting the board made the physics server write back stale transforms, so a parked lift deck sank about 0.8 units and dropped the marble.
+- The power cube is 0.45 (was 0.55): a rotated 0.55 cube wedged diagonally in the 0.75 lane.
+- A fascia beam under the tier-3 edge closes a sight slot above the tier-2 rail, so the auto camera no longer stays in OVERVIEW while only a sliver of the marble is visible.
+
 ### Smart camera
 
 `scripts/camera/smart_camera_controller.gd` owns camera modes, so `main.gd` only supplies the overview orbit pose:
@@ -45,7 +71,7 @@ The lift deck is an `AnimatableBody3D` with side lips and deck doors. Each landi
 - The chase camera starts on the board axis that has room behind the marble and is nearest the overview direction, so screen-relative controls stay predictable. It turns at a limited rate, ignores short reverses and stops, is pulled in front of walls and ceilings, and moves closer when a moving part would block the shot.
 - **CAM** (or **V**) cycles AUTO → TOP → CHASE. A manual choice always wins over auto. The HUD shows `CAMERA: OVERVIEW / ORBIT / CHASE`.
 
-Luma (RedDust) generation was not used for this level: no `LUMA_API_KEY` was available in the build environment. All Level 3 visuals are procedural Godot geometry and materials.
+Level 3 visuals are procedural Godot geometry and materials.
 
 ## Physics and presentation
 
@@ -98,6 +124,14 @@ scripts/levels/level_03.gd                     Vertical Liftworks data and route
 scripts/mechanisms/vertical_lift.gd            Reusable multi-stop physical lift
 scripts/mechanisms/liftworks_mechanisms.gd     Level 3 mechanisms (extends clockwork)
 scripts/camera/smart_camera_controller.gd      Overview/orbit/chase camera manager
+scripts/levels/level_04.gd                     Alpine Watermill data, hydraulics and route
+scripts/mechanisms/watermill_mechanisms.gd     Water network, wheel, pontoon, mill gate
+scripts/mechanisms/water_wheel.gd              Flux-driven wheel with gear train and states
+scripts/environment/alpine_parallax_controller.gd  Layered Alpine parallax surroundings
+scripts/water/flow_water_surface.gd            Flux-driven animated water sheet
+shaders/flow_water.gdshader                    GL Compatibility water / waterfall shader
+shaders/parallax_layer.gdshader                Seamless cylindrical backdrop layer
+assets/luma/level04/                           Luma-generated textures and panoramas
 scenes/labs/physics_lab.tscn                   P1 material and force laboratory
 scenes/labs/water_lab.tscn                     P2 conservative hydraulic laboratory
 scenes/labs/shape_lab.tscn                     Reusable cube/pyramid/ball physics laboratory
@@ -107,6 +141,7 @@ scripts/water/                                  Reservoir graph, buoyancy and wa
 tests/smoke_test.gd                            Level 1 regression test
 tests/level_02_smoke_test.gd                   Level 2 and transition test
 tests/level_03_smoke_test.gd                   Level 3 tiers, lift, route and camera test
+tests/level_04_smoke_test.gd                   Level 4 PHYSICAL playthrough, water, parallax
 tests/physics_lab_test.gd                      P1 physical integration test
 tests/water_network_test.gd                    P2 conservation/valve/pump test
 tests/water_buoyancy_test.gd                   P2 rigid-body water forces test
@@ -133,6 +168,7 @@ godot --headless --path . --debug --fixed-fps 60 --quit-after 600
 godot --headless --path . --fixed-fps 60 --script res://tests/smoke_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/level_02_smoke_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/level_03_smoke_test.gd
+godot --headless --path . --fixed-fps 60 --script res://tests/level_04_smoke_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/physics_lab_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/water_network_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/water_buoyancy_test.gd

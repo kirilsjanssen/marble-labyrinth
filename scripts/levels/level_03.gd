@@ -57,9 +57,10 @@ static func definition() -> Dictionary:
 					{"position": Vector3(2.85, T3, -1.50), "size": Vector3(0.10, 0.50, 1.30)},
 				],
 			},
-			# Tier 1: physical cargo. A wooden PuzzleShapeBody cube must be shoved
+			# Tier 1: physical cargo. A wooden PuzzleShapeBody cube (0.45: its diagonal
+			# is narrower than the 0.75 lane, so it cannot wedge) must be shoved
 			# into the pocket at the end of the west lane to power the lift.
-			"power_cube": {"start": Vector3(2.85, T1 + 0.30, 1.45), "size": Vector3(0.55, 0.55, 0.55), "material": &"wood"},
+			"power_cube": {"start": Vector3(2.85, T1 + 0.25, 1.45), "size": Vector3(0.45, 0.45, 0.45), "material": &"wood"},
 			"power_plate": {"position": Vector3(2.85, T1 + 0.03, 0.16), "radius": 0.40},
 			# Tier 2: lever on the open west deck releases the top lift stop.
 			"upper_release": {"position": Vector3(-3.55, T2 + 0.09, -3.40), "radius": 0.45},
@@ -186,6 +187,9 @@ static func _walls() -> Array:
 		{"name": "T2ChokeStub", "position": Vector3(0.65, t2_wall, -1.90), "size": Vector3(0.20, 0.60, 0.50)},
 		# Tier 3 perimeter, main corridor divider and the goal partition.
 		{"name": "T3SouthRail", "position": Vector3(1.05, t3_wall, -0.70), "size": Vector3(3.70, 0.60, 0.20), "accent": true},
+		# Fascia beam under the tier-3 edge closes the sight slot above the
+		# tier-2 rail, so the corridor below is either clearly visible or hidden.
+		{"name": "T3SouthFascia", "position": Vector3(1.05, T3 - 0.48, -0.66), "size": Vector3(3.70, 0.24, 0.12), "plain": true},
 		{"name": "T3NorthWall", "position": Vector3(1.05, t3_wall, -4.30), "size": Vector3(3.70, 0.60, 0.20), "accent": true},
 		{"name": "T3WestWall", "position": Vector3(-0.70, t3_wall, -2.50), "size": Vector3(0.20, 0.60, 3.80), "accent": true},
 		{"name": "T3EastNorth", "position": Vector3(2.80, t3_wall, -3.275), "size": Vector3(0.20, 0.60, 2.25), "accent": true},

@@ -27,7 +27,7 @@ func _run() -> void:
 
 	if not _require(game.current_level_index == 2 and game.level_data["id"] == "vertical_liftworks_03", "Level 3 must load from its own data file"):
 		return
-	if not _require(game.level_selector.item_count == 3, "Level select must list three levels"):
+	if not _require(game.level_selector.item_count >= 3, "Level select must list at least three levels"):
 		return
 	if not _require(game.ball is RigidBody3D and not game.ball.freeze, "Level 3 marble must be a live RigidBody3D"):
 		return
