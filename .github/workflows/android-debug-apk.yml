@@ -9,6 +9,7 @@ on:
       - feature/stage-4-mobile-controls
       - feature/p1-physics-lab
       - feature/p2-water-lab
+      - feature/p2-mobile-control-ux
       - feature/p6-rewards
 
 permissions:
