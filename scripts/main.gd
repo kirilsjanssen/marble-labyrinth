@@ -3,6 +3,9 @@ extends Node3D
 ## from level data, while the marble remains a real RigidBody3D at all times.
 
 const Level01 = preload("res://scripts/levels/level_01.gd")
+const Level02 = preload("res://scripts/levels/level_02.gd")
+const ClockworkMechanismsScript = preload("res://scripts/components/clockwork_mechanisms.gd")
+const LEVEL_SOURCES := [Level01, Level02]
 
 const MAX_TILT := deg_to_rad(15.0)
 const TILT_RESPONSE := 5.5
@@ -22,11 +25,20 @@ var camera: Camera3D
 var status_label: Label
 var hint_label: Label
 var mode_button: Button
+var level_selector: OptionButton
+var completion_overlay: CenterContainer
+var completion_title: Label
+var completion_detail: Label
+var next_level_button: Button
+var hud_root: Control
+var info_panel: PanelContainer
+var button_row: HBoxContainer
 var wind_rotor: Node3D
 var magnet_light: OmniLight3D
 var magnet_ring: MeshInstance3D
 var trap_ring: MeshInstance3D
 var goal_ring: MeshInstance3D
+var clockwork: ClockworkMechanisms
 
 var materials: Dictionary = {}
 var touch_start: Dictionary = {}
@@ -41,15 +53,17 @@ var elapsed := 0.0
 var visual_time := 0.0
 var game_won := false
 var respawn_queued := false
+var current_level_index := 0
+var transient_message := ""
+var transient_message_time := 0.0
 
 
 func _ready() -> void:
 	_build_materials()
 	_build_environment()
-	_build_board()
-	_build_ball()
 	_build_camera()
 	_build_hud()
+	_load_level(0)
 	_calibrate_sensor(false)
 	_update_camera()
 
@@ -63,6 +77,8 @@ func _physics_process(delta: float) -> void:
 	var weight := clampf(delta * TILT_RESPONSE, 0.0, 1.0)
 	board.rotation.x = lerp_angle(board.rotation.x, target_rotation.x, weight)
 	board.rotation.z = lerp_angle(board.rotation.z, target_rotation.z, weight)
+	if clockwork:
+		clockwork.physics_step(delta)
 
 	if not game_won:
 		elapsed += delta
@@ -73,6 +89,7 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	visual_time += delta
+	transient_message_time = maxf(0.0, transient_message_time - delta)
 	_update_camera()
 	_animate_obstacles(delta)
 	_update_hud()
@@ -87,6 +104,15 @@ func _unhandled_input(event: InputEvent) -> void:
 				_cycle_control_mode()
 			KEY_C:
 				_calibrate_sensor(true)
+			KEY_1:
+				_load_level(0)
+			KEY_2:
+				_load_level(1)
+			KEY_L:
+				_load_level((current_level_index + 1) % LEVEL_SOURCES.size())
+			KEY_N, KEY_ENTER:
+				if game_won:
+					_advance_level()
 
 	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		_orbit_camera(event.relative, 0.008)
@@ -147,9 +173,9 @@ func _calibrate_sensor(show_feedback: bool) -> void:
 		sensor_zero = Vector2(gravity.x, gravity.y)
 		sensor_calibrated = true
 		if show_feedback:
-			hint_label.text = "Sensor centred. Hold the phone here to keep the board level."
+			_show_message("Sensor centred. Hold the phone here to keep the board level.", 3.5)
 	elif show_feedback:
-		hint_label.text = "No motion sensor detected. Touch, keyboard and mouse remain available."
+		_show_message("No motion sensor detected. Touch, keyboard and mouse remain available.", 3.5)
 
 
 func _cycle_control_mode() -> void:
@@ -170,14 +196,18 @@ func _build_materials() -> void:
 		"frame": _metal(Color("171d26"), 0.88, 0.20),
 		"deck": _metal(Color("242d38"), 0.72, 0.28),
 		"wall": _metal(Color("354252"), 0.82, 0.22),
+		"steel": _metal(Color("586675"), 0.90, 0.18),
 		"brass": _metal(Color("b58a43"), 0.92, 0.20),
 		"brass_dark": _metal(Color("735126"), 0.86, 0.29),
+		"copper": _metal(Color("9e5638"), 0.88, 0.24),
 		"marble": _metal(Color("d9e7ef"), 0.92, 0.08),
 		"rubber": _metal(Color("11161c"), 0.15, 0.72),
 		"wind": _emissive_material(Color("42c9ff"), 1.5),
 		"magnet": _emissive_material(Color("c071ff"), 1.45),
 		"trap": _emissive_material(Color("ff4d55"), 1.2),
 		"goal": _emissive_material(Color("55e7a0"), 1.4),
+		"amber_glow": _emissive_material(Color("ffb64d"), 1.25),
+		"gate_glow": _emissive_material(Color("ff6258"), 1.25),
 	}
 
 
@@ -220,6 +250,61 @@ func _build_environment() -> void:
 	add_child(warm_light)
 
 
+func _load_level(index: int) -> void:
+	if index < 0 or index >= LEVEL_SOURCES.size():
+		return
+	if ball and is_instance_valid(ball):
+		remove_child(ball)
+		ball.queue_free()
+	if board and is_instance_valid(board):
+		remove_child(board)
+		board.queue_free()
+
+	current_level_index = index
+	level_data = LEVEL_SOURCES[index].definition()
+	clockwork = null
+	wind_rotor = null
+	magnet_light = null
+	magnet_ring = null
+	trap_ring = null
+	goal_ring = null
+	game_won = false
+	respawn_queued = false
+	elapsed = 0.0
+	drag_tilt = Vector2.ZERO
+	yaw = deg_to_rad(32.0)
+	pitch = deg_to_rad(52.0)
+	orbit_distance = 13.6
+
+	_build_board()
+	_build_ball()
+	if level_data.has("mechanics"):
+		clockwork = ClockworkMechanismsScript.new()
+		clockwork.name = "ClockworkMechanisms"
+		board.add_child(clockwork)
+		clockwork.setup(level_data["mechanics"], level_data.get("shafts", []), materials, ball)
+		clockwork.state_changed.connect(_on_mechanism_message)
+	if level_selector:
+		level_selector.select(index)
+	if completion_overlay:
+		completion_overlay.hide()
+	_update_level_lighting()
+	_update_hud()
+
+
+func _update_level_lighting() -> void:
+	var warm_light := get_node_or_null("WarmBenchLight") as OmniLight3D
+	var rim_light := get_node_or_null("CoolRimLight") as OmniLight3D
+	if level_data.get("style", "workshop") == "clockwork":
+		warm_light.light_color = Color("ffb247")
+		warm_light.light_energy = 2.8
+		rim_light.light_color = Color("6e9dc8")
+	else:
+		warm_light.light_color = Color("ffc36b")
+		warm_light.light_energy = 2.2
+		rim_light.light_color = Color("62aaff")
+
+
 func _build_board() -> void:
 	board = AnimatableBody3D.new()
 	board.name = "TiltingBoard"
@@ -230,18 +315,95 @@ func _build_board() -> void:
 	board.physics_material_override = board_physics
 	add_child(board)
 
-	_add_box_part("Board", Vector3(0.0, -0.16, 0.0), Vector3(9.55, 0.36, 9.55), materials.frame, true)
-	_add_box_part("DeckInset", Vector3(0.0, 0.035, 0.0), Vector3(9.05, 0.08, 9.05), materials.deck, false)
-	_add_box_part("LowerBrassBand", Vector3(0.0, -0.30, 0.0), Vector3(9.75, 0.10, 9.75), materials.brass_dark, false)
-	_build_deck_details()
+	if level_data.has("floor_tiles"):
+		_add_box_part("FactoryUnderframe", Vector3(0.0, -0.52, 0.0), Vector3(9.65, 0.12, 9.65), materials.frame, false)
+		_add_box_part("FactoryBrassBand", Vector3(0.0, -0.60, 0.0), Vector3(9.82, 0.08, 9.82), materials.brass_dark, false)
+		for tile: Dictionary in level_data["floor_tiles"]:
+			var tile_material: Material = materials.steel if tile.get("elevated", false) else materials.deck
+			_add_box_part(tile["name"], tile["position"], tile["size"], tile_material, true)
+			_add_floor_tile_details(tile)
+		_build_factory_details()
+	else:
+		_add_box_part("Board", Vector3(0.0, -0.16, 0.0), Vector3(9.55, 0.36, 9.55), materials.frame, true)
+		_add_box_part("DeckInset", Vector3(0.0, 0.035, 0.0), Vector3(9.05, 0.08, 9.05), materials.deck, false)
+		_add_box_part("LowerBrassBand", Vector3(0.0, -0.30, 0.0), Vector3(9.75, 0.10, 9.75), materials.brass_dark, false)
+		_build_deck_details()
 
 	for wall_spec: Dictionary in level_data["walls"]:
 		_add_wall(wall_spec)
 
-	_build_wind_device(level_data["wind"])
-	_build_magnet_device(level_data["magnet"])
-	_build_trap(level_data["trap"])
+	if level_data.has("wind"):
+		_build_wind_device(level_data["wind"])
+	if level_data.has("magnet"):
+		_build_magnet_device(level_data["magnet"])
+	if level_data.has("trap"):
+		_build_trap(level_data["trap"])
+	for hole: Dictionary in level_data.get("holes", []):
+		_build_hole(hole)
 	_build_goal(level_data["goal"])
+
+
+func _add_floor_tile_details(tile: Dictionary) -> void:
+	var at: Vector3 = tile["position"]
+	var size: Vector3 = tile["size"]
+	var surface_y := at.y + size.y * 0.5 + 0.012
+	_add_box_visual(board, Vector3(at.x, surface_y, at.z - size.z * 0.34), Vector3(size.x * 0.90, 0.025, 0.025), materials.brass_dark, tile["name"] + "SeamA")
+	_add_box_visual(board, Vector3(at.x, surface_y, at.z + size.z * 0.34), Vector3(size.x * 0.90, 0.025, 0.025), materials.brass_dark, tile["name"] + "SeamB")
+	for corner_x in [-1.0, 1.0]:
+		for corner_z in [-1.0, 1.0]:
+			var fastener := Vector3(at.x + corner_x * size.x * 0.42, surface_y + 0.025, at.z + corner_z * size.z * 0.42)
+			_add_cylinder_visual(board, fastener, 0.055, 0.045, materials.brass, tile["name"] + "Rivet")
+
+
+func _build_factory_details() -> void:
+	for lamp: Dictionary in level_data.get("lamps", []):
+		_build_factory_lamp(lamp)
+	for brace_x in [-4.45, -2.35, 0.65, 4.40]:
+		_add_box_visual(board, Vector3(brace_x, -0.34, 0.0), Vector3(0.13, 0.28, 8.70), materials.steel, "UnderframeBrace")
+
+
+func _build_factory_lamp(spec: Dictionary) -> void:
+	var at: Vector3 = spec["position"]
+	var color: Color = spec["color"]
+	_add_cylinder_visual(board, at + Vector3.UP * 0.52, 0.055, 1.04, materials.brass_dark, "FactoryLampPost")
+	var shade := MeshInstance3D.new()
+	shade.name = "FactoryLampShade"
+	shade.position = at + Vector3.UP * 1.03
+	var shade_mesh := CylinderMesh.new()
+	shade_mesh.top_radius = 0.08
+	shade_mesh.bottom_radius = 0.24
+	shade_mesh.height = 0.22
+	shade.mesh = shade_mesh
+	shade.material_override = materials.brass
+	board.add_child(shade)
+	var light := OmniLight3D.new()
+	light.name = "FactoryLampLight"
+	light.position = at + Vector3.UP * 0.90
+	light.light_color = color
+	light.light_energy = 1.65
+	light.omni_range = 3.4
+	light.shadow_enabled = true
+	board.add_child(light)
+
+
+func _build_hole(spec: Dictionary) -> void:
+	var at: Vector3 = spec["position"]
+	var size: Vector3 = spec["size"]
+	var rim_y := at.y + size.y * 0.5 + 0.37
+	_add_box_visual(board, Vector3(at.x, rim_y, at.z - size.z * 0.5), Vector3(size.x + 0.16, 0.07, 0.09), materials.brass_dark, spec["name"] + "RimNorth")
+	_add_box_visual(board, Vector3(at.x, rim_y, at.z + size.z * 0.5), Vector3(size.x + 0.16, 0.07, 0.09), materials.brass_dark, spec["name"] + "RimSouth")
+	_add_box_visual(board, Vector3(at.x - size.x * 0.5, rim_y, at.z), Vector3(0.09, 0.07, size.z), materials.brass_dark, spec["name"] + "RimWest")
+	_add_box_visual(board, Vector3(at.x + size.x * 0.5, rim_y, at.z), Vector3(0.09, 0.07, size.z), materials.brass_dark, spec["name"] + "RimEast")
+	var hole_area := Area3D.new()
+	hole_area.name = spec["name"] + "Trigger"
+	hole_area.position = at
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	collision.shape = shape
+	hole_area.add_child(collision)
+	hole_area.body_entered.connect(_on_trap_entered)
+	board.add_child(hole_area)
 
 
 func _build_deck_details() -> void:
@@ -394,10 +556,12 @@ func _build_hud() -> void:
 	var canvas := CanvasLayer.new()
 	canvas.name = "Interface"
 	add_child(canvas)
+	hud_root = Control.new()
+	hud_root.name = "SafeAreaHUD"
+	hud_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	canvas.add_child(hud_root)
 
-	var info_panel := PanelContainer.new()
-	info_panel.position = Vector2(18.0, 16.0)
-	info_panel.size = Vector2(660.0, 88.0)
+	info_panel = PanelContainer.new()
 	var panel_style := StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.025, 0.04, 0.065, 0.88)
 	panel_style.border_color = Color("a67a38")
@@ -411,7 +575,7 @@ func _build_hud() -> void:
 	panel_style.content_margin_top = 10.0
 	panel_style.content_margin_bottom = 9.0
 	info_panel.add_theme_stylebox_override("panel", panel_style)
-	canvas.add_child(info_panel)
+	hud_root.add_child(info_panel)
 
 	var text_stack := VBoxContainer.new()
 	info_panel.add_child(text_stack)
@@ -425,25 +589,64 @@ func _build_hud() -> void:
 	hint_label.add_theme_color_override("font_color", Color("9fb3c9"))
 	text_stack.add_child(hint_label)
 
-	var button_row := HBoxContainer.new()
-	button_row.anchor_left = 1.0
-	button_row.anchor_right = 1.0
-	button_row.offset_left = -396.0
-	button_row.offset_right = -18.0
-	button_row.offset_top = 16.0
-	button_row.offset_bottom = 58.0
+	button_row = HBoxContainer.new()
 	button_row.add_theme_constant_override("separation", 8)
-	canvas.add_child(button_row)
+	hud_root.add_child(button_row)
 
-	mode_button = _hud_button("CONTROL: AUTO", Vector2(154.0, 42.0))
+	level_selector = OptionButton.new()
+	level_selector.custom_minimum_size = Vector2(154.0, 42.0)
+	level_selector.focus_mode = Control.FOCUS_NONE
+	level_selector.add_item("LEVEL 1 — WORKSHOP")
+	level_selector.add_item("LEVEL 2 — FACTORY")
+	level_selector.item_selected.connect(_on_level_selected)
+	button_row.add_child(level_selector)
+	mode_button = _hud_button("CONTROL: AUTO", Vector2(140.0, 42.0))
 	mode_button.pressed.connect(_cycle_control_mode)
 	button_row.add_child(mode_button)
-	var calibrate_button := _hud_button("CALIBRATE", Vector2(106.0, 42.0))
+	var calibrate_button := _hud_button("CALIBRATE", Vector2(98.0, 42.0))
 	calibrate_button.pressed.connect(_on_calibrate_pressed)
 	button_row.add_child(calibrate_button)
-	var reset_button := _hud_button("RESET", Vector2(92.0, 42.0))
+	var reset_button := _hud_button("RESET", Vector2(78.0, 42.0))
 	reset_button.pressed.connect(_on_reset_pressed)
 	button_row.add_child(reset_button)
+
+	completion_overlay = CenterContainer.new()
+	completion_overlay.name = "CompletionOverlay"
+	completion_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	completion_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	hud_root.add_child(completion_overlay)
+	var completion_panel := PanelContainer.new()
+	completion_panel.custom_minimum_size = Vector2(470.0, 210.0)
+	var completion_style := panel_style.duplicate() as StyleBoxFlat
+	completion_style.bg_color = Color(0.02, 0.035, 0.055, 0.97)
+	completion_style.border_color = Color("d4a454")
+	completion_style.set_border_width_all(2)
+	completion_style.content_margin_left = 28.0
+	completion_style.content_margin_right = 28.0
+	completion_style.content_margin_top = 24.0
+	completion_style.content_margin_bottom = 24.0
+	completion_panel.add_theme_stylebox_override("panel", completion_style)
+	completion_overlay.add_child(completion_panel)
+	var completion_stack := VBoxContainer.new()
+	completion_stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	completion_stack.add_theme_constant_override("separation", 12)
+	completion_panel.add_child(completion_stack)
+	completion_title = Label.new()
+	completion_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	completion_title.add_theme_font_size_override("font_size", 28)
+	completion_title.add_theme_color_override("font_color", Color("f5d79c"))
+	completion_stack.add_child(completion_title)
+	completion_detail = Label.new()
+	completion_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	completion_detail.add_theme_font_size_override("font_size", 17)
+	completion_detail.add_theme_color_override("font_color", Color("aebfd0"))
+	completion_stack.add_child(completion_detail)
+	next_level_button = _hud_button("NEXT LEVEL", Vector2(210.0, 48.0))
+	next_level_button.pressed.connect(_advance_level)
+	completion_stack.add_child(next_level_button)
+	completion_overlay.hide()
+	get_viewport().size_changed.connect(_layout_hud)
+	_layout_hud()
 
 
 func _hud_button(label_text: String, minimum_size: Vector2) -> Button:
@@ -453,6 +656,40 @@ func _hud_button(label_text: String, minimum_size: Vector2) -> Button:
 	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_font_size_override("font_size", 13)
 	return button
+
+
+func _layout_hud(override_size := Vector2.ZERO) -> void:
+	if not info_panel or not button_row:
+		return
+	var view_size: Vector2 = override_size if override_size != Vector2.ZERO else get_viewport().get_visible_rect().size
+	var margins := _safe_viewport_margins(view_size)
+	var left := margins.x + 16.0
+	var top := margins.y + 14.0
+	var right := margins.z + 16.0
+	var available_width := view_size.x - left - right
+	if available_width >= 1080.0:
+		info_panel.position = Vector2(left, top)
+		info_panel.size = Vector2(minf(620.0, available_width * 0.53), 88.0)
+		button_row.position = Vector2(view_size.x - right - 494.0, top)
+		button_row.size = Vector2(494.0, 44.0)
+	else:
+		info_panel.position = Vector2(left, top)
+		info_panel.size = Vector2(available_width, 88.0)
+		button_row.position = Vector2(left, top + 96.0)
+		button_row.size = Vector2(minf(494.0, available_width), 44.0)
+
+
+func _safe_viewport_margins(view_size: Vector2) -> Vector4:
+	var screen_size := Vector2(DisplayServer.screen_get_size())
+	var safe_area := DisplayServer.get_display_safe_area()
+	if screen_size.x <= 0.0 or screen_size.y <= 0.0 or safe_area.size.x <= 0:
+		return Vector4.ZERO
+	var safe_scale := Vector2(view_size.x / screen_size.x, view_size.y / screen_size.y)
+	var left := float(safe_area.position.x) * safe_scale.x
+	var top := float(safe_area.position.y) * safe_scale.y
+	var right := float(screen_size.x - safe_area.end.x) * safe_scale.x
+	var bottom := float(screen_size.y - safe_area.end.y) * safe_scale.y
+	return Vector4(left, top, right, bottom)
 
 
 func _update_camera() -> void:
@@ -481,32 +718,38 @@ func _animate_obstacles(delta: float) -> void:
 
 func _apply_environment_forces() -> void:
 	var local_ball := board.to_local(ball.global_position)
-	var wind: Dictionary = level_data["wind"]
-	var wind_origin: Vector3 = wind["position"]
-	var wind_distance := Vector2(local_ball.x - wind_origin.x, local_ball.z - wind_origin.z).length()
-	if wind_distance < float(wind["radius"]) and absf(local_ball.y - wind_origin.y) < 1.4:
-		var local_wind_direction: Vector3 = wind["direction"]
-		var wind_direction := board.global_basis * local_wind_direction
-		var falloff := 1.0 - wind_distance / float(wind["radius"])
-		ball.apply_central_force(wind_direction.normalized() * float(wind["force"]) * (0.35 + falloff * 0.65))
+	if level_data.has("wind"):
+		var wind: Dictionary = level_data["wind"]
+		var wind_origin: Vector3 = wind["position"]
+		var wind_distance := Vector2(local_ball.x - wind_origin.x, local_ball.z - wind_origin.z).length()
+		if wind_distance < float(wind["radius"]) and absf(local_ball.y - wind_origin.y) < 1.4:
+			var local_wind_direction: Vector3 = wind["direction"]
+			var wind_direction := board.global_basis * local_wind_direction
+			var falloff := 1.0 - wind_distance / float(wind["radius"])
+			ball.apply_central_force(wind_direction.normalized() * float(wind["force"]) * (0.35 + falloff * 0.65))
 
-	var magnet: Dictionary = level_data["magnet"]
-	var local_magnet_position: Vector3 = magnet["position"]
-	var magnet_center := board.to_global(local_magnet_position)
-	var pull := magnet_center - ball.global_position
-	var magnet_distance := pull.length()
-	if magnet_distance < float(magnet["radius"]) and magnet_distance > 0.12:
-		var strength := float(magnet["force"]) * pow(1.0 - magnet_distance / float(magnet["radius"]), 1.35)
-		ball.apply_central_force(pull.normalized() * strength)
+	if level_data.has("magnet"):
+		var magnet: Dictionary = level_data["magnet"]
+		var local_magnet_position: Vector3 = magnet["position"]
+		var magnet_center := board.to_global(local_magnet_position)
+		var pull := magnet_center - ball.global_position
+		var magnet_distance := pull.length()
+		if magnet_distance < float(magnet["radius"]) and magnet_distance > 0.12:
+			var strength := float(magnet["force"]) * pow(1.0 - magnet_distance / float(magnet["radius"]), 1.35)
+			ball.apply_central_force(pull.normalized() * strength)
 
 
 func _update_hud() -> void:
 	if not status_label:
 		return
 	if game_won:
-		status_label.text = "%s   •   COMPLETE IN %0.1f s   •   R TO REPLAY" % [level_data["title"], elapsed]
+		status_label.text = "L%02d   •   %s   •   COMPLETE IN %0.1f s" % [level_data["number"], level_data["title"], elapsed]
 	else:
-		status_label.text = "%s   •   %05.1f s   •   %s" % [level_data["title"], elapsed, _control_mode_name()]
+		status_label.text = "L%02d   •   %s   •   %05.1f s   •   %s" % [level_data["number"], level_data["title"], elapsed, _control_mode_name()]
+	if transient_message_time > 0.0:
+		hint_label.text = transient_message
+	else:
+		hint_label.text = "Arrows / left drag: tilt  •  Right drag: orbit  •  R: reset  •  1/2: levels  •  G: controls"
 
 
 func _update_mode_button() -> void:
@@ -529,6 +772,10 @@ func _on_goal_entered(body: Node3D) -> void:
 		game_won = true
 		ball.linear_damp = 2.8
 		ball.angular_damp = 1.6
+		completion_title.text = "LEVEL %02d COMPLETE" % level_data["number"]
+		completion_detail.text = "%s\nTime: %0.1f seconds" % [level_data["title"], elapsed]
+		next_level_button.text = "NEXT: CLOCKWORK FACTORY" if current_level_index + 1 < LEVEL_SOURCES.size() else "REPLAY FACTORY"
+		completion_overlay.show()
 
 
 func _on_trap_entered(body: Node3D) -> void:
@@ -544,12 +791,36 @@ func _on_calibrate_pressed() -> void:
 	_calibrate_sensor(true)
 
 
+func _on_level_selected(index: int) -> void:
+	if index != current_level_index:
+		_load_level(index)
+
+
+func _advance_level() -> void:
+	if current_level_index + 1 < LEVEL_SOURCES.size():
+		_load_level(current_level_index + 1)
+	else:
+		_load_level(current_level_index)
+
+
+func _on_mechanism_message(message: String) -> void:
+	_show_message(message, 4.0)
+
+
+func _show_message(message: String, duration: float) -> void:
+	transient_message = message
+	transient_message_time = duration
+
+
 func _reset_level() -> void:
 	respawn_queued = false
 	game_won = false
 	elapsed = 0.0
+	transient_message_time = 0.0
 	drag_tilt = Vector2.ZERO
 	board.rotation = Vector3.ZERO
+	if clockwork:
+		clockwork.reset_state()
 	ball.linear_damp = BALL_LINEAR_DAMP
 	ball.angular_damp = BALL_ANGULAR_DAMP
 	ball.linear_velocity = Vector3.ZERO
@@ -557,6 +828,8 @@ func _reset_level() -> void:
 	var start_position: Vector3 = level_data["start"]
 	ball.global_position = board.to_global(start_position)
 	ball.sleeping = false
+	if completion_overlay:
+		completion_overlay.hide()
 
 
 func _add_box_part(part_name: String, at: Vector3, size: Vector3, material: Material, with_collision: bool) -> MeshInstance3D:
