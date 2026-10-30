@@ -13,7 +13,7 @@ const BALL_RADIUS := 0.33
 const BALL_MASS := 0.34
 const BALL_LINEAR_DAMP := 0.12
 const BALL_ANGULAR_DAMP := 0.08
-const TOUCH_TILT_DISTANCE := 180.0
+const TOUCH_TILT_DISTANCE := 140.0
 const SENSOR_RANGE := 5.5
 
 enum ControlMode { AUTO, TOUCH, SENSOR }
@@ -33,6 +33,8 @@ var next_level_button: Button
 var hud_root: Control
 var info_panel: PanelContainer
 var button_row: HBoxContainer
+var touch_help_left: Label
+var touch_help_right: Label
 var wind_rotor: Node3D
 var magnet_light: OmniLight3D
 var magnet_ring: MeshInstance3D
@@ -42,10 +44,13 @@ var clockwork: ClockworkMechanisms
 
 var materials: Dictionary = {}
 var touch_start: Dictionary = {}
+var tilt_touch_index := -1
+var mouse_tilt_active := false
+var mouse_tilt_origin := Vector2.ZERO
 var drag_tilt := Vector2.ZERO
 var sensor_zero := Vector2.ZERO
 var sensor_calibrated := false
-var control_mode := ControlMode.AUTO
+var control_mode := ControlMode.TOUCH if OS.get_name() == "Android" else ControlMode.AUTO
 var yaw := deg_to_rad(32.0)
 var pitch := deg_to_rad(52.0)
 var orbit_distance := 13.6
@@ -95,6 +100,40 @@ func _process(delta: float) -> void:
 	_update_hud()
 
 
+# Touch events are received before GUI routing. An unhandled-input listener loses
+# all drags when the full-screen HUD Control consumes them on Android.
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			if game_won or _touch_on_hud(event.position):
+				return
+			touch_start[event.index] = event.position
+			if event.position.x < get_viewport().get_visible_rect().size.x * 0.5 and tilt_touch_index == -1:
+				tilt_touch_index = event.index
+		else:
+			touch_start.erase(event.index)
+			if event.index == tilt_touch_index:
+				tilt_touch_index = -1
+				drag_tilt = Vector2.ZERO
+	elif event is InputEventScreenDrag and touch_start.has(event.index):
+		var start: Vector2 = touch_start[event.index]
+		if event.index == tilt_touch_index:
+			if control_mode != ControlMode.SENSOR:
+				drag_tilt = ((event.position - start) / TOUCH_TILT_DISTANCE).limit_length(1.0)
+		else:
+			_orbit_camera(event.relative, 0.009)
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+		mouse_tilt_active = false
+		if OS.get_name() != "Android":
+			drag_tilt = Vector2.ZERO
+
+
+func _touch_on_hud(point: Vector2) -> bool:
+	if completion_overlay and completion_overlay.visible:
+		return true
+	return (info_panel != null and info_panel.get_global_rect().has_point(point)) or (button_row != null and button_row.get_global_rect().has_point(point))
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
@@ -114,30 +153,19 @@ func _unhandled_input(event: InputEvent) -> void:
 				if game_won:
 					_advance_level()
 
-	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
-		_orbit_camera(event.relative, 0.008)
+	if event is InputEventMouseMotion:
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+			_orbit_camera(event.relative, 0.008)
+		elif OS.get_name() != "Android" and mouse_tilt_active and control_mode != ControlMode.SENSOR:
+			drag_tilt = ((event.position - mouse_tilt_origin) / TOUCH_TILT_DISTANCE).limit_length(1.0)
 	elif event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			orbit_distance = maxf(10.5, orbit_distance - 0.7)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			orbit_distance = minf(17.0, orbit_distance + 0.7)
-
-	if event is InputEventScreenTouch:
-		if event.pressed:
-			touch_start[event.index] = event.position
-		else:
-			if touch_start.has(event.index):
-				var start: Vector2 = touch_start[event.index]
-				if start.x < get_viewport().get_visible_rect().size.x * 0.5:
-					drag_tilt = Vector2.ZERO
-			touch_start.erase(event.index)
-	elif event is InputEventScreenDrag and touch_start.has(event.index):
-		var start: Vector2 = touch_start[event.index]
-		if start.x < get_viewport().get_visible_rect().size.x * 0.5:
-			if control_mode != ControlMode.SENSOR:
-				drag_tilt = ((event.position - start) / TOUCH_TILT_DISTANCE).limit_length(1.0)
-		else:
-			_orbit_camera(event.relative, 0.009)
+		elif event.button_index == MOUSE_BUTTON_LEFT and OS.get_name() != "Android" and not _touch_on_hud(event.position):
+			mouse_tilt_origin = event.position
+			mouse_tilt_active = true
 
 
 func _read_tilt_input() -> Vector2:
@@ -157,8 +185,15 @@ func _read_tilt_input() -> Vector2:
 	return _sensor_tilt()
 
 
-func _sensor_tilt() -> Vector2:
+func _sensor_vector() -> Vector3:
 	var gravity := Input.get_gravity()
+	# Some Android devices expose the accelerometer but not the gravity sensor.
+	if gravity.length_squared() < 1.0:
+		gravity = Input.get_accelerometer()
+	return gravity
+
+
+func _tilt_from_gravity(gravity: Vector3) -> Vector2:
 	if gravity.length_squared() < 1.0:
 		return Vector2.ZERO
 	var reading := Vector2(gravity.x, -gravity.y)
@@ -167,20 +202,28 @@ func _sensor_tilt() -> Vector2:
 	return (reading / SENSOR_RANGE).limit_length(1.0)
 
 
+func _sensor_tilt() -> Vector2:
+	return _tilt_from_gravity(_sensor_vector())
+
+
 func _calibrate_sensor(show_feedback: bool) -> void:
-	var gravity := Input.get_gravity()
+	var gravity := _sensor_vector()
 	if gravity.length_squared() >= 1.0:
 		sensor_zero = Vector2(gravity.x, gravity.y)
 		sensor_calibrated = true
 		if show_feedback:
-			_show_message("Sensor centred. Hold the phone here to keep the board level.", 3.5)
-	elif show_feedback:
-		_show_message("No motion sensor detected. Touch, keyboard and mouse remain available.", 3.5)
+			_show_message("Sensor calibrated. Tilt the phone to roll.", 3.5)
+	else:
+		sensor_calibrated = false
+		if show_feedback:
+			_show_message("Motion sensor unavailable. Choose TOUCH control.", 3.5)
 
 
 func _cycle_control_mode() -> void:
 	control_mode = ((control_mode + 1) % ControlMode.size()) as ControlMode
 	drag_tilt = Vector2.ZERO
+	tilt_touch_index = -1
+	touch_start.clear()
 	if control_mode == ControlMode.SENSOR:
 		_calibrate_sensor(false)
 	_update_mode_button()
@@ -272,6 +315,8 @@ func _load_level(index: int) -> void:
 	respawn_queued = false
 	elapsed = 0.0
 	drag_tilt = Vector2.ZERO
+	tilt_touch_index = -1
+	touch_start.clear()
 	yaw = deg_to_rad(32.0)
 	pitch = deg_to_rad(52.0)
 	orbit_distance = 13.6
@@ -559,6 +604,7 @@ func _build_hud() -> void:
 	hud_root = Control.new()
 	hud_root.name = "SafeAreaHUD"
 	hud_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hud_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(hud_root)
 
 	info_panel = PanelContainer.new()
@@ -575,6 +621,7 @@ func _build_hud() -> void:
 	panel_style.content_margin_top = 10.0
 	panel_style.content_margin_bottom = 9.0
 	info_panel.add_theme_stylebox_override("panel", panel_style)
+	info_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud_root.add_child(info_panel)
 
 	var text_stack := VBoxContainer.new()
@@ -584,29 +631,44 @@ func _build_hud() -> void:
 	status_label.add_theme_color_override("font_color", Color("f3dfb6"))
 	text_stack.add_child(status_label)
 	hint_label = Label.new()
-	hint_label.text = "Arrows / left drag: tilt  •  Right drag: orbit  •  R: reset  •  G: controls  •  C: calibrate"
+	hint_label.text = "LEFT DRAG: TILT  •  RIGHT DRAG: CAMERA"
 	hint_label.add_theme_font_size_override("font_size", 14)
 	hint_label.add_theme_color_override("font_color", Color("9fb3c9"))
 	text_stack.add_child(hint_label)
+
+	touch_help_left = Label.new()
+	touch_help_left.text = "◉  DRAG TO TILT"
+	touch_help_left.add_theme_font_size_override("font_size", 18)
+	touch_help_left.add_theme_color_override("font_color", Color("d1a05a", 0.83))
+	touch_help_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	touch_help_left.visible = OS.get_name() == "Android"
+	hud_root.add_child(touch_help_left)
+	touch_help_right = Label.new()
+	touch_help_right.text = "DRAG TO ORBIT  ◉"
+	touch_help_right.add_theme_font_size_override("font_size", 18)
+	touch_help_right.add_theme_color_override("font_color", Color("a6bad1", 0.78))
+	touch_help_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	touch_help_right.visible = OS.get_name() == "Android"
+	hud_root.add_child(touch_help_right)
 
 	button_row = HBoxContainer.new()
 	button_row.add_theme_constant_override("separation", 8)
 	hud_root.add_child(button_row)
 
 	level_selector = OptionButton.new()
-	level_selector.custom_minimum_size = Vector2(154.0, 42.0)
+	level_selector.custom_minimum_size = Vector2(140.0, 44.0)
 	level_selector.focus_mode = Control.FOCUS_NONE
 	level_selector.add_item("LEVEL 1 — WORKSHOP")
 	level_selector.add_item("LEVEL 2 — FACTORY")
 	level_selector.item_selected.connect(_on_level_selected)
 	button_row.add_child(level_selector)
-	mode_button = _hud_button("CONTROL: AUTO", Vector2(140.0, 42.0))
+	mode_button = _hud_button("CONTROL: AUTO", Vector2(128.0, 44.0))
 	mode_button.pressed.connect(_cycle_control_mode)
 	button_row.add_child(mode_button)
-	var calibrate_button := _hud_button("CALIBRATE", Vector2(98.0, 42.0))
+	var calibrate_button := _hud_button("CALIBRATE", Vector2(94.0, 44.0))
 	calibrate_button.pressed.connect(_on_calibrate_pressed)
 	button_row.add_child(calibrate_button)
-	var reset_button := _hud_button("RESET", Vector2(78.0, 42.0))
+	var reset_button := _hud_button("RESET", Vector2(80.0, 44.0))
 	reset_button.pressed.connect(_on_reset_pressed)
 	button_row.add_child(reset_button)
 
@@ -647,6 +709,7 @@ func _build_hud() -> void:
 	completion_overlay.hide()
 	get_viewport().size_changed.connect(_layout_hud)
 	_layout_hud()
+	_update_mode_button()
 
 
 func _hud_button(label_text: String, minimum_size: Vector2) -> Button:
@@ -666,17 +729,22 @@ func _layout_hud(override_size := Vector2.ZERO) -> void:
 	var left := margins.x + 16.0
 	var top := margins.y + 14.0
 	var right := margins.z + 16.0
-	var available_width := view_size.x - left - right
-	if available_width >= 1080.0:
+	var available_width := maxf(200.0, view_size.x - left - right)
+	var controls_width := 466.0
+	button_row.size = Vector2(controls_width, 46.0)
+	button_row.scale = Vector2.ONE * minf(1.0, available_width / controls_width)
+	if available_width >= 1050.0:
 		info_panel.position = Vector2(left, top)
-		info_panel.size = Vector2(minf(620.0, available_width * 0.53), 88.0)
-		button_row.position = Vector2(view_size.x - right - 494.0, top)
-		button_row.size = Vector2(494.0, 44.0)
+		info_panel.size = Vector2(minf(510.0, available_width - controls_width - 32.0), 76.0)
+		button_row.position = Vector2(view_size.x - right - controls_width, top + 8.0)
 	else:
 		info_panel.position = Vector2(left, top)
-		info_panel.size = Vector2(available_width, 88.0)
-		button_row.position = Vector2(left, top + 96.0)
-		button_row.size = Vector2(minf(494.0, available_width), 44.0)
+		info_panel.size = Vector2(available_width, 76.0)
+		button_row.position = Vector2(left, top + 84.0)
+	if touch_help_left:
+		touch_help_left.position = Vector2(left + 20.0, view_size.y - margins.w - 58.0)
+	if touch_help_right:
+		touch_help_right.position = Vector2(view_size.x - right - 185.0, view_size.y - margins.w - 58.0)
 
 
 func _safe_viewport_margins(view_size: Vector2) -> Vector4:
@@ -743,13 +811,13 @@ func _update_hud() -> void:
 	if not status_label:
 		return
 	if game_won:
-		status_label.text = "L%02d   •   %s   •   COMPLETE IN %0.1f s" % [level_data["number"], level_data["title"], elapsed]
+		status_label.text = "L%02d  •  COMPLETE  •  %0.1f s" % [level_data["number"], elapsed]
 	else:
-		status_label.text = "L%02d   •   %s   •   %05.1f s   •   %s" % [level_data["number"], level_data["title"], elapsed, _control_mode_name()]
+		status_label.text = "L%02d  •  %s  •  %0.1f s" % [level_data["number"], level_data["title"].replace("THE ", ""), elapsed]
 	if transient_message_time > 0.0:
 		hint_label.text = transient_message
 	else:
-		hint_label.text = "Arrows / left drag: tilt  •  Right drag: orbit  •  R: reset  •  1/2: levels  •  G: controls"
+		hint_label.text = "LEFT: TILT  •  RIGHT: CAMERA" if OS.get_name() == "Android" else "Arrows / left drag: tilt  •  Right drag: orbit"
 
 
 func _update_mode_button() -> void:
@@ -818,6 +886,8 @@ func _reset_level() -> void:
 	elapsed = 0.0
 	transient_message_time = 0.0
 	drag_tilt = Vector2.ZERO
+	tilt_touch_index = -1
+	touch_start.clear()
 	board.rotation = Vector3.ZERO
 	if clockwork:
 		clockwork.reset_state()
