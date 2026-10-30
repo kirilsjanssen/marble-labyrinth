@@ -95,6 +95,17 @@ jobs:
           set_setting export/android/debug_keystore_user androiddebugkey
           set_setting export/android/debug_keystore_pass android
 
+      - name: Increment Android debug APK version automatically
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_code=$((10000 + GITHUB_RUN_NUMBER))
+          sed -i "s#^version/code=3$#version/code=$version_code#" export_presets.cfg
+          sed -i "s#^version/name=\"0.3.0-debug\"$#version/name=\"0.3.0-debug.$GITHUB_RUN_NUMBER\"#" export_presets.cfg
+          grep -Fqx "version/code=$version_code" export_presets.cfg
+          echo "Android Debug versionCode=$version_code"
+          echo "Android Debug versionName=0.3.0-debug.$GITHUB_RUN_NUMBER"
+
       - name: Test both levels and build APK
         shell: bash
         run: tools/build_android_debug.sh
