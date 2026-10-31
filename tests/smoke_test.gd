@@ -68,8 +68,11 @@ func _run() -> void:
 	if not _require(game.respawn_queued, "Trap must queue a level reset"):
 		return
 	game._reset_level()
-	game._on_goal_entered(game.ball)
-	if not _require(game.game_won, "Goal must complete the level"):
+	var goal_position: Vector3 = game.level_data["goal"]
+	game.ball.freeze = true
+	game.ball.global_position = game.board.to_global(goal_position + Vector3(0.0, 0.20, 0.0))
+	await _wait_physics_frames(40)
+	if not _require(game.game_won, "Goal must complete only after the ball is centred and steady"):
 		return
 
 	print("SMOKE PASS: scene, rigid marble, deck and wall collisions, tilt, motion, wind, magnet, trap, reset, goal")

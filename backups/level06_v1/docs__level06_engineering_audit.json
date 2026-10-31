@@ -1,0 +1,66 @@
+{
+  "units": "metres",
+  "engine_for_renders": "CYCLES_OPTIX",
+  "dimensions": {
+    "ring_outer_diameter": 46.0,
+    "ring_inner_diameter": 38.8,
+    "ring_radial_width": 3.6000000000000014,
+    "ball_diameter": 1.0,
+    "bridge_width": 2.8,
+    "tube_outer_diameter": 1.85,
+    "tube_inner_diameter": 1.65,
+    "tube_radial_clearance": 0.32499999999999996,
+    "levels_surface_z": [
+      4.0,
+      9.0,
+      12.0
+    ],
+    "lift_L01_travel": 5.0,
+    "lift_L02_travel": 3.0,
+    "flywheel_M01_diameter": 7.0
+  },
+  "checks": {
+    "ring_width_matches_blueprint": true,
+    "tube_clears_ball": true,
+    "bridge_wider_than_ball": true,
+    "rail_height_m": 0.8,
+    "route_nodes_connected_by_design": true,
+    "godot_physics_tested": false
+  },
+  "engineering_adjustments": [
+    "T01 keeps blueprint endpoints and nominal 32 m orthogonal run; the visible Bezier elbow shortens the exact sampled centerline slightly.",
+    "Transparent shells are visual meshes; inner guide rails and diameter metadata are authored for later collision design.",
+    "No structural-strength or power-consumption claims are made; this is game-device engineering geometry."
+  ],
+  "object_count": 679,
+  "export_mesh_count": 621,
+  "evaluated_vertices": 68698,
+  "evaluated_triangles": 135040,
+  "actions": [
+    "ANIM_01_Main_Flywheel_Rotation_Start_Stop",
+    "ANIM_02_Rotor_Start_Stop",
+    "ANIM_03_Magnetic_Lift_L01",
+    "ANIM_04_Magnetic_Lift_L02",
+    "ANIM_05_Accelerator_Coil_Pulses",
+    "ANIM_06_Power_Barriers",
+    "ANIM_06_Power_Barriers.001",
+    "ANIM_07_Extending_Bridge",
+    "ANIM_08_Secondary_Mechanisms",
+    "ANIM_09_Finish_Activation",
+    "ANIM_10_Demonstration_Ball_Route",
+    "M01_GearA_PIVOTAction",
+    "P02_ActivationRing_1Action",
+    "P02_ActivationRing_2Action"
+  ],
+  "collections": [
+    "01_RING",
+    "02_TRACKS",
+    "03_TRANSPORT_TUBES",
+    "04_LIFTS",
+    "05_MECHANICS",
+    "06_SUPPORTS",
+    "07_GAMEPLAY",
+    "08_ENVIRONMENT",
+    "09_CAMERAS_LIGHTS"
+  ]
+}

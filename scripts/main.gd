@@ -4,17 +4,39 @@ extends Node3D
 
 const Level01 = preload("res://scripts/levels/level_01.gd")
 const Level02 = preload("res://scripts/levels/level_02.gd")
+const Level03 = preload("res://scripts/levels/level_03.gd")
+const Level04 = preload("res://scripts/levels/level_04.gd")
+const Level05 = preload("res://scripts/levels/level_05.gd")
+const Level06 = preload("res://scripts/levels/level_06.gd")
+const WatermillMechanismsScript = preload("res://scripts/mechanisms/watermill_mechanisms.gd")
+const AlpineParallaxControllerScript = preload("res://scripts/environment/alpine_parallax_controller.gd")
 const ClockworkMechanismsScript = preload("res://scripts/components/clockwork_mechanisms.gd")
-const LEVEL_SOURCES := [Level01, Level02]
+const LiftworksMechanismsScript = preload("res://scripts/mechanisms/liftworks_mechanisms.gd")
+const SmartCameraControllerScript = preload("res://scripts/camera/smart_camera_controller.gd")
+const TiltStickIndicatorScript = preload("res://scripts/components/tilt_stick_indicator.gd")
+const GoalSocketDetectorScript = preload("res://scripts/components/goal_socket_detector.gd")
+const Level05MechanismsScript = preload("res://scripts/mechanisms/level05_mechanisms.gd")
+const Level05VisualsScript = preload("res://scripts/levels/level05_visuals.gd")
+const Level06MechanismsScript = preload("res://scripts/mechanisms/level06_mechanisms.gd")
+const Level06VisualsScript = preload("res://scripts/levels/level06_visuals.gd")
+const LEVEL_SOURCES := [Level01, Level02, Level03, Level04, Level05, Level06]
+## Default key-light pose of the studio levels; Level 05 aims it like its Blender sun.
+const KEY_LIGHT_ROTATION := Vector3(-58.0, -32.0, -18.0)
 
 const MAX_TILT := deg_to_rad(15.0)
 const TILT_RESPONSE := 5.5
+# A tilted AnimatableBody3D alone is not guaranteed to wake or drive a rigid marble.
+# Apply a board-local gravitational component to the real RigidBody3D every tick.
+const TILT_FORCE_MULTIPLIER := 2.5
 const BALL_RADIUS := 0.33
 const BALL_MASS := 0.34
 const BALL_LINEAR_DAMP := 0.12
 const BALL_ANGULAR_DAMP := 0.08
-const TOUCH_TILT_DISTANCE := 180.0
+const TOUCH_TILT_DISTANCE := 140.0
 const SENSOR_RANGE := 5.5
+const DEFAULT_CAMERA_YAW := deg_to_rad(32.0)
+const DEFAULT_CAMERA_PITCH := deg_to_rad(52.0)
+const DEFAULT_CAMERA_DISTANCE := 13.6
 
 enum ControlMode { AUTO, TOUCH, SENSOR }
 
@@ -22,9 +44,19 @@ var level_data: Dictionary = Level01.definition()
 var board: AnimatableBody3D
 var ball: RigidBody3D
 var camera: Camera3D
+var smart_camera: SmartCameraController
+var alpine_environment: AlpineParallaxController
+var world_environment: Environment
+var camera_label: Label
+var camera_button: Button
 var status_label: Label
 var hint_label: Label
 var mode_button: Button
+var calibrate_button: Button
+var view_button: Button
+var help_button: Button
+var help_overlay: ColorRect
+var tilt_indicator: Control
 var level_selector: OptionButton
 var completion_overlay: CenterContainer
 var completion_title: Label
@@ -33,16 +65,29 @@ var next_level_button: Button
 var hud_root: Control
 var info_panel: PanelContainer
 var button_row: HBoxContainer
+var touch_help_left: Label
+var touch_help_right: Label
 var wind_rotor: Node3D
 var magnet_light: OmniLight3D
 var magnet_ring: MeshInstance3D
 var trap_ring: MeshInstance3D
 var goal_ring: MeshInstance3D
+var goal_detector: GoalSocketDetector
 var clockwork: ClockworkMechanisms
+## Finished-art levels (Level 05): the GLB scene mounted on the board.
+var level_visuals: Level05Visuals
+var level06_visuals: Level06Visuals
+## Level 05 graphics tier: LOW on phones by default, HIGH on desktop (GFX button).
+var graphics_high := true
+var graphics_button: Button
 
 var materials: Dictionary = {}
 var touch_start: Dictionary = {}
+var tilt_touch_index := -1
+var mouse_tilt_active := false
+var mouse_tilt_origin := Vector2.ZERO
 var drag_tilt := Vector2.ZERO
+var active_tilt := Vector2.ZERO
 var sensor_zero := Vector2.ZERO
 var sensor_calibrated := false
 var control_mode := ControlMode.AUTO
@@ -59,6 +104,8 @@ var transient_message_time := 0.0
 
 
 func _ready() -> void:
+	control_mode = _default_control_mode(OS.get_name())
+	graphics_high = OS.get_name() != "Android"
 	_build_materials()
 	_build_environment()
 	_build_camera()
@@ -73,26 +120,63 @@ func _physics_process(delta: float) -> void:
 		_reset_level()
 
 	var tilt := _read_tilt_input()
+	active_tilt = tilt
 	var target_rotation := Vector3(-tilt.y * MAX_TILT, 0.0, -tilt.x * MAX_TILT)
 	var weight := clampf(delta * TILT_RESPONSE, 0.0, 1.0)
 	board.rotation.x = lerp_angle(board.rotation.x, target_rotation.x, weight)
 	board.rotation.z = lerp_angle(board.rotation.z, target_rotation.z, weight)
+	if not game_won:
+		_apply_marble_tilt_force(tilt)
 	if clockwork:
 		clockwork.physics_step(delta)
 
 	if not game_won:
 		elapsed += delta
 		_apply_environment_forces()
-		if ball.global_position.y < -2.5 or ball.global_position.length() > 25.0:
+		if ball.global_position.y < -2.5 or ball.global_position.length() > float(level_data.get("respawn_radius", 25.0)):
 			respawn_queued = true
 
 
 func _process(delta: float) -> void:
 	visual_time += delta
 	transient_message_time = maxf(0.0, transient_message_time - delta)
-	_update_camera()
+	_update_camera(delta)
 	_animate_obstacles(delta)
 	_update_hud()
+
+
+# Touch events are received before GUI routing. An unhandled-input listener loses
+# all drags when the full-screen HUD Control consumes them on Android.
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			if game_won or _touch_on_hud(event.position):
+				return
+			touch_start[event.index] = event.position
+			if event.position.x < get_viewport().get_visible_rect().size.x * 0.5 and tilt_touch_index == -1:
+				tilt_touch_index = event.index
+		else:
+			touch_start.erase(event.index)
+			if event.index == tilt_touch_index:
+				tilt_touch_index = -1
+				drag_tilt = Vector2.ZERO
+	elif event is InputEventScreenDrag and touch_start.has(event.index):
+		var start: Vector2 = touch_start[event.index]
+		if event.index == tilt_touch_index:
+			if control_mode != ControlMode.SENSOR:
+				drag_tilt = _screen_drag_to_board_tilt((event.position - start) / TOUCH_TILT_DISTANCE)
+		else:
+			_orbit_camera(event.relative, 0.009)
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+		mouse_tilt_active = false
+		if OS.get_name() != "Android":
+			drag_tilt = Vector2.ZERO
+
+
+func _touch_on_hud(point: Vector2) -> bool:
+	if (completion_overlay and completion_overlay.visible) or (help_overlay and help_overlay.visible):
+		return true
+	return (info_panel != null and info_panel.get_global_rect().has_point(point)) or (button_row != null and button_row.get_global_rect().has_point(point))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -108,36 +192,49 @@ func _unhandled_input(event: InputEvent) -> void:
 				_load_level(0)
 			KEY_2:
 				_load_level(1)
+			KEY_3:
+				_load_level(2)
+			KEY_4:
+				_load_level(3)
+			KEY_5:
+				_load_level(4)
+			KEY_6:
+				_load_level(5)
+			KEY_Q:
+				_toggle_graphics()
+			KEY_V:
+				_cycle_camera_preference()
 			KEY_L:
 				_load_level((current_level_index + 1) % LEVEL_SOURCES.size())
 			KEY_N, KEY_ENTER:
 				if game_won:
 					_advance_level()
 
-	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
-		_orbit_camera(event.relative, 0.008)
+	if event is InputEventMouseMotion:
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+			_orbit_camera(event.relative, 0.008)
+		elif OS.get_name() != "Android" and mouse_tilt_active and control_mode != ControlMode.SENSOR:
+			drag_tilt = _screen_drag_to_board_tilt((event.position - mouse_tilt_origin) / TOUCH_TILT_DISTANCE)
 	elif event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			orbit_distance = maxf(10.5, orbit_distance - 0.7)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			orbit_distance = minf(17.0, orbit_distance + 0.7)
+		elif event.button_index == MOUSE_BUTTON_LEFT and OS.get_name() != "Android" and not _touch_on_hud(event.position):
+			mouse_tilt_origin = event.position
+			mouse_tilt_active = true
 
-	if event is InputEventScreenTouch:
-		if event.pressed:
-			touch_start[event.index] = event.position
-		else:
-			if touch_start.has(event.index):
-				var start: Vector2 = touch_start[event.index]
-				if start.x < get_viewport().get_visible_rect().size.x * 0.5:
-					drag_tilt = Vector2.ZERO
-			touch_start.erase(event.index)
-	elif event is InputEventScreenDrag and touch_start.has(event.index):
-		var start: Vector2 = touch_start[event.index]
-		if start.x < get_viewport().get_visible_rect().size.x * 0.5:
-			if control_mode != ControlMode.SENSOR:
-				drag_tilt = ((event.position - start) / TOUCH_TILT_DISTANCE).limit_length(1.0)
-		else:
-			_orbit_camera(event.relative, 0.009)
+
+func _apply_marble_tilt_force(tilt: Vector2) -> void:
+	# Physical force: the marble still uses mass, real collisions, friction and inertia.
+	# Multiplying by sin(MAX_TILT) approximates the downhill gravity component.
+	# Boost compensates for the short mobile tilt range and high-friction steel deck.
+	if not ball or tilt.length_squared() < 0.0004:
+		return
+	ball.sleeping = false
+	var tangent := board.global_basis * Vector3(tilt.x, 0.0, tilt.y)
+	var gravity_strength: float = float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8))
+	ball.apply_central_force(tangent * ball.mass * gravity_strength * sin(MAX_TILT) * TILT_FORCE_MULTIPLIER)
 
 
 func _read_tilt_input() -> Vector2:
@@ -157,8 +254,15 @@ func _read_tilt_input() -> Vector2:
 	return _sensor_tilt()
 
 
-func _sensor_tilt() -> Vector2:
+func _sensor_vector() -> Vector3:
 	var gravity := Input.get_gravity()
+	# Some Android devices expose the accelerometer but not the gravity sensor.
+	if gravity.length_squared() < 1.0:
+		gravity = Input.get_accelerometer()
+	return gravity
+
+
+func _tilt_from_gravity(gravity: Vector3) -> Vector2:
 	if gravity.length_squared() < 1.0:
 		return Vector2.ZERO
 	var reading := Vector2(gravity.x, -gravity.y)
@@ -167,28 +271,70 @@ func _sensor_tilt() -> Vector2:
 	return (reading / SENSOR_RANGE).limit_length(1.0)
 
 
+func _sensor_tilt() -> Vector2:
+	return _tilt_from_gravity(_sensor_vector())
+
+
 func _calibrate_sensor(show_feedback: bool) -> void:
-	var gravity := Input.get_gravity()
+	var gravity := _sensor_vector()
 	if gravity.length_squared() >= 1.0:
 		sensor_zero = Vector2(gravity.x, gravity.y)
 		sensor_calibrated = true
 		if show_feedback:
-			_show_message("Sensor centred. Hold the phone here to keep the board level.", 3.5)
-	elif show_feedback:
-		_show_message("No motion sensor detected. Touch, keyboard and mouse remain available.", 3.5)
+			_show_message("Sensor calibrated. Tilt the phone to roll.", 3.5)
+	else:
+		sensor_calibrated = false
+		if show_feedback:
+			_show_message("Motion sensor unavailable. Choose TOUCH control.", 3.5)
+
+
+func _default_control_mode(platform_name: String) -> ControlMode:
+	# Auto could silently mix drag and phone gyro, making the ball look unpredictable.
+	return ControlMode.TOUCH if platform_name == "Android" else ControlMode.AUTO
 
 
 func _cycle_control_mode() -> void:
 	control_mode = ((control_mode + 1) % ControlMode.size()) as ControlMode
 	drag_tilt = Vector2.ZERO
+	tilt_touch_index = -1
+	touch_start.clear()
 	if control_mode == ControlMode.SENSOR:
 		_calibrate_sensor(false)
 	_update_mode_button()
+	_update_touch_help()
 
 
 func _orbit_camera(relative: Vector2, sensitivity: float) -> void:
 	yaw -= relative.x * sensitivity
 	pitch = clampf(pitch + relative.y * sensitivity * 0.75, deg_to_rad(24.0), deg_to_rad(74.0))
+	if smart_camera:
+		smart_camera.orbit_active = true
+
+
+func _screen_drag_to_board_tilt(screen_drag: Vector2) -> Vector2:
+	# A direction on the screen must have the same meaning even after orbiting.
+	# Convert the projected camera axes into board-local horizontal force axes.
+	if camera == null or board == null:
+		return screen_drag.limit_length(1.0)
+	var screen_right := camera.global_basis.x
+	var screen_down := -camera.global_basis.y
+	var world_direction := screen_right * screen_drag.x + screen_down * screen_drag.y
+	world_direction.y = 0.0
+	if world_direction.length_squared() < 0.0001:
+		return screen_drag.limit_length(1.0)
+	var board_local := board.global_basis.inverse() * world_direction.normalized()
+	return Vector2(board_local.x, board_local.z) * minf(screen_drag.length(), 1.0)
+
+
+func _board_tilt_to_screen(tilt: Vector2) -> Vector2:
+	# The on-screen thumb should follow the gesture, not board-local axes.
+	if camera == null or board == null or tilt.length_squared() < 0.0001:
+		return tilt
+	var world_direction := board.global_basis * Vector3(tilt.x, 0.0, tilt.y)
+	var screen_direction := Vector2(world_direction.dot(camera.global_basis.x), world_direction.dot(-camera.global_basis.y))
+	if screen_direction.length_squared() < 0.0001:
+		return Vector2.ZERO
+	return screen_direction.normalized() * minf(tilt.length(), 1.0)
 
 
 func _build_materials() -> void:
@@ -200,7 +346,9 @@ func _build_materials() -> void:
 		"brass": _metal(Color("b58a43"), 0.92, 0.20),
 		"brass_dark": _metal(Color("735126"), 0.86, 0.29),
 		"copper": _metal(Color("9e5638"), 0.88, 0.24),
-		"marble": _metal(Color("d9e7ef"), 0.92, 0.08),
+		# Brushed high-grade steel: still metallic, but broad highlights keep the
+		# sphere readable instead of mirroring the entire sky as a white spot.
+		"marble": _metal(Color("a5b2bd"), 0.88, 0.24),
 		"rubber": _metal(Color("11161c"), 0.15, 0.72),
 		"wind": _emissive_material(Color("42c9ff"), 1.5),
 		"magnet": _emissive_material(Color("c071ff"), 1.45),
@@ -208,6 +356,13 @@ func _build_materials() -> void:
 		"goal": _emissive_material(Color("55e7a0"), 1.4),
 		"amber_glow": _emissive_material(Color("ffb64d"), 1.25),
 		"gate_glow": _emissive_material(Color("ff6258"), 1.25),
+		"wood": _textured("res://assets/luma/level04/wood_planks.jpg", Color("8a7560"), 0.0, 0.82, 0.9),
+		"wood_dark": _textured("res://assets/luma/level04/wood_planks.jpg", Color("4e3b2c"), 0.0, 0.86, 1.4),
+		"wet_stone": _textured("res://assets/luma/level04/wet_stone.jpg", Color("7c8790"), 0.05, 0.42, 0.55),
+		"granite": _textured("res://assets/luma/level04/wet_stone.jpg", Color("5d666e"), 0.05, 0.6, 1.2),
+		"bronze": _metal(Color("8c5a2b"), 0.85, 0.32),
+		"roof_tiles": _metal(Color("7a3b2a"), 0.05, 0.75),
+		"meadow": _metal(Color("31492a"), 0.0, 0.95),
 	}
 
 
@@ -215,6 +370,7 @@ func _build_environment() -> void:
 	var world := WorldEnvironment.new()
 	world.name = "WorkshopEnvironment"
 	var environment := Environment.new()
+	world_environment = environment
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = Color("080c12")
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -263,22 +419,55 @@ func _load_level(index: int) -> void:
 	current_level_index = index
 	level_data = LEVEL_SOURCES[index].definition()
 	clockwork = null
+	level_visuals = null
+	level06_visuals = null
 	wind_rotor = null
 	magnet_light = null
 	magnet_ring = null
 	trap_ring = null
 	goal_ring = null
+	goal_detector = null
 	game_won = false
 	respawn_queued = false
 	elapsed = 0.0
 	drag_tilt = Vector2.ZERO
-	yaw = deg_to_rad(32.0)
-	pitch = deg_to_rad(52.0)
-	orbit_distance = 13.6
+	tilt_touch_index = -1
+	touch_start.clear()
+	_reset_camera_view()
 
 	_build_board()
 	_build_ball()
-	if level_data.has("mechanics"):
+	goal_detector.target_body = ball
+	_update_alpine_environment()
+	if level_data.has("level06"):
+		var orbital := Level06MechanismsScript.new() as Level06Mechanisms
+		orbital.name = "Level06Mechanisms"
+		board.add_child(orbital)
+		orbital.setup_level06(level_data["level06"], materials, ball, level06_visuals)
+		orbital.state_changed.connect(_on_mechanism_message)
+		clockwork = orbital
+	elif level_data.has("level05"):
+		var cascade := Level05MechanismsScript.new() as Level05Mechanisms
+		cascade.name = "Level05Mechanisms"
+		board.add_child(cascade)
+		cascade.setup_level05(level_data["level05"], materials, ball, self, level_visuals)
+		cascade.state_changed.connect(_on_mechanism_message)
+		clockwork = cascade
+	elif level_data.has("watermill"):
+		var watermill := WatermillMechanismsScript.new() as WatermillMechanisms
+		watermill.name = "WatermillMechanisms"
+		board.add_child(watermill)
+		watermill.setup_watermill(level_data["watermill"], materials, ball, self)
+		watermill.state_changed.connect(_on_mechanism_message)
+		clockwork = watermill
+	elif level_data.has("liftworks"):
+		var liftworks := LiftworksMechanismsScript.new() as LiftworksMechanisms
+		liftworks.name = "LiftworksMechanisms"
+		board.add_child(liftworks)
+		liftworks.setup_liftworks(level_data["liftworks"], materials, ball, self)
+		liftworks.state_changed.connect(_on_mechanism_message)
+		clockwork = liftworks
+	elif level_data.has("mechanics"):
 		clockwork = ClockworkMechanismsScript.new()
 		clockwork.name = "ClockworkMechanisms"
 		board.add_child(clockwork)
@@ -288,14 +477,87 @@ func _load_level(index: int) -> void:
 		level_selector.select(index)
 	if completion_overlay:
 		completion_overlay.hide()
+	if smart_camera:
+		smart_camera.target = ball
+		smart_camera.static_geometry = board
+		smart_camera.auto_enabled = level_data.get("smart_camera", false)
+		smart_camera.reset_state()
+	if level_data.has("hint"):
+		_show_message(level_data["hint"], 7.0)
 	_update_level_lighting()
+	_update_camera()
 	_update_hud()
+
+
+## Builds or removes the Alpine surroundings; other levels keep the dark studio.
+func _update_alpine_environment() -> void:
+	var wants_alpine: bool = level_data.get("alpine_environment", false)
+	if alpine_environment and is_instance_valid(alpine_environment) and not wants_alpine:
+		remove_child(alpine_environment)
+		alpine_environment.queue_free()
+		alpine_environment = null
+	if wants_alpine and alpine_environment == null:
+		alpine_environment = AlpineParallaxControllerScript.new() as AlpineParallaxController
+		alpine_environment.name = "AlpineParallax"
+		add_child(alpine_environment)
+		alpine_environment.setup(camera, Vector3(0.0, 0.0, 0.0), materials)
+	var key_light := get_node_or_null("KeyLight") as DirectionalLight3D
+	for light_name in ["WarmBenchLight", "CoolRimLight"]:
+		var studio_light := get_node_or_null(light_name) as Light3D
+		if studio_light:
+			# The finished-art level carries its own lamps; studio lights would
+			# double-light it and cost extra passes in GL Compatibility.
+			studio_light.visible = level_visuals == null and level06_visuals == null
+	if world_environment and level06_visuals:
+		level06_visuals.configure_environment(world_environment, key_light)
+		return
+	if world_environment and level_visuals:
+		level_visuals.configure_environment(world_environment, key_light)
+		return
+	if world_environment:
+		world_environment.fog_enabled = false
+		world_environment.glow_enabled = false
+		world_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		if key_light:
+			key_light.rotation_degrees = KEY_LIGHT_ROTATION
+			key_light.shadow_enabled = true
+			key_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+			key_light.directional_shadow_max_distance = 100.0
+		if wants_alpine:
+			var sky := Sky.new()
+			var sky_material := ProceduralSkyMaterial.new()
+			sky_material.sky_top_color = Color("4f7fb8")
+			sky_material.sky_horizon_color = Color("c3d6e6")
+			sky_material.ground_bottom_color = Color("2b3a2c")
+			sky_material.ground_horizon_color = Color("9db3a8")
+			sky.sky_material = sky_material
+			world_environment.background_mode = Environment.BG_SKY
+			world_environment.sky = sky
+			world_environment.ambient_light_color = Color("9fb4c8")
+			world_environment.ambient_light_energy = 0.42
+		else:
+			world_environment.background_mode = Environment.BG_COLOR
+			world_environment.ambient_light_color = Color("8296ac")
+			world_environment.ambient_light_energy = 0.48
 
 
 func _update_level_lighting() -> void:
 	var warm_light := get_node_or_null("WarmBenchLight") as OmniLight3D
 	var rim_light := get_node_or_null("CoolRimLight") as OmniLight3D
-	if level_data.get("style", "workshop") == "clockwork":
+	var key_light := get_node_or_null("KeyLight") as DirectionalLight3D
+	if level_visuals or level06_visuals:
+		# Sun colour, energy and direction come from the Blender v4 scene.
+		return
+	if key_light:
+		var alpine: bool = level_data.get("style", "workshop") == "alpine"
+		# Cold mountain daylight for the watermill, warm bench light elsewhere.
+		key_light.light_color = Color("e6eeff") if alpine else Color("ffe2ae")
+		key_light.light_energy = 1.9 if alpine else 2.15
+	if level_data.get("style", "workshop") == "alpine":
+		warm_light.light_color = Color("ffc27a")
+		warm_light.light_energy = 1.6
+		rim_light.light_color = Color("8fb8e8")
+	elif level_data.get("style", "workshop") == "clockwork":
 		warm_light.light_color = Color("ffb247")
 		warm_light.light_energy = 2.8
 		rim_light.light_color = Color("6e9dc8")
@@ -315,11 +577,17 @@ func _build_board() -> void:
 	board.physics_material_override = board_physics
 	add_child(board)
 
-	if level_data.has("floor_tiles"):
+	if level_data.get("scene", "") == "level05":
+		_build_scene_level()
+	elif level_data.get("scene", "") == "level06":
+		_build_level06_scene()
+	elif level_data.has("floor_tiles"):
 		_add_box_part("FactoryUnderframe", Vector3(0.0, -0.52, 0.0), Vector3(9.65, 0.12, 9.65), materials.frame, false)
 		_add_box_part("FactoryBrassBand", Vector3(0.0, -0.60, 0.0), Vector3(9.82, 0.08, 9.82), materials.brass_dark, false)
 		for tile: Dictionary in level_data["floor_tiles"]:
 			var tile_material: Material = materials.steel if tile.get("elevated", false) else materials.deck
+			if tile.has("material"):
+				tile_material = materials[tile["material"]]
 			_add_box_part(tile["name"], tile["position"], tile["size"], tile_material, true)
 			_add_floor_tile_details(tile)
 		_build_factory_details()
@@ -341,6 +609,42 @@ func _build_board() -> void:
 	for hole: Dictionary in level_data.get("holes", []):
 		_build_hole(hole)
 	_build_goal(level_data["goal"])
+
+
+## Mounts the finished GLB level on the board, centred on the board origin.
+## Its box colliders become shapes of the board itself, so the marble, the
+## crates AND the smart camera's occlusion rays all see the same geometry.
+func _build_scene_level() -> void:
+	level_visuals = Level05VisualsScript.new() as Level05Visuals
+	level_visuals.name = "Level05Visuals"
+	level_visuals.quality = Level05Visuals.Quality.HIGH if graphics_high else Level05Visuals.Quality.LOW
+	level_visuals.build_environment = false
+	level_visuals.collider_parent = board
+	level_visuals.world_parent = self
+	level_visuals.position = -Level05Visuals.CENTRE
+	board.add_child(level_visuals)
+
+
+func _build_level06_scene() -> void:
+	level06_visuals = Level06VisualsScript.new() as Level06Visuals
+	level06_visuals.name = "Level06Visuals"
+	level06_visuals.quality = Level06Visuals.Quality.HIGH if graphics_high else Level06Visuals.Quality.LOW
+	level06_visuals.collider_parent = board
+	level06_visuals.world_parent = self
+	board.add_child(level06_visuals)
+
+
+func _toggle_graphics() -> void:
+	graphics_high = not graphics_high
+	_update_graphics_button()
+	if level_visuals or level06_visuals:
+		_load_level(current_level_index)
+	_show_message("GRAPHICS: %s" % ("HIGH" if graphics_high else "LOW"), 2.5)
+
+
+func _update_graphics_button() -> void:
+	if graphics_button:
+		graphics_button.text = "GFX: HIGH" if graphics_high else "GFX: LOW"
 
 
 func _add_floor_tile_details(tile: Dictionary) -> void:
@@ -389,11 +693,20 @@ func _build_factory_lamp(spec: Dictionary) -> void:
 func _build_hole(spec: Dictionary) -> void:
 	var at: Vector3 = spec["position"]
 	var size: Vector3 = spec["size"]
+	if spec.get("plain", false):
+		_add_hole_trigger(spec)
+		return
 	var rim_y := at.y + size.y * 0.5 + 0.37
 	_add_box_visual(board, Vector3(at.x, rim_y, at.z - size.z * 0.5), Vector3(size.x + 0.16, 0.07, 0.09), materials.brass_dark, spec["name"] + "RimNorth")
 	_add_box_visual(board, Vector3(at.x, rim_y, at.z + size.z * 0.5), Vector3(size.x + 0.16, 0.07, 0.09), materials.brass_dark, spec["name"] + "RimSouth")
 	_add_box_visual(board, Vector3(at.x - size.x * 0.5, rim_y, at.z), Vector3(0.09, 0.07, size.z), materials.brass_dark, spec["name"] + "RimWest")
 	_add_box_visual(board, Vector3(at.x + size.x * 0.5, rim_y, at.z), Vector3(0.09, 0.07, size.z), materials.brass_dark, spec["name"] + "RimEast")
+	_add_hole_trigger(spec)
+
+
+func _add_hole_trigger(spec: Dictionary) -> void:
+	var at: Vector3 = spec["position"]
+	var size: Vector3 = spec["size"]
 	var hole_area := Area3D.new()
 	hole_area.name = spec["name"] + "Trigger"
 	hole_area.position = at
@@ -402,7 +715,10 @@ func _build_hole(spec: Dictionary) -> void:
 	shape.size = size
 	collision.shape = shape
 	hole_area.add_child(collision)
-	hole_area.body_entered.connect(_on_trap_entered)
+	if spec.has("respawn"):
+		hole_area.body_entered.connect(_on_checkpoint_hazard_entered.bind(spec["respawn"]))
+	else:
+		hole_area.body_entered.connect(_on_trap_entered)
 	board.add_child(hole_area)
 
 
@@ -421,7 +737,9 @@ func _add_wall(spec: Dictionary) -> void:
 	var at: Vector3 = spec["position"]
 	var size: Vector3 = spec["size"]
 	var accent: bool = spec.get("accent", false)
-	_add_box_part(wall_name, at, size, materials.wall, true)
+	_add_box_part(wall_name, at, size, materials[spec["material"]] if spec.has("material") else materials.wall, true)
+	if spec.get("plain", false):
+		return
 
 	var rail_size := Vector3(maxf(0.16, size.x * 0.86), 0.075, maxf(0.16, size.z * 0.86))
 	var rail_material: Material = materials.brass if accent else materials.brass_dark
@@ -487,20 +805,24 @@ func _build_trap(config: Dictionary) -> void:
 
 
 func _build_goal(origin: Vector3) -> void:
-	_add_cylinder_visual(board, origin, 0.65, 0.055, materials.frame, "GoalSocket")
-	_add_torus_visual(board, origin + Vector3(0.0, 0.055, 0.0), 0.38, 0.62, materials.brass, "GoalBrassRing")
-	goal_ring = _add_torus_visual(board, origin + Vector3(0.0, 0.085, 0.0), 0.27, 0.36, materials.goal, "GoalGlow")
+	if not level_data.get("goal_model", false):
+		# Finished-art levels already model their recessed goal socket.
+		_add_cylinder_visual(board, origin, 0.65, 0.055, materials.frame, "GoalSocket")
+		_add_torus_visual(board, origin + Vector3(0.0, 0.055, 0.0), 0.38, 0.62, materials.brass, "GoalBrassRing")
+		goal_ring = _add_torus_visual(board, origin + Vector3(0.0, 0.085, 0.0), 0.27, 0.36, materials.goal, "GoalGlow")
 
-	var goal_area := Area3D.new()
-	goal_area.name = "GoalTrigger"
-	goal_area.position = origin + Vector3(0.0, 0.28, 0.0)
+	# Proximity detection is intentionally broad, but does NOT complete a level.
+	# The reusable socket requires the ball CENTRE to be inside and held steady.
+	goal_detector = GoalSocketDetectorScript.new()
+	goal_detector.name = "GoalTrigger"
+	goal_detector.position = origin + Vector3(0.0, 0.28, 0.0)
 	var goal_shape := CollisionShape3D.new()
 	var goal_sphere := SphereShape3D.new()
 	goal_sphere.radius = 0.68
 	goal_shape.shape = goal_sphere
-	goal_area.add_child(goal_shape)
-	goal_area.body_entered.connect(_on_goal_entered)
-	board.add_child(goal_area)
+	goal_detector.add_child(goal_shape)
+	goal_detector.body_captured.connect(_on_goal_entered)
+	board.add_child(goal_detector)
 
 
 func _build_ball() -> void:
@@ -529,6 +851,8 @@ func _build_ball() -> void:
 	var sphere_mesh := SphereMesh.new()
 	sphere_mesh.radius = BALL_RADIUS
 	sphere_mesh.height = BALL_RADIUS * 2.0
+	sphere_mesh.radial_segments = 48
+	sphere_mesh.rings = 24
 	shell.mesh = sphere_mesh
 	shell.material_override = materials.marble
 	ball.add_child(shell)
@@ -538,6 +862,8 @@ func _build_ball() -> void:
 	var band_mesh := TorusMesh.new()
 	band_mesh.inner_radius = BALL_RADIUS * 0.82
 	band_mesh.outer_radius = BALL_RADIUS * 0.99
+	band_mesh.rings = 32
+	band_mesh.ring_segments = 12
 	band.mesh = band_mesh
 	band.material_override = materials.brass
 	ball.add_child(band)
@@ -549,7 +875,12 @@ func _build_camera() -> void:
 	camera.name = "OrbitCamera"
 	camera.current = true
 	camera.fov = 43.0
+	camera.near = 0.04
 	add_child(camera)
+	smart_camera = SmartCameraControllerScript.new()
+	smart_camera.name = "SmartCameraController"
+	smart_camera.camera = camera
+	add_child(smart_camera)
 
 
 func _build_hud() -> void:
@@ -559,6 +890,7 @@ func _build_hud() -> void:
 	hud_root = Control.new()
 	hud_root.name = "SafeAreaHUD"
 	hud_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hud_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(hud_root)
 
 	info_panel = PanelContainer.new()
@@ -575,6 +907,7 @@ func _build_hud() -> void:
 	panel_style.content_margin_top = 10.0
 	panel_style.content_margin_bottom = 9.0
 	info_panel.add_theme_stylebox_override("panel", panel_style)
+	info_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud_root.add_child(info_panel)
 
 	var text_stack := VBoxContainer.new()
@@ -584,31 +917,82 @@ func _build_hud() -> void:
 	status_label.add_theme_color_override("font_color", Color("f3dfb6"))
 	text_stack.add_child(status_label)
 	hint_label = Label.new()
-	hint_label.text = "Arrows / left drag: tilt  •  Right drag: orbit  •  R: reset  •  G: controls  •  C: calibrate"
+	hint_label.text = _ui_text("LEFT: TILT BOARD  •  RIGHT: CAMERA", "СЛЕВА: НАКЛОН ДОСКИ  •  СПРАВА: КАМЕРА", "LINKS: BRETT NEIGEN  •  RECHTS: KAMERA")
 	hint_label.add_theme_font_size_override("font_size", 14)
 	hint_label.add_theme_color_override("font_color", Color("9fb3c9"))
 	text_stack.add_child(hint_label)
+
+	touch_help_left = Label.new()
+	touch_help_left.text = "TILT BOARD\nBall rolls on its own"
+	touch_help_left.add_theme_font_size_override("font_size", 17)
+	touch_help_left.add_theme_color_override("font_color", Color("d1a05a", 0.83))
+	touch_help_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	touch_help_left.visible = OS.get_name() == "Android"
+	hud_root.add_child(touch_help_left)
+	touch_help_right = Label.new()
+	touch_help_right.text = _ui_text("CAMERA\nDrag to look around", "КАМЕРА\nПроведи для обзора", "KAMERA\nWischen zum Drehen")
+	touch_help_right.add_theme_font_size_override("font_size", 17)
+	touch_help_right.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	touch_help_right.add_theme_color_override("font_color", Color("a6bad1", 0.78))
+	touch_help_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	touch_help_right.visible = OS.get_name() == "Android"
+	hud_root.add_child(touch_help_right)
+
+	tilt_indicator = TiltStickIndicatorScript.new()
+	tilt_indicator.name = "TiltThumbIndicator"
+	tilt_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tilt_indicator.size = Vector2(180.0, 180.0)
+	tilt_indicator.visible = OS.get_name() == "Android"
+	hud_root.add_child(tilt_indicator)
 
 	button_row = HBoxContainer.new()
 	button_row.add_theme_constant_override("separation", 8)
 	hud_root.add_child(button_row)
 
 	level_selector = OptionButton.new()
-	level_selector.custom_minimum_size = Vector2(154.0, 42.0)
+	level_selector.custom_minimum_size = Vector2(140.0, 44.0)
 	level_selector.focus_mode = Control.FOCUS_NONE
 	level_selector.add_item("LEVEL 1 — WORKSHOP")
 	level_selector.add_item("LEVEL 2 — FACTORY")
+	level_selector.add_item("LEVEL 3 — LIFTWORKS")
+	level_selector.add_item("LEVEL 4 — WATERMILL")
+	level_selector.add_item("LEVEL 5 — CASCADE")
+	level_selector.add_item("LEVEL 6 — ORBITAL")
 	level_selector.item_selected.connect(_on_level_selected)
 	button_row.add_child(level_selector)
-	mode_button = _hud_button("CONTROL: AUTO", Vector2(140.0, 42.0))
+	mode_button = _hud_button("BOARD: DRAG", Vector2(155.0, 44.0))
 	mode_button.pressed.connect(_cycle_control_mode)
 	button_row.add_child(mode_button)
-	var calibrate_button := _hud_button("CALIBRATE", Vector2(98.0, 42.0))
+	calibrate_button = _hud_button(_ui_text("CALIBRATE", "КАЛИБР.", "KALIBR."), Vector2(94.0, 44.0))
 	calibrate_button.pressed.connect(_on_calibrate_pressed)
 	button_row.add_child(calibrate_button)
-	var reset_button := _hud_button("RESET", Vector2(78.0, 42.0))
+	view_button = _hud_button(_ui_text("VIEW", "ВИД", "ANS."), Vector2(55.0, 44.0))
+	view_button.pressed.connect(_reset_camera_view)
+	button_row.add_child(view_button)
+	camera_button = _hud_button("CAM: AUTO", Vector2(96.0, 44.0))
+	camera_button.pressed.connect(_cycle_camera_preference)
+	button_row.add_child(camera_button)
+	graphics_button = _hud_button("GFX: HIGH", Vector2(96.0, 44.0))
+	graphics_button.pressed.connect(_toggle_graphics)
+	button_row.add_child(graphics_button)
+	_update_graphics_button()
+	help_button = _hud_button("?", Vector2(42.0, 44.0))
+	help_button.pressed.connect(_show_controls_help)
+	button_row.add_child(help_button)
+	var reset_button := _hud_button(_ui_text("RESET", "СБРОС", "NEUSTART"), Vector2(80.0, 44.0))
 	reset_button.pressed.connect(_on_reset_pressed)
 	button_row.add_child(reset_button)
+
+	camera_label = Label.new()
+	camera_label.name = "CameraModeLabel"
+	camera_label.add_theme_font_size_override("font_size", 15)
+	camera_label.add_theme_color_override("font_color", Color("ffd28a", 0.92))
+	camera_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.85))
+	camera_label.add_theme_constant_override("outline_size", 5)
+	camera_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	camera_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	camera_label.size = Vector2(260.0, 24.0)
+	hud_root.add_child(camera_label)
 
 	completion_overlay = CenterContainer.new()
 	completion_overlay.name = "CompletionOverlay"
@@ -645,8 +1029,106 @@ func _build_hud() -> void:
 	next_level_button.pressed.connect(_advance_level)
 	completion_stack.add_child(next_level_button)
 	completion_overlay.hide()
+	_build_controls_help(panel_style)
 	get_viewport().size_changed.connect(_layout_hud)
+	_update_mode_button()
+	_update_touch_help()
 	_layout_hud()
+	if OS.get_name() == "Android" and not FileAccess.file_exists("user://controls_help_seen.cfg"):
+		_show_controls_help()
+
+
+func _build_controls_help(panel_style: StyleBoxFlat) -> void:
+	help_overlay = ColorRect.new()
+	help_overlay.name = "ControlsHelpOverlay"
+	help_overlay.color = Color(0.0, 0.0, 0.0, 0.74)
+	help_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	help_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hud_root.add_child(help_overlay)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	help_overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(580.0, 280.0)
+	var style := panel_style.duplicate() as StyleBoxFlat
+	style.bg_color = Color(0.035, 0.055, 0.083, 0.98)
+	style.border_color = Color("e4ae59")
+	style.set_border_width_all(2)
+	style.content_margin_left = 24.0
+	style.content_margin_right = 24.0
+	style.content_margin_top = 20.0
+	style.content_margin_bottom = 20.0
+	panel.add_theme_stylebox_override("panel", style)
+	center.add_child(panel)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 14)
+	panel.add_child(stack)
+	var title := Label.new()
+	title.text = _ui_text("HOW TO CONTROL THE MARBLE", "КАК УПРАВЛЯТЬ ШАРИКОМ", "SO STEUERST DU DIE KUGEL")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color("ffd28a"))
+	stack.add_child(title)
+	var content := Label.new()
+	content.text = _ui_text(
+		"LEFT: drag to TILT THE WHOLE BOARD. The ball rolls by itself.\nRIGHT: drag to rotate the CAMERA only.\nDRAG = finger control (recommended).\nPHONE = phone tilt (calibrate first).\nVIEW = restore the starting camera angle.",
+		"СЛЕВА: веди пальцем — наклоняется ВСЯ ДОСКА.\nШар катится сам, ты не толкаешь его напрямую.\nСПРАВА: веди пальцем — поворачивается только КАМЕРА.\nРЕЖИМ «ПАЛЕЦ» — рекомендуемый.\n«ТЕЛЕФОН» — наклон корпуса после калибровки.\n«ВИД» — вернуть исходную камеру.",
+		"LINKS: Mit dem Finger das BRETT NEIGEN. Die Kugel rollt selbst.\nRECHTS: Nur die KAMERA drehen.\nFINGER = empfohlen.\nHANDY = Neigungssensor (vorher kalibrieren).\nANSICHT = Kamera zurücksetzen."
+	)
+	content.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.custom_minimum_size = Vector2(500.0, 0.0)
+	content.add_theme_font_size_override("font_size", 18)
+	content.add_theme_color_override("font_color", Color("dde5ef"))
+	stack.add_child(content)
+	var close := _hud_button(_ui_text("GOT IT / PLAY", "ПОНЯТНО / ИГРАТЬ", "VERSTANDEN / SPIELEN"), Vector2(210.0, 52.0))
+	close.pressed.connect(_close_controls_help)
+	stack.add_child(close)
+	help_overlay.hide()
+
+
+func _show_controls_help() -> void:
+	if help_overlay:
+		help_overlay.show()
+
+
+func _close_controls_help() -> void:
+	if help_overlay:
+		help_overlay.hide()
+	var file := FileAccess.open("user://controls_help_seen.cfg", FileAccess.WRITE)
+	if file:
+		file.store_string("seen=1")
+
+
+func _reset_camera_view() -> void:
+	yaw = deg_to_rad(float(level_data["camera_yaw_deg"])) if level_data.has("camera_yaw_deg") else DEFAULT_CAMERA_YAW
+	pitch = DEFAULT_CAMERA_PITCH
+	orbit_distance = level_data.get("camera_distance", DEFAULT_CAMERA_DISTANCE)
+	if smart_camera:
+		smart_camera.orbit_active = false
+
+
+func _cycle_camera_preference() -> void:
+	if not smart_camera:
+		return
+	smart_camera.cycle_preference()
+	_show_message("CAMERA PREFERENCE: %s" % smart_camera.preference_name(), 2.5)
+	_update_hud()
+
+
+func _ui_text(english: String, russian: String, german: String) -> String:
+	var locale := TranslationServer.get_locale().left(2).to_lower()
+	if locale == "ru":
+		return russian
+	if locale == "de":
+		return german
+	return english
+
+
+func _update_touch_help() -> void:
+	if touch_help_left:
+		touch_help_left.text = _ui_text("PHONE TILT\nFinger drag off", "НАКЛОН ТЕЛЕФОНА\nЖест слева отключён", "HANDY NEIGEN\nFingersteuerung aus") if control_mode == ControlMode.SENSOR else _ui_text("TILT THE BOARD\nBall rolls naturally", "НАКЛОН ДОСКИ\nШар катится по уклону", "BRETT NEIGEN\nKugel rollt selbst")
+	if touch_help_right:
+		touch_help_right.text = _ui_text("CAMERA\nDrag to look around", "КАМЕРА\nПроведи для обзора", "KAMERA\nWischen zum Drehen")
 
 
 func _hud_button(label_text: String, minimum_size: Vector2) -> Button:
@@ -666,17 +1148,30 @@ func _layout_hud(override_size := Vector2.ZERO) -> void:
 	var left := margins.x + 16.0
 	var top := margins.y + 14.0
 	var right := margins.z + 16.0
-	var available_width := view_size.x - left - right
-	if available_width >= 1080.0:
+	var available_width := maxf(200.0, view_size.x - left - right)
+	var controls_width := maxf(466.0, button_row.get_combined_minimum_size().x)
+	button_row.size = Vector2(controls_width, 46.0)
+	button_row.scale = Vector2.ONE * minf(1.0, available_width / controls_width)
+	if available_width >= 1050.0:
 		info_panel.position = Vector2(left, top)
-		info_panel.size = Vector2(minf(620.0, available_width * 0.53), 88.0)
-		button_row.position = Vector2(view_size.x - right - 494.0, top)
-		button_row.size = Vector2(494.0, 44.0)
+		info_panel.size = Vector2(minf(510.0, available_width - controls_width - 32.0), 76.0)
+		button_row.position = Vector2(view_size.x - right - controls_width, top + 8.0)
 	else:
 		info_panel.position = Vector2(left, top)
-		info_panel.size = Vector2(available_width, 88.0)
-		button_row.position = Vector2(left, top + 96.0)
-		button_row.size = Vector2(minf(494.0, available_width), 44.0)
+		info_panel.size = Vector2(available_width, 76.0)
+		button_row.position = Vector2(left, top + 84.0)
+	# Scale the touch indicator to 150% of the original 120 px on ordinary
+	# landscape displays, but keep it inside short screens and safe areas.
+	var thumb_diameter := minf(180.0, maxf(118.0, view_size.y * 0.275))
+	if tilt_indicator:
+		tilt_indicator.size = Vector2.ONE * thumb_diameter
+		tilt_indicator.position = Vector2(left + 6.0, view_size.y - margins.w - thumb_diameter - 18.0)
+	if touch_help_left:
+		touch_help_left.position = Vector2(left + thumb_diameter + 18.0, view_size.y - margins.w - 83.0)
+	if touch_help_right:
+		touch_help_right.position = Vector2(view_size.x - right - 235.0, view_size.y - margins.w - 83.0)
+	if camera_label:
+		camera_label.position = Vector2((view_size.x - camera_label.size.x) * 0.5, view_size.y - margins.w - 40.0)
 
 
 func _safe_viewport_margins(view_size: Vector2) -> Vector4:
@@ -692,12 +1187,19 @@ func _safe_viewport_margins(view_size: Vector2) -> Vector4:
 	return Vector4(left, top, right, bottom)
 
 
-func _update_camera() -> void:
+func _update_camera(delta := 0.0) -> void:
 	if not camera:
 		return
+	var pivot: Vector3 = level_data.get("camera_pivot", Vector3.ZERO)
 	var direction := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
-	camera.global_position = direction * orbit_distance
-	camera.look_at(Vector3(0.0, 0.0, 0.0), Vector3.UP)
+	var overview_position := pivot + direction * orbit_distance
+	if smart_camera:
+		# Overview/orbit math stays here; the controller decides when that view
+		# cannot see the marble and blends to the chase camera.
+		smart_camera.update(delta, overview_position, pivot)
+	else:
+		camera.global_position = overview_position
+		camera.look_at(pivot, Vector3.UP)
 
 
 func _animate_obstacles(delta: float) -> void:
@@ -743,44 +1245,81 @@ func _update_hud() -> void:
 	if not status_label:
 		return
 	if game_won:
-		status_label.text = "L%02d   •   %s   •   COMPLETE IN %0.1f s" % [level_data["number"], level_data["title"], elapsed]
+		status_label.text = "L%02d  •  COMPLETE  •  %0.1f s" % [level_data["number"], elapsed]
 	else:
-		status_label.text = "L%02d   •   %s   •   %05.1f s   •   %s" % [level_data["number"], level_data["title"], elapsed, _control_mode_name()]
+		status_label.text = "L%02d  •  %s  •  %0.1f s" % [level_data["number"], level_data["title"].replace("THE ", ""), elapsed]
 	if transient_message_time > 0.0:
 		hint_label.text = transient_message
 	else:
-		hint_label.text = "Arrows / left drag: tilt  •  Right drag: orbit  •  R: reset  •  1/2: levels  •  G: controls"
+		if OS.get_name() == "Android":
+			if control_mode == ControlMode.SENSOR:
+				hint_label.text = _ui_text("TILT PHONE = ROLL BALL  •  RIGHT = CAMERA", "НАКЛОНИ ТЕЛЕФОН — ШАР ПОКАТИТСЯ  •  СПРАВА КАМЕРА", "HANDY NEIGEN = KUGEL ROLLT  •  RECHTS KAMERA")
+			else:
+				hint_label.text = _ui_text("LEFT = TILT BOARD  •  RIGHT = CAMERA", "СЛЕВА НАКЛОН ДОСКИ  •  СПРАВА КАМЕРА", "LINKS = BRETT NEIGEN  •  RECHTS = KAMERA")
+		else:
+			hint_label.text = "Arrows / left drag: tilt the board  •  Right drag: camera"
+	if tilt_indicator and tilt_indicator.visible:
+		tilt_indicator.call("set_tilt", _board_tilt_to_screen(active_tilt))
+	if smart_camera and camera_label:
+		var suffix := "" if smart_camera.preference == SmartCameraController.Preference.AUTO else "  (LOCKED)"
+		camera_label.text = "CAMERA: %s%s" % [smart_camera.mode_name(), suffix]
+		if camera_button:
+			camera_button.text = "CAM: %s" % smart_camera.preference_name()
 
 
 func _update_mode_button() -> void:
 	if mode_button:
-		mode_button.text = "CONTROL: " + _control_mode_name()
+		mode_button.text = _ui_text("BOARD: ", "ДОСКА: ", "BRETT: ") + _control_mode_name()
+	if calibrate_button:
+		calibrate_button.visible = control_mode != ControlMode.TOUCH
+	if button_row:
+		_layout_hud()
 
 
 func _control_mode_name() -> String:
 	match control_mode:
 		ControlMode.TOUCH:
-			return "TOUCH"
+			return _ui_text("DRAG", "ПАЛЕЦ", "FINGER")
 		ControlMode.SENSOR:
-			return "SENSOR"
+			return _ui_text("PHONE", "ТЕЛЕФОН", "HANDY")
 		_:
-			return "AUTO"
+			return _ui_text("AUTO", "АВТО", "AUTO")
 
 
-func _on_goal_entered(body: Node3D) -> void:
-	if body == ball and not game_won:
+func _on_goal_entered(body: RigidBody3D) -> void:
+	# Never trust an Area3D body_entered signal: its wide collision can overlap
+	# a sphere that is still visibly OUTSIDE the goal socket.
+	if body == ball and goal_detector and goal_detector.capture_complete and not game_won:
 		game_won = true
 		ball.linear_damp = 2.8
 		ball.angular_damp = 1.6
 		completion_title.text = "LEVEL %02d COMPLETE" % level_data["number"]
 		completion_detail.text = "%s\nTime: %0.1f seconds" % [level_data["title"], elapsed]
-		next_level_button.text = "NEXT: CLOCKWORK FACTORY" if current_level_index + 1 < LEVEL_SOURCES.size() else "REPLAY FACTORY"
+		if current_level_index + 1 < LEVEL_SOURCES.size():
+			next_level_button.text = "NEXT: " + String(LEVEL_SOURCES[current_level_index + 1].definition()["title"]).replace("THE ", "")
+		else:
+			next_level_button.text = "REPLAY " + String(level_data["title"]).replace("THE ", "")
 		completion_overlay.show()
 
 
 func _on_trap_entered(body: Node3D) -> void:
 	if body == ball:
 		respawn_queued = true
+
+
+func _on_checkpoint_hazard_entered(body: Node3D, local_respawn: Vector3) -> void:
+	if body == ball and not game_won:
+		call_deferred("_respawn_at_checkpoint", local_respawn)
+
+
+## Fall hazards on upper tiers return the marble to that tier's landing without
+## undoing the mechanisms the player already solved.
+func _respawn_at_checkpoint(local_respawn: Vector3) -> void:
+	ball.linear_velocity = Vector3.ZERO
+	ball.angular_velocity = Vector3.ZERO
+	ball.global_position = board.to_global(local_respawn)
+	ball.sleeping = false
+	_show_message("MARBLE RECOVERED AT LAST LANDING", 2.5)
 
 
 func _on_reset_pressed() -> void:
@@ -818,7 +1357,11 @@ func _reset_level() -> void:
 	elapsed = 0.0
 	transient_message_time = 0.0
 	drag_tilt = Vector2.ZERO
+	tilt_touch_index = -1
+	touch_start.clear()
 	board.rotation = Vector3.ZERO
+	if goal_detector:
+		goal_detector.reset_capture()
 	if clockwork:
 		clockwork.reset_state()
 	ball.linear_damp = BALL_LINEAR_DAMP
@@ -888,6 +1431,18 @@ func _metal(color: Color, metallic: float, roughness: float) -> StandardMaterial
 	material.albedo_color = color
 	material.metallic = metallic
 	material.roughness = roughness
+	return material
+
+
+## Generated (Luma) texture when imported, otherwise the flat fallback colour.
+## Triplanar mapping keeps planks and cobbles at a constant scale on every box.
+func _textured(path: String, tint: Color, metallic: float, roughness: float, scale: float) -> StandardMaterial3D:
+	var material := _metal(tint, metallic, roughness)
+	if ResourceLoader.exists(path):
+		material.albedo_texture = load(path)
+		material.albedo_color = tint.lightened(0.25)
+		material.uv1_triplanar = true
+		material.uv1_scale = Vector3.ONE * scale
 	return material
 
 

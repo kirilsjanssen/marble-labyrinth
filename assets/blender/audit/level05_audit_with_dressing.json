@@ -1,0 +1,2773 @@
+{
+ "objects": 4434,
+ "mesh_objects": 4374,
+ "extents": {
+  "Background": [
+   -288.0,
+   356.0,
+   -288.0,
+   306.0,
+   -95.0,
+   35.673
+  ],
+  "Mechanisms": [
+   1.56,
+   12.66,
+   -0.285,
+   9.477,
+   -1.6,
+   4.998
+  ],
+  "Static_Architecture": [
+   -0.182,
+   12.73,
+   -0.184,
+   13.649,
+   -1.5,
+   7.26
+  ],
+  "Terrain": [
+   -34.0,
+   46.0,
+   -34.0,
+   46.0,
+   -35.312,
+   0.585
+  ],
+  "Dressing": [
+   0.005,
+   11.995,
+   0.0,
+   12.222,
+   0.74,
+   10.92
+  ],
+  "Vegetation": [
+   -9.762,
+   48.483,
+   -9.279,
+   48.997,
+   -35.623,
+   3.047
+  ],
+  "Platforms": [
+   -0.025,
+   12.025,
+   -0.025,
+   10.025,
+   -0.25,
+   3.545
+  ],
+  "Game_Markers": [
+   0.47,
+   1.13,
+   3.67,
+   4.33,
+   0.0,
+   0.66
+  ],
+  "Water": [
+   -0.318,
+   14.17,
+   -1.26,
+   13.4,
+   -7.095,
+   4.265
+  ]
+ },
+ "triangles_by_group": {
+  "Background": 1549834,
+  "Mechanisms": 39812,
+  "Static_Architecture": 125920,
+  "Terrain": 51960,
+  "Dressing": 14352,
+  "Vegetation": 392812,
+  "Platforms": 38316,
+  "Game_Markers": 960,
+  "Water": 13678
+ },
+ "floors": {
+  "L_Front": {
+   "floor_z": 0.0,
+   "walk_x": [
+    3.514,
+    5.986
+   ],
+   "walk_y": [
+    0.015,
+    1.985
+   ],
+   "size": [
+    2.472,
+    1.97
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
+  },
+  "L_FrontEast": {
+   "floor_z": 0.0,
+   "walk_x": [
+    6.814,
+    8.986
+   ],
+   "walk_y": [
+    0.015,
+    1.985
+   ],
+   "size": [
+    2.172,
+    1.97
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
+  },
+  "L_HiddenCorridor": {
+   "floor_z": 0.0,
+   "walk_x": [
+    6.014,
+    8.986
+   ],
+   "walk_y": [
+    3.215,
+    4.785
+   ],
+   "size": [
+    2.972,
+    1.57
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
+  },
+  "L_SecretAlcove": {
+   "floor_z": 0.0,
+   "walk_x": [
+    9.015,
+    10.385
+   ],
+   "walk_y": [
+    2.914,
+    4.986
+   ],
+   "size": [
+    1.37,
+    2.072
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
+  },
+  "L_Start": {
+   "floor_z": 0.0,
+   "walk_x": [
+    0.014,
+    5.986
+   ],
+   "walk_y": [
+    3.015,
+    4.985
+   ],
+   "size": [
+    5.972,
+    1.97
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
+  },
+  "M_GearTerrace": {
+   "floor_z": 1.4,
+   "walk_x": [
+    3.214,
+    5.486
+   ],
+   "walk_y": [
+    5.215,
+    7.385
+   ],
+   "size": [
+    2.272,
+    2.17
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
+  },
+  "M_Workshop": {
+   "floor_z": 1.4,
+   "walk_x": [
+    5.514,
+    11.186
+   ],
+   "walk_y": [
+    2.415,
+    6.785
+   ],
+   "size": [
+    5.672,
+    4.37
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
+  },
+  "U_GoalDeck": {
+   "floor_z": 2.8,
+   "walk_x": [
+    1.014,
+    4.486
+   ],
+   "walk_y": [
+    7.015,
+    9.985
+   ],
+   "size": [
+    3.472,
+    2.97
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
+  },
+  "U_LiftWalk": {
+   "floor_z": 2.8,
+   "walk_x": [
+    9.365,
+    10.835
+   ],
+   "walk_y": [
+    1.814,
+    5.586
+   ],
+   "size": [
+    1.47,
+    3.772
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
+  },
+  "U_PoolDeck": {
+   "floor_z": 2.8,
+   "walk_x": [
+    9.415,
+    11.985
+   ],
+   "walk_y": [
+    5.614,
+    9.286
+   ],
+   "size": [
+    2.57,
+    3.672
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
+  },
+  "U_ValveDeck": {
+   "floor_z": 2.8,
+   "walk_x": [
+    4.514,
+    9.386
+   ],
+   "walk_y": [
+    7.415,
+    9.785
+   ],
+   "size": [
+    4.872,
+    2.37
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.745
+  },
+  "Bridge_LiftMiddle": {
+   "floor_z": 1.4,
+   "walk_x": [
+    9.06,
+    10.54
+   ],
+   "walk_y": [
+    1.82,
+    2.38
+   ],
+   "size": [
+    1.48,
+    0.56
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.74
+  },
+  "Bridge_Spillway": {
+   "floor_z": -0.01,
+   "walk_x": [
+    6.02,
+    6.78
+   ],
+   "walk_y": [
+    0.26,
+    1.74
+   ],
+   "size": [
+    0.76,
+    1.48
+   ],
+   "thickness_below_floor": 0.24,
+   "rail_top_above_floor": 0.75
+  },
+  "Bridge_StreamWest": {
+   "floor_z": -0.0,
+   "walk_x": [
+    3.86,
+    5.34
+   ],
+   "walk_y": [
+    2.02,
+    2.98
+   ],
+   "size": [
+    1.481,
+    0.96
+   ],
+   "thickness_below_floor": 0.25,
+   "rail_top_above_floor": 0.74
+  }
+ },
+ "routes": {
+  "main_lower": {
+   "samples": 241,
+   "blocked_stretches": [
+    {
+     "from": [
+      2.988,
+      4.0,
+      0.0
+     ],
+     "to": [
+      2.988,
+      4.0,
+      0.0
+     ],
+     "by": "Plate_StartRing",
+     "max_penetration_cm": 0.3
+    },
+    {
+     "from": [
+      3.196,
+      4.0,
+      0.0
+     ],
+     "to": [
+      3.404,
+      4.0,
+      0.0
+     ],
+     "by": "Gear_StartRing",
+     "max_penetration_cm": 0.3
+    },
+    {
+     "from": [
+      3.612,
+      4.0,
+      0.0
+     ],
+     "to": [
+      3.612,
+      4.0,
+      0.0
+     ],
+     "by": "Plate_StartRing",
+     "max_penetration_cm": 0.3
+    }
+   ],
+   "floor_gaps": [],
+   "floor_gap_count": 0,
+   "min_free_width_m": 1.13,
+   "min_headroom_m": 0.938,
+   "headroom_limited_by": [
+    "Lift_Cage",
+    [
+     9.15,
+     1.0
+    ]
+   ],
+   "min_centre_clearance_m": 0.327,
+   "legs": [
+    {
+     "from": [
+      0.8,
+      4.0,
+      0.0
+     ],
+     "to": [
+      2.0,
+      4.0,
+      0.0
+     ],
+     "min_width": 1.67
+    },
+    {
+     "from": [
+      2.0,
+      4.0,
+      0.0
+     ],
+     "to": [
+      3.3,
+      4.0,
+      0.0
+     ],
+     "min_width": 1.515
+    },
+    {
+     "from": [
+      3.3,
+      4.0,
+      0.0
+     ],
+     "to": [
+      4.6,
+      4.0,
+      0.0
+     ],
+     "min_width": 1.926
+    },
+    {
+     "from": [
+      4.6,
+      4.0,
+      0.0
+     ],
+     "to": [
+      4.6,
+      3.05,
+      0.0
+     ],
+     "min_width": 1.926
+    },
+    {
+     "from": [
+      4.6,
+      3.05,
+      0.0
+     ],
+     "to": [
+      4.6,
+      1.95,
+      0.0
+     ],
+     "min_width": 1.13
+    },
+    {
+     "from": [
+      4.6,
+      1.95,
+      0.0
+     ],
+     "to": [
+      4.6,
+      1.0,
+      0.0
+     ],
+     "min_width": 1.13
+    },
+    {
+     "from": [
+      4.6,
+      1.0,
+      0.0
+     ],
+     "to": [
+      6.0,
+      1.0,
+      0.0
+     ],
+     "min_width": 2.496
+    },
+    {
+     "from": [
+      6.0,
+      1.0,
+      0.0
+     ],
+     "to": [
+      6.8,
+      1.0,
+      0.0
+     ],
+     "min_width": 1.4
+    },
+    {
+     "from": [
+      6.8,
+      1.0,
+      0.0
+     ],
+     "to": [
+      7.3,
+      0.65,
+      0.0
+     ],
+     "min_width": 1.13
+    },
+    {
+     "from": [
+      7.3,
+      0.65,
+      0.0
+     ],
+     "to": [
+      8.5,
+      0.65,
+      0.0
+     ],
+     "min_width": 1.707
+    },
+    {
+     "from": [
+      8.5,
+      0.65,
+      0.0
+     ],
+     "to": [
+      9.0,
+      1.0,
+      0.0
+     ],
+     "min_width": 1.67
+    },
+    {
+     "from": [
+      9.0,
+      1.0,
+      0.0
+     ],
+     "to": [
+      9.8,
+      1.0,
+      0.0
+     ],
+     "min_width": 1.2
+    }
+   ]
+  },
+  "main_middle": {
+   "samples": 171,
+   "blocked_stretches": [],
+   "floor_gaps": [
+    {
+     "at": [
+      9.8,
+      1.0
+     ],
+     "floor_offset": -0.27,
+     "by": "Lift_Cage"
+    },
+    {
+     "at": [
+      9.8,
+      1.053
+     ],
+     "floor_offset": -0.27,
+     "by": "Lift_Cage"
+    },
+    {
+     "at": [
+      9.8,
+      1.107
+     ],
+     "floor_offset": -0.27,
+     "by": "Lift_Cage"
+    },
+    {
+     "at": [
+      9.8,
+      1.16
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.8,
+      1.213
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.8,
+      1.267
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.8,
+      1.32
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.8,
+      1.373
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.8,
+      1.427
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.8,
+      1.48
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.8,
+      1.533
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.8,
+      1.587
+     ],
+     "floor_offset": null,
+     "by": null
+    }
+   ],
+   "floor_gap_count": 15,
+   "min_free_width_m": 1.085,
+   "min_headroom_m": 0.988,
+   "headroom_limited_by": [
+    "Lift_Tower",
+    [
+     9.8,
+     1.85
+    ]
+   ],
+   "min_centre_clearance_m": 0.342,
+   "legs": [
+    {
+     "from": [
+      9.8,
+      1.0,
+      1.4
+     ],
+     "to": [
+      9.8,
+      1.8,
+      1.4
+     ],
+     "min_width": 1.13
+    },
+    {
+     "from": [
+      9.8,
+      1.8,
+      1.4
+     ],
+     "to": [
+      9.8,
+      2.4,
+      1.4
+     ],
+     "min_width": 1.13
+    },
+    {
+     "from": [
+      9.8,
+      2.4,
+      1.4
+     ],
+     "to": [
+      9.8,
+      3.0,
+      1.4
+     ],
+     "min_width": 3.805
+    },
+    {
+     "from": [
+      9.8,
+      3.0,
+      1.4
+     ],
+     "to": [
+      8.0,
+      3.0,
+      1.4
+     ],
+     "min_width": 3.82
+    },
+    {
+     "from": [
+      8.0,
+      3.0,
+      1.4
+     ],
+     "to": [
+      6.9,
+      4.0,
+      1.4
+     ],
+     "min_width": 3.789
+    },
+    {
+     "from": [
+      6.9,
+      4.0,
+      1.4
+     ],
+     "to": [
+      6.3,
+      5.0,
+      1.4
+     ],
+     "min_width": 4.251
+    },
+    {
+     "from": [
+      6.3,
+      5.0,
+      1.4
+     ],
+     "to": [
+      6.0,
+      5.85,
+      1.4
+     ],
+     "min_width": 2.306
+    },
+    {
+     "from": [
+      6.0,
+      5.85,
+      1.4
+     ],
+     "to": [
+      5.0,
+      5.85,
+      1.4
+     ],
+     "min_width": 1.22
+    },
+    {
+     "from": [
+      5.0,
+      5.85,
+      1.4
+     ],
+     "to": [
+      4.7,
+      6.0,
+      1.4
+     ],
+     "min_width": 1.085
+    }
+   ]
+  },
+  "middle_under_walk": {
+   "samples": 66,
+   "blocked_stretches": [],
+   "floor_gaps": [],
+   "floor_gap_count": 0,
+   "min_free_width_m": 1.22,
+   "min_headroom_m": 0.958,
+   "headroom_limited_by": [
+    "Timber_WalkSupports",
+    [
+     9.4,
+     4.55
+    ]
+   ],
+   "min_centre_clearance_m": 0.342,
+   "legs": [
+    {
+     "from": [
+      9.8,
+      2.6,
+      1.4
+     ],
+     "to": [
+      10.1,
+      3.0,
+      1.4
+     ],
+     "min_width": 6.258
+    },
+    {
+     "from": [
+      10.1,
+      3.0,
+      1.4
+     ],
+     "to": [
+      10.1,
+      4.55,
+      1.4
+     ],
+     "min_width": 1.22
+    },
+    {
+     "from": [
+      10.1,
+      4.55,
+      1.4
+     ],
+     "to": [
+      8.9,
+      4.55,
+      1.4
+     ],
+     "min_width": 1.57
+    }
+   ]
+  },
+  "main_upper": {
+   "samples": 304,
+   "blocked_stretches": [],
+   "floor_gaps": [
+    {
+     "at": [
+      9.8,
+      1.0
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.818,
+      1.047
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.835,
+      1.094
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.853,
+      1.141
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.871,
+      1.188
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.888,
+      1.235
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.906,
+      1.282
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.924,
+      1.329
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.941,
+      1.376
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.959,
+      1.424
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.976,
+      1.471
+     ],
+     "floor_offset": null,
+     "by": null
+    },
+    {
+     "at": [
+      9.994,
+      1.518
+     ],
+     "floor_offset": null,
+     "by": null
+    }
+   ],
+   "floor_gap_count": 16,
+   "min_free_width_m": 1.083,
+   "min_headroom_m": 0.808,
+   "headroom_limited_by": [
+    "Flumes_And_Channels",
+    [
+     9.241,
+     8.6
+    ]
+   ],
+   "min_centre_clearance_m": 0.334,
+   "legs": [
+    {
+     "from": [
+      9.8,
+      1.0,
+      2.8
+     ],
+     "to": [
+      10.1,
+      1.8,
+      2.8
+     ],
+     "min_width": 1.085
+    },
+    {
+     "from": [
+      10.1,
+      1.8,
+      2.8
+     ],
+     "to": [
+      10.1,
+      5.6,
+      2.8
+     ],
+     "min_width": 1.17
+    },
+    {
+     "from": [
+      10.1,
+      5.6,
+      2.8
+     ],
+     "to": [
+      10.1,
+      6.5,
+      2.8
+     ],
+     "min_width": 1.17
+    },
+    {
+     "from": [
+      10.1,
+      6.5,
+      2.8
+     ],
+     "to": [
+      10.1,
+      8.6,
+      2.8
+     ],
+     "min_width": 1.083
+    },
+    {
+     "from": [
+      10.1,
+      8.6,
+      2.8
+     ],
+     "to": [
+      9.4,
+      8.6,
+      2.8
+     ],
+     "min_width": 1.085
+    },
+    {
+     "from": [
+      9.4,
+      8.6,
+      2.8
+     ],
+     "to": [
+      8.5,
+      8.6,
+      2.8
+     ],
+     "min_width": 1.085
+    },
+    {
+     "from": [
+      8.5,
+      8.6,
+      2.8
+     ],
+     "to": [
+      6.6,
+      8.6,
+      2.8
+     ],
+     "min_width": 2.265
+    },
+    {
+     "from": [
+      6.6,
+      8.6,
+      2.8
+     ],
+     "to": [
+      4.5,
+      8.6,
+      2.8
+     ],
+     "min_width": 1.8
+    },
+    {
+     "from": [
+      4.5,
+      8.6,
+      2.8
+     ],
+     "to": [
+      2.4,
+      8.6,
+      2.8
+     ],
+     "min_width": 1.8
+    }
+   ]
+  },
+  "secret_corridor": {
+   "samples": 91,
+   "blocked_stretches": [
+    {
+     "from": [
+      7.944,
+      4.0,
+      0.0
+     ],
+     "to": [
+      7.944,
+      4.0,
+      0.0
+     ],
+     "by": "Plate_CorridorRing",
+     "max_penetration_cm": 0.3
+    },
+    {
+     "from": [
+      8.098,
+      4.0,
+      0.0
+     ],
+     "to": [
+      8.3,
+      4.0,
+      0.0
+     ],
+     "by": "Gear_CorridorTrigger",
+     "max_penetration_cm": 0.3
+    },
+    {
+     "from": [
+      8.45,
+      4.0,
+      0.0
+     ],
+     "to": [
+      8.45,
+      4.0,
+      0.0
+     ],
+     "by": "Plate_CorridorRing",
+     "max_penetration_cm": 0.3
+    }
+   ],
+   "floor_gaps": [],
+   "floor_gap_count": 0,
+   "min_free_width_m": 1.27,
+   "min_headroom_m": 0.998,
+   "headroom_limited_by": [
+    "Corridor_Beams_Lanterns",
+    [
+     8.047,
+     4.0
+    ]
+   ],
+   "min_centre_clearance_m": 0.327,
+   "legs": [
+    {
+     "from": [
+      5.0,
+      4.0,
+      0.0
+     ],
+     "to": [
+      5.55,
+      4.0,
+      0.0
+     ],
+     "min_width": 1.377
+    },
+    {
+     "from": [
+      5.55,
+      4.0,
+      0.0
+     ],
+     "to": [
+      6.0,
+      4.0,
+      0.0
+     ],
+     "min_width": 1.27
+    },
+    {
+     "from": [
+      6.0,
+      4.0,
+      0.0
+     ],
+     "to": [
+      8.2,
+      4.0,
+      0.0
+     ],
+     "min_width": 1.27
+    },
+    {
+     "from": [
+      8.2,
+      4.0,
+      0.0
+     ],
+     "to": [
+      9.0,
+      4.0,
+      0.0
+     ],
+     "min_width": 1.27
+    },
+    {
+     "from": [
+      9.0,
+      4.0,
+      0.0
+     ],
+     "to": [
+      9.6,
+      4.0,
+      0.0
+     ],
+     "min_width": 1.27
+    }
+   ]
+  }
+ },
+ "floor_items": {
+  "Plate_StartRing": {
+   "top_z": 0.015,
+   "footprint": [
+    0.76,
+    0.76
+   ],
+   "location": [
+    3.3,
+    4.0,
+    -0.04
+   ]
+  },
+  "Gear_StartRing": {
+   "top_z": 0.015,
+   "footprint": [
+    0.834,
+    0.834
+   ],
+   "location": [
+    3.3,
+    4.0,
+    -0.03
+   ]
+  },
+  "Plate_Cube": {
+   "top_z": 0.015,
+   "footprint": [
+    0.84,
+    0.84
+   ],
+   "location": [
+    7.9,
+    1.35,
+    -0.04
+   ]
+  },
+  "Plate_CorridorRing": {
+   "top_z": 0.015,
+   "footprint": [
+    0.64,
+    0.64
+   ],
+   "location": [
+    8.2,
+    4.0,
+    -0.04
+   ]
+  },
+  "Gear_CorridorTrigger": {
+   "top_z": 0.015,
+   "footprint": [
+    0.634,
+    0.639
+   ],
+   "location": [
+    8.2,
+    4.0,
+    -0.03
+   ]
+  },
+  "Goal_Socket": {
+   "top_z": 2.808,
+   "footprint": [
+    1.24,
+    1.24
+   ],
+   "location": [
+    2.4,
+    8.6,
+    2.75
+   ]
+  },
+  "Lever_Sluice_Base": {
+   "top_z": 0.21,
+   "footprint": [
+    0.585,
+    0.489
+   ],
+   "location": [
+    2.2,
+    4.55,
+    0.0
+   ]
+  },
+  "Lever_Secret_Base": {
+   "top_z": 0.21,
+   "footprint": [
+    0.479,
+    0.582
+   ],
+   "location": [
+    9.9,
+    4.4,
+    0.0
+   ]
+  },
+  "Lever_Sluice": {
+   "top_z": 0.55,
+   "footprint": [
+    0.608,
+    0.454
+   ],
+   "location": [
+    2.2,
+    4.55,
+    0.18
+   ]
+  },
+  "Crank_Handle": {
+   "top_z": 2.66,
+   "footprint": [
+    0.303,
+    0.07
+   ],
+   "location": [
+    4.368,
+    6.95,
+    2.46
+   ]
+  }
+ },
+ "mechanisms": {
+  "Axle_East": {
+   "role": "shaft",
+   "location": [
+    12.13,
+    2.6,
+    1.55
+   ],
+   "axis": null,
+   "radius": null,
+   "teeth": null,
+   "bbox": [
+    11.6,
+    12.66,
+    2.498,
+    2.702,
+    1.448,
+    1.652
+   ]
+  },
+  "Axle_Main": {
+   "role": "shaft",
+   "location": [
+    9.3,
+    6.305,
+    1.3
+   ],
+   "axis": null,
+   "radius": null,
+   "teeth": null,
+   "bbox": [
+    9.181,
+    9.419,
+    5.56,
+    7.05,
+    1.181,
+    1.419
+   ]
+  },
+  "Gear_CorridorTrigger": {
+   "role": "gear",
+   "location": [
+    8.2,
+    4.0,
+    -0.03
+   ],
+   "axis": "Z",
+   "radius": 0.32,
+   "teeth": 14,
+   "bbox": [
+    7.883,
+    8.517,
+    3.68,
+    4.32,
+    -0.075,
+    0.015
+   ]
+  },
+  "Gear_CrankPinion": {
+   "role": "gear",
+   "location": [
+    4.368,
+    6.95,
+    2.35
+   ],
+   "axis": "Z",
+   "radius": 0.2045,
+   "teeth": 9,
+   "bbox": [
+    4.164,
+    4.568,
+    6.746,
+    7.154,
+    2.27,
+    2.43
+   ]
+  },
+  "Gear_EastBevel": {
+   "role": "gear",
+   "location": [
+    11.65,
+    2.6,
+    1.55
+   ],
+   "axis": null,
+   "radius": 0.18,
+   "teeth": 10,
+   "bbox": [
+    11.58,
+    11.74,
+    2.421,
+    2.779,
+    1.373,
+    1.727
+   ]
+  },
+  "Gear_LineBevelNorth": {
+   "role": "gear",
+   "location": [
+    11.47,
+    2.42,
+    1.55
+   ],
+   "axis": null,
+   "radius": 0.18,
+   "teeth": 10,
+   "bbox": [
+    11.293,
+    11.647,
+    2.33,
+    2.49,
+    1.371,
+    1.729
+   ]
+  },
+  "Gear_LineBevelSouth": {
+   "role": "gear",
+   "location": [
+    11.47,
+    1.18,
+    1.55
+   ],
+   "axis": null,
+   "radius": 0.18,
+   "teeth": 10,
+   "bbox": [
+    11.293,
+    11.647,
+    1.11,
+    1.27,
+    1.371,
+    1.729
+   ]
+  },
+  "Gear_MastBevelLow": {
+   "role": "gear",
+   "location": [
+    11.47,
+    1.0,
+    1.73
+   ],
+   "axis": null,
+   "radius": 0.18,
+   "teeth": 10,
+   "bbox": [
+    11.291,
+    11.649,
+    0.823,
+    1.177,
+    1.66,
+    1.82
+   ]
+  },
+  "Gear_MastBevelTop": {
+   "role": "gear",
+   "location": [
+    11.47,
+    1.0,
+    4.4
+   ],
+   "axis": null,
+   "radius": 0.15,
+   "teeth": 8,
+   "bbox": [
+    11.324,
+    11.616,
+    0.854,
+    1.146,
+    4.31,
+    4.47
+   ]
+  },
+  "Gear_PillarCrown": {
+   "role": "gear",
+   "location": [
+    3.72,
+    6.95,
+    2.35
+   ],
+   "axis": "Z",
+   "radius": 0.5,
+   "teeth": 22,
+   "bbox": [
+    3.222,
+    4.218,
+    6.45,
+    7.45,
+    2.27,
+    2.43
+   ]
+  },
+  "Gear_PitWheel": {
+   "role": "gear",
+   "location": [
+    9.3,
+    6.97,
+    1.3
+   ],
+   "axis": null,
+   "radius": 0.42,
+   "teeth": 16,
+   "bbox": [
+    8.883,
+    9.717,
+    6.88,
+    7.04,
+    0.883,
+    1.717
+   ]
+  },
+  "Gear_StartRing": {
+   "role": "gear",
+   "location": [
+    3.3,
+    4.0,
+    -0.03
+   ],
+   "axis": "Z",
+   "radius": 0.42,
+   "teeth": 16,
+   "bbox": [
+    2.883,
+    3.717,
+    3.583,
+    4.417,
+    -0.075,
+    0.015
+   ]
+  },
+  "Gear_Wallower": {
+   "role": "gear",
+   "location": [
+    9.3,
+    7.15,
+    1.72
+   ],
+   "axis": null,
+   "radius": 0.18,
+   "teeth": 7,
+   "bbox": [
+    9.12,
+    9.479,
+    6.971,
+    7.324,
+    1.65,
+    1.81
+   ]
+  },
+  "Gear_WinchBevel": {
+   "role": "gear",
+   "location": [
+    11.32,
+    1.0,
+    4.7
+   ],
+   "axis": null,
+   "radius": 0.3,
+   "teeth": 16,
+   "bbox": [
+    11.23,
+    11.39,
+    0.702,
+    1.298,
+    4.402,
+    4.998
+   ]
+  },
+  "Lift_Cage": {
+   "role": "lift_deck",
+   "location": [
+    9.8,
+    1.0,
+    0.0
+   ],
+   "axis": null,
+   "radius": null,
+   "teeth": null,
+   "bbox": [
+    9.065,
+    10.535,
+    0.265,
+    1.735,
+    -0.18,
+    1.13
+   ]
+  },
+  "Millstone_Runner": {
+   "role": "millstone",
+   "location": [
+    9.3,
+    7.17,
+    2.3
+   ],
+   "axis": null,
+   "radius": null,
+   "teeth": null,
+   "bbox": [
+    9.1,
+    9.5,
+    6.97,
+    7.37,
+    2.25,
+    2.375
+   ]
+  },
+  "Shaft_Line": {
+   "role": "shaft",
+   "location": [
+    11.47,
+    1.8,
+    1.55
+   ],
+   "axis": null,
+   "radius": null,
+   "teeth": null,
+   "bbox": [
+    11.385,
+    11.555,
+    1.22,
+    2.38,
+    1.465,
+    1.635
+   ]
+  },
+  "Shaft_Mast": {
+   "role": "shaft",
+   "location": [
+    11.47,
+    1.0,
+    3.065
+   ],
+   "axis": null,
+   "radius": null,
+   "teeth": null,
+   "bbox": [
+    11.385,
+    11.555,
+    0.915,
+    1.085,
+    1.75,
+    4.38
+   ]
+  },
+  "Shaft_Millstone": {
+   "role": "shaft",
+   "location": [
+    9.3,
+    7.15,
+    2.055
+   ],
+   "axis": null,
+   "radius": null,
+   "teeth": null,
+   "bbox": [
+    9.224,
+    9.377,
+    7.074,
+    7.227,
+    1.75,
+    2.36
+   ]
+  },
+  "Shaft_Winch": {
+   "role": "shaft",
+   "location": [
+    10.98,
+    1.0,
+    4.7
+   ],
+   "axis": null,
+   "radius": null,
+   "teeth": null,
+   "bbox": [
+    10.66,
+    11.3,
+    0.898,
+    1.102,
+    4.598,
+    4.802
+   ]
+  },
+  "Wheel_East": {
+   "role": "water_wheel",
+   "location": [
+    12.15,
+    2.6,
+    1.55
+   ],
+   "axis": "X",
+   "radius": 0.74,
+   "teeth": null,
+   "bbox": [
+    11.85,
+    12.45,
+    1.847,
+    3.353,
+    0.797,
+    2.303
+   ]
+  },
+  "Wheel_Main": {
+   "role": "water_wheel",
+   "location": [
+    9.3,
+    6.125,
+    1.3
+   ],
+   "axis": "Y",
+   "radius": 1.02,
+   "teeth": null,
+   "bbox": [
+    8.267,
+    10.333,
+    5.76,
+    6.49,
+    0.267,
+    2.333
+   ]
+  },
+  "Wheel_Stream": {
+   "role": "water_wheel",
+   "location": [
+    2.5,
+    2.5,
+    0.1
+   ],
+   "axis": "Y",
+   "radius": 0.48,
+   "teeth": null,
+   "bbox": [
+    2.007,
+    2.993,
+    2.25,
+    2.75,
+    -0.393,
+    0.593
+   ]
+  }
+ },
+ "gear_pairs": [
+  {
+   "a": "Gear_CrankPinion",
+   "b": "Gear_PillarCrown",
+   "kinds": [
+    "spur",
+    "spur"
+   ],
+   "verdict": "MESHES (spur pair, coplanar)",
+   "centre_distance": 0.648,
+   "ideal_spur_distance": 0.648,
+   "apex_gap": null,
+   "axes": "parallel",
+   "plane_offset": 0.0,
+   "pitch_mm": [
+    143,
+    143
+   ]
+  },
+  {
+   "a": "Gear_EastBevel",
+   "b": "Gear_LineBevelNorth",
+   "kinds": [
+    "bevel",
+    "bevel"
+   ],
+   "verdict": "MESHES (bevel pair, common apex, 90 deg)",
+   "centre_distance": 0.255,
+   "ideal_spur_distance": 0.331,
+   "apex_gap": 0.0,
+   "axes": "crossed 90 deg",
+   "plane_offset": null,
+   "pitch_mm": [
+    113,
+    113
+   ]
+  },
+  {
+   "a": "Gear_LineBevelSouth",
+   "b": "Gear_MastBevelLow",
+   "kinds": [
+    "bevel",
+    "bevel"
+   ],
+   "verdict": "MESHES (bevel pair, common apex, 90 deg)",
+   "centre_distance": 0.255,
+   "ideal_spur_distance": 0.331,
+   "apex_gap": 0.0,
+   "axes": "crossed 90 deg",
+   "plane_offset": null,
+   "pitch_mm": [
+    113,
+    113
+   ]
+  },
+  {
+   "a": "Gear_MastBevelTop",
+   "b": "Gear_WinchBevel",
+   "kinds": [
+    "bevel",
+    "bevel"
+   ],
+   "verdict": "MESHES (bevel pair, common apex, 90 deg)",
+   "centre_distance": 0.335,
+   "ideal_spur_distance": 0.414,
+   "apex_gap": 0.0,
+   "axes": "crossed 90 deg",
+   "plane_offset": null,
+   "pitch_mm": [
+    118,
+    118
+   ]
+  },
+  {
+   "a": "Gear_PitWheel",
+   "b": "Gear_Wallower",
+   "kinds": [
+    "bevel",
+    "bevel"
+   ],
+   "verdict": "MESHES (bevel pair, common apex, 90 deg)",
+   "centre_distance": 0.457,
+   "ideal_spur_distance": 0.552,
+   "apex_gap": 0.0,
+   "axes": "crossed 90 deg",
+   "plane_offset": null,
+   "pitch_mm": [
+    165,
+    162
+   ]
+  }
+ ],
+ "mechanism_interference": [
+  {
+   "moving": "Axle_East",
+   "with": "Mechanism_Supports",
+   "faces": 84,
+   "intended_contact": true
+  },
+  {
+   "moving": "Axle_East",
+   "with": "Gear_EastBevel",
+   "faces": 68,
+   "intended_contact": true
+  },
+  {
+   "moving": "Axle_East",
+   "with": "Wheel_East",
+   "faces": 72,
+   "intended_contact": true
+  },
+  {
+   "moving": "Axle_Main",
+   "with": "M_Workshop",
+   "faces": 116,
+   "intended_contact": true
+  },
+  {
+   "moving": "Axle_Main",
+   "with": "Mechanism_Supports",
+   "faces": 60,
+   "intended_contact": true
+  },
+  {
+   "moving": "Axle_Main",
+   "with": "Gear_PitWheel",
+   "faces": 72,
+   "intended_contact": true
+  },
+  {
+   "moving": "Axle_Main",
+   "with": "Wheel_Main",
+   "faces": 72,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gate_MiddleShutter",
+   "with": "Flumes_And_Channels",
+   "faces": 104,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gate_MiddleShutter",
+   "with": "Gate_MiddleShutter_Frame",
+   "faces": 32,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_CorridorTrigger",
+   "with": "L_HiddenCorridor",
+   "faces": 16,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_CorridorTrigger",
+   "with": "Plate_CorridorRing",
+   "faces": 423,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_CrankPinion",
+   "with": "Gear_Pillar",
+   "faces": 48,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_CrankPinion",
+   "with": "Gear_PillarCrown",
+   "faces": 26,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_LineBevelNorth",
+   "with": "Shaft_Line",
+   "faces": 12,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_LineBevelSouth",
+   "with": "Shaft_Line",
+   "faces": 12,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_MastBevelLow",
+   "with": "Shaft_Mast",
+   "faces": 12,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_MastBevelTop",
+   "with": "Shaft_Mast",
+   "faces": 16,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_PillarCrown",
+   "with": "Gear_Pillar",
+   "faces": 80,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_StartRing",
+   "with": "L_Start",
+   "faces": 16,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_StartRing",
+   "with": "Plate_StartRing",
+   "faces": 409,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_Wallower",
+   "with": "Shaft_Millstone",
+   "faces": 28,
+   "intended_contact": true
+  },
+  {
+   "moving": "Gear_WinchBevel",
+   "with": "Shaft_Winch",
+   "faces": 28,
+   "intended_contact": true
+  },
+  {
+   "moving": "Lift_Cage",
+   "with": "Lift_Gate_North",
+   "faces": 82,
+   "intended_contact": true
+  },
+  {
+   "moving": "Lift_Cage",
+   "with": "Lift_Gate_West",
+   "faces": 82,
+   "intended_contact": true
+  },
+  {
+   "moving": "Millstone_Runner",
+   "with": "Shaft_Millstone",
+   "faces": 36,
+   "intended_contact": true
+  },
+  {
+   "moving": "Shaft_Line",
+   "with": "Mechanism_Supports",
+   "faces": 48,
+   "intended_contact": true
+  },
+  {
+   "moving": "Shaft_Mast",
+   "with": "Mechanism_Supports",
+   "faces": 84,
+   "intended_contact": true
+  },
+  {
+   "moving": "Shaft_Millstone",
+   "with": "Millstone_Floor",
+   "faces": 48,
+   "intended_contact": true
+  },
+  {
+   "moving": "Shaft_Winch",
+   "with": "Lift_Tower",
+   "faces": 24,
+   "intended_contact": true
+  }
+ ],
+ "mechanism_interference_unintended": [],
+ "lift_travel": [
+  {
+   "z": 0.0,
+   "touches": []
+  },
+  {
+   "z": 0.05,
+   "touches": []
+  },
+  {
+   "z": 0.1,
+   "touches": []
+  },
+  {
+   "z": 0.15,
+   "touches": []
+  },
+  {
+   "z": 0.2,
+   "touches": []
+  },
+  {
+   "z": 0.25,
+   "touches": []
+  },
+  {
+   "z": 0.3,
+   "touches": []
+  },
+  {
+   "z": 0.35,
+   "touches": []
+  },
+  {
+   "z": 0.4,
+   "touches": []
+  },
+  {
+   "z": 0.45,
+   "touches": []
+  },
+  {
+   "z": 0.5,
+   "touches": []
+  },
+  {
+   "z": 0.55,
+   "touches": []
+  },
+  {
+   "z": 0.6,
+   "touches": []
+  },
+  {
+   "z": 0.65,
+   "touches": []
+  },
+  {
+   "z": 0.7,
+   "touches": []
+  },
+  {
+   "z": 0.75,
+   "touches": []
+  },
+  {
+   "z": 0.8,
+   "touches": []
+  },
+  {
+   "z": 0.85,
+   "touches": []
+  },
+  {
+   "z": 0.9,
+   "touches": []
+  },
+  {
+   "z": 0.95,
+   "touches": []
+  },
+  {
+   "z": 1.0,
+   "touches": []
+  },
+  {
+   "z": 1.05,
+   "touches": []
+  },
+  {
+   "z": 1.1,
+   "touches": []
+  },
+  {
+   "z": 1.15,
+   "touches": []
+  },
+  {
+   "z": 1.2,
+   "touches": []
+  },
+  {
+   "z": 1.25,
+   "touches": []
+  },
+  {
+   "z": 1.3,
+   "touches": []
+  },
+  {
+   "z": 1.35,
+   "touches": []
+  },
+  {
+   "z": 1.4,
+   "touches": []
+  },
+  {
+   "z": 1.45,
+   "touches": []
+  },
+  {
+   "z": 1.5,
+   "touches": []
+  },
+  {
+   "z": 1.55,
+   "touches": []
+  },
+  {
+   "z": 1.6,
+   "touches": []
+  },
+  {
+   "z": 1.65,
+   "touches": []
+  },
+  {
+   "z": 1.7,
+   "touches": []
+  },
+  {
+   "z": 1.75,
+   "touches": []
+  },
+  {
+   "z": 1.8,
+   "touches": []
+  },
+  {
+   "z": 1.85,
+   "touches": []
+  },
+  {
+   "z": 1.9,
+   "touches": []
+  },
+  {
+   "z": 1.95,
+   "touches": []
+  },
+  {
+   "z": 2.0,
+   "touches": []
+  },
+  {
+   "z": 2.05,
+   "touches": []
+  },
+  {
+   "z": 2.1,
+   "touches": []
+  },
+  {
+   "z": 2.15,
+   "touches": []
+  },
+  {
+   "z": 2.2,
+   "touches": []
+  },
+  {
+   "z": 2.25,
+   "touches": []
+  },
+  {
+   "z": 2.3,
+   "touches": []
+  },
+  {
+   "z": 2.35,
+   "touches": []
+  },
+  {
+   "z": 2.4,
+   "touches": []
+  },
+  {
+   "z": 2.45,
+   "touches": []
+  },
+  {
+   "z": 2.5,
+   "touches": []
+  },
+  {
+   "z": 2.55,
+   "touches": []
+  },
+  {
+   "z": 2.6,
+   "touches": []
+  },
+  {
+   "z": 2.65,
+   "touches": []
+  },
+  {
+   "z": 2.7,
+   "touches": []
+  },
+  {
+   "z": 2.75,
+   "touches": []
+  },
+  {
+   "z": 2.8,
+   "touches": []
+  }
+ ],
+ "lift_cage": {
+  "deck_size": [
+   1.47,
+   1.47
+  ],
+  "bbox_at_Z0": [
+   9.065,
+   10.535,
+   0.265,
+   1.735,
+   -0.18,
+   1.13
+  ],
+  "clear_height_under_crossbar": 0.95
+ },
+ "camera_occlusion_iso": {
+  "main_lower": {
+   "samples": 44,
+   "fully_hidden": 0,
+   "hidden_pct": 0,
+   "top_blockers": [
+    [
+     "Dressing_Lanterns",
+     1
+    ],
+    [
+     "Bridge_Spillway",
+     1
+    ]
+   ]
+  },
+  "main_middle": {
+   "samples": 28,
+   "fully_hidden": 1,
+   "hidden_pct": 4,
+   "top_blockers": [
+    [
+     "M_Workshop",
+     4
+    ],
+    [
+     "Lift_Tower",
+     2
+    ],
+    [
+     "M_GearTerrace",
+     2
+    ],
+    [
+     "Bridge_LiftMiddle",
+     1
+    ]
+   ]
+  },
+  "middle_under_walk": {
+   "samples": 13,
+   "fully_hidden": 2,
+   "hidden_pct": 15,
+   "top_blockers": [
+    [
+     "Timber_WalkSupports",
+     3
+    ],
+    [
+     "Lift_Tower",
+     2
+    ],
+    [
+     "Bridge_LiftMiddle",
+     1
+    ]
+   ]
+  },
+  "main_upper": {
+   "samples": 54,
+   "fully_hidden": 5,
+   "hidden_pct": 9,
+   "top_blockers": [
+    [
+     "U_PoolDeck",
+     6
+    ],
+    [
+     "U_LiftWalk",
+     4
+    ],
+    [
+     "Lift_Tower",
+     4
+    ],
+    [
+     "Flumes_And_Channels",
+     4
+    ],
+    [
+     "U_ValveDeck",
+     3
+    ]
+   ]
+  },
+  "secret_corridor": {
+   "samples": 17,
+   "fully_hidden": 14,
+   "hidden_pct": 82,
+   "top_blockers": [
+    [
+     "M_Workshop",
+     23
+    ],
+    [
+     "Masonry_MiddleArcade",
+     5
+    ]
+   ]
+  }
+ },
+ "water": {
+  "Water_EastFlume": {
+   "x": [
+    11.99,
+    12.33
+   ],
+   "y": [
+    2.75,
+    5.5
+   ],
+   "z": [
+    2.696,
+    2.704
+   ],
+   "w": 0.34,
+   "l": 2.75
+  },
+  "Water_MiddleChannel": {
+   "x": [
+    6.58,
+    7.96
+   ],
+   "y": [
+    6.03,
+    6.37
+   ],
+   "z": [
+    1.427,
+    1.433
+   ],
+   "w": 0.34,
+   "l": 1.38
+  },
+  "Water_MillPond": {
+   "x": [
+    6.6,
+    9.0
+   ],
+   "y": [
+    12.15,
+    13.4
+   ],
+   "z": [
+    4.045,
+    4.055
+   ],
+   "w": 1.25,
+   "l": 2.4
+  },
+  "Water_PondFeed": {
+   "x": [
+    8.91,
+    9.29
+   ],
+   "y": [
+    7.95,
+    9.85
+   ],
+   "z": [
+    3.896,
+    3.903
+   ],
+   "w": 0.38,
+   "l": 1.9
+  },
+  "Water_PondLink": {
+   "x": [
+    9.21,
+    9.49
+   ],
+   "y": [
+    9.75,
+    12.25
+   ],
+   "z": [
+    3.995,
+    4.004
+   ],
+   "w": 0.28,
+   "l": 2.5
+  },
+  "Water_PoolBranch": {
+   "x": [
+    9.41,
+    12.6
+   ],
+   "y": [
+    9.44,
+    9.66
+   ],
+   "z": [
+    3.866,
+    3.874
+   ],
+   "w": 0.22,
+   "l": 3.19
+  },
+  "Water_PoolDownFlume": {
+   "x": [
+    12.31,
+    12.59
+   ],
+   "y": [
+    6.76,
+    9.42
+   ],
+   "z": [
+    3.815,
+    3.823
+   ],
+   "w": 0.28,
+   "l": 2.66
+  },
+  "Water_Spillway": {
+   "x": [
+    6.06,
+    6.74
+   ],
+   "y": [
+    0.0,
+    2.94
+   ],
+   "z": [
+    -0.205,
+    -0.195
+   ],
+   "w": 0.68,
+   "l": 2.94
+  },
+  "Water_Stream": {
+   "x": [
+    0.0,
+    6.0
+   ],
+   "y": [
+    2.06,
+    2.94
+   ],
+   "z": [
+    -0.184,
+    -0.177
+   ],
+   "w": 0.88,
+   "l": 6.0
+  },
+  "Water_UpperChannel": {
+   "x": [
+    4.66,
+    9.24
+   ],
+   "y": [
+    7.51,
+    7.89
+   ],
+   "z": [
+    2.846,
+    2.855
+   ],
+   "w": 0.38,
+   "l": 4.58
+  },
+  "Water_UpperPool": {
+   "x": [
+    10.84,
+    11.81
+   ],
+   "y": [
+    6.04,
+    7.76
+   ],
+   "z": [
+    3.117,
+    3.123
+   ],
+   "w": 0.97,
+   "l": 1.72
+  },
+  "Water_WheelPit": {
+   "x": [
+    8.1,
+    10.5
+   ],
+   "y": [
+    5.7,
+    6.55
+   ],
+   "z": [
+    -0.453,
+    -0.446
+   ],
+   "w": 0.85,
+   "l": 2.4
+  },
+  "Waterfall_EastFeed": {
+   "x": [
+    11.74,
+    12.58
+   ],
+   "y": [
+    2.142,
+    2.982
+   ],
+   "z": [
+    1.917,
+    2.7
+   ],
+   "w": 0.84,
+   "l": 0.84
+  },
+  "Waterfall_EastWheel": {
+   "x": [
+    12.47,
+    14.17
+   ],
+   "y": [
+    1.75,
+    3.45
+   ],
+   "z": [
+    -7.095,
+    1.8
+   ],
+   "w": 1.7,
+   "l": 1.7
+  },
+  "Waterfall_PondDrop": {
+   "x": [
+    8.67,
+    9.53
+   ],
+   "y": [
+    7.436,
+    8.296
+   ],
+   "z": [
+    2.784,
+    3.9
+   ],
+   "w": 0.86,
+   "l": 0.86
+  },
+  "Waterfall_PondLink": {
+   "x": [
+    8.95,
+    9.59
+   ],
+   "y": [
+    9.456,
+    10.096
+   ],
+   "z": [
+    3.804,
+    4.265
+   ],
+   "w": 0.64,
+   "l": 0.64
+  },
+  "Waterfall_PoolFeed": {
+   "x": [
+    11.274,
+    11.874
+   ],
+   "y": [
+    6.6,
+    7.2
+   ],
+   "z": [
+    3.068,
+    3.62
+   ],
+   "w": 0.6,
+   "l": 0.6
+  },
+  "Waterfall_PoolOverflow": {
+   "x": [
+    11.82,
+    13.52
+   ],
+   "y": [
+    6.15,
+    7.85
+   ],
+   "z": [
+    0.304,
+    2.95
+   ],
+   "w": 1.7,
+   "l": 1.7
+  },
+  "Waterfall_Spillway": {
+   "x": [
+    5.81,
+    6.99
+   ],
+   "y": [
+    -1.26,
+    -0.08
+   ],
+   "z": [
+    -5.594,
+    -0.2
+   ],
+   "w": 1.18,
+   "l": 1.18
+  },
+  "Waterfall_Spring": {
+   "x": [
+    -0.318,
+    0.982
+   ],
+   "y": [
+    1.85,
+    3.15
+   ],
+   "z": [
+    -0.271,
+    0.9
+   ],
+   "w": 1.3,
+   "l": 1.3
+  },
+  "Waterfall_UpperEast": {
+   "x": [
+    7.07,
+    7.98
+   ],
+   "y": [
+    5.855,
+    7.241
+   ],
+   "z": [
+    1.36,
+    2.83
+   ],
+   "w": 0.91,
+   "l": 1.386
+  },
+  "Waterfall_UpperWest": {
+   "x": [
+    6.37,
+    7.28
+   ],
+   "y": [
+    5.855,
+    7.264
+   ],
+   "z": [
+    1.354,
+    2.83
+   ],
+   "w": 0.91,
+   "l": 1.41
+  },
+  "Waterfall_WheelFeed": {
+   "x": [
+    7.827,
+    8.627
+   ],
+   "y": [
+    5.8,
+    6.6
+   ],
+   "z": [
+    0.205,
+    1.43
+   ],
+   "w": 0.8,
+   "l": 0.8
+  }
+ },
+ "markers": {
+  "Marker_BallStart": [
+   0.8,
+   4.0,
+   0.33
+  ],
+  "Marker_CubeStart": [
+   5.0,
+   1.0,
+   0.23
+  ],
+  "Marker_Goal": [
+   2.4,
+   8.6,
+   2.75
+  ],
+  "Marker_LiftStop_0": [
+   9.8,
+   1.0,
+   0.0
+  ],
+  "Marker_LiftStop_1": [
+   9.8,
+   1.0,
+   1.4
+  ],
+  "Marker_LiftStop_2": [
+   9.8,
+   1.0,
+   2.8
+  ]
+ }
+}

@@ -1,0 +1,241 @@
+{
+  "provider": "Luma Agents API (agents.lumalabs.ai/v1)",
+  "model": "uni-1",
+  "generated": "2026-10-30",
+  "credits_each": 30,
+  "credits_total": 450,
+  "generations": {
+    "roof_tiles_graphite": {
+      "id": "f1bb33df-4812-47fc-980a-5853097e84a6",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "prompt": "Old Alpine slate roof tiles in overlapping rows, graphite grey with varied blue-grey and brown tints, some moss and lichen spots. Seamless tileable texture, orthographic flat view, even diffuse lighting, no shadows, no perspective, no text, high detail game PBR albedo"
+    },
+    "brass_bronze": {
+      "id": "b269da96-b21f-4d77-a9dc-8dd8f3f501c2",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "prompt": "Polished golden brass and bronze metal surface with fine brushed scratches, slight patina in recesses, warm gold reflections. Seamless tileable texture, orthographic flat view, even diffuse lighting, no shadows, no perspective, no text, high detail game PBR albedo"
+    },
+    "beams_dark_oak": {
+      "id": "042685ef-2a52-4169-a842-5a9359b38b81",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "prompt": "Aged dark brown oak timber beam surface with deep wood grain, cracks, worn edges and a few rusty nail holes. Seamless tileable texture, orthographic flat view, even diffuse lighting, no shadows, no perspective, no text, high detail game PBR albedo"
+    },
+    "deck_planks": {
+      "id": "dada34a5-976d-4dc0-af92-2fb517992e17",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "prompt": "Rich warm orange-brown wooden deck planks running horizontally, slightly scuffed and worn, visible grain and narrow dark gaps between boards. Seamless tileable texture, orthographic flat view, even diffuse lighting, no shadows, no perspective, no text, high detail game PBR albedo"
+    },
+    "stone_masonry_wet": {
+      "id": "6756a77a-b06d-42e2-a55e-79f9e4ed11b9",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "prompt": "Wet grey granite block masonry wall, rectangular stones in courses, green moss growing in the mortar joints, damp darker patches. Seamless tileable texture, orthographic flat view, even diffuse lighting, no shadows, no perspective, no text, high detail game PBR albedo"
+    },
+    "near_rocks_plants": {
+      "id": "82f77301-2e4f-4557-b02f-ede2d248f843",
+      "model": "uni-1",
+      "aspect_ratio": "3:1",
+      "prompt": "Wide horizontal strip of foreground alpine boulders, mossy rocks, small fir trees, grass and alpine flowers, isolated silhouette on a pure solid white background, painterly stylized game art, no sky, no text"
+    },
+    "sky_clouds": {
+      "id": "d4b6cb41-3443-4c26-b105-e295673ea815",
+      "model": "uni-1",
+      "aspect_ratio": "3:1",
+      "prompt": "Wide panoramic summer alpine sky with soft white cumulus clouds and warm golden sun glow near the horizon, no mountains, no ground, painterly stylized game backdrop, no text"
+    },
+    "alpine_rock_moss": {
+      "id": "e103ed55-51e9-4111-af86-d81481373043",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "prompt": "Alpine granite rock face with patches of green moss, small grass tufts and brown soil in the crevices. Seamless tileable texture, orthographic flat view, even diffuse lighting, no shadows, no perspective, no text, high detail game PBR albedo"
+    },
+    "waterfall_streaks": {
+      "id": "65ef87ed-5023-4861-af55-67d34cc7ccba",
+      "model": "uni-1",
+      "aspect_ratio": "1:2",
+      "prompt": "Seamless vertical waterfall texture, turquoise translucent falling water with white foam streaks running top to bottom, on a black background, front orthographic view, no rocks, no text"
+    },
+    "fir_needles": {
+      "id": "306169ec-6447-4ec2-83aa-666179c7dd01",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "prompt": "Dense dark green spruce and fir needle foliage, layered twigs filling the frame, seen from the side. Seamless tileable texture, orthographic flat view, even diffuse lighting, no shadows, no perspective, no text, high detail game PBR albedo"
+    },
+    "cloud_bank_black": {
+      "id": "5686831e-28c3-43a0-9844-1a18163cead1",
+      "model": "uni-1",
+      "aspect_ratio": "3:1",
+      "prompt": "Wide horizontal strip of soft white mist clouds and low cloud bank, isolated on a pure black background, no ground, no mountains, no text"
+    },
+    "mid_forest_slopes": {
+      "id": "01f17cca-7654-4895-b420-e0b556e5f617",
+      "model": "uni-1",
+      "aspect_ratio": "3:1",
+      "prompt": "Wide horizontal strip of mid-distance alpine hills, grey rocky slopes and cliffs covered with dense dark green fir and spruce forest, light atmospheric haze, isolated on a pure solid white background with no sky, painterly stylized game parallax layer, no text"
+    },
+    "peak_rock_snow": {
+      "id": "c8febf5f-3df4-4908-913b-403440933672",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "prompt": "Seamless tileable texture of a high alpine mountain face seen from the front: dark blue-grey fractured granite cliffs with crisp white snow lying in ledges and gullies, strong contrast, even diffuse light, no sky, no shadows from perspective, orthographic, no text, game PBR albedo"
+    },
+    "alpine_meadow": {
+      "id": "d87d53f0-e9b1-4e10-9e56-55a3337590ee",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "prompt": "Seamless tileable texture of a lush alpine meadow seen from above: short vivid green grass, cushions of moss, tiny white and yellow wildflowers, a few small grey pebbles, even diffuse lighting, no shadows, orthographic, no text, game PBR albedo"
+    },
+    "wet_alpine_timber_trial": {
+      "id": "0238b030-9085-43ec-b742-ed3c0c4b079a",
+      "model": "uni-1",
+      "type": "image",
+      "aspect_ratio": "1:1",
+      "output_format": "png",
+      "price_usd_at_generation": 0.0404,
+      "prompt": "Seamless tileable material albedo of old Alpine larch timber boards near a watermill, weathered silver-brown wood grain, damp darkened lower fibres, subtle moss traces in deep cracks, worn but structurally sound, orthographic flat surface scan, uniform diffuse overcast illumination, no directional shadows, no specular highlights, no perspective, no objects, no text, no border, physically plausible game material"
+    }
+  },
+  "reused_from_level04": {
+    "alps_far": "assets/luma/level04/alps_far.jpg (far parallax / backdrop)",
+    "forest_ridge": "assets/luma/level04/forest_ridge.png (distant forest band)",
+    "water_foam": "assets/luma/level04/water_foam.jpg (pool/channel surface colour + foam)"
+  },
+  "derived_maps": {
+    "wood_beam": {
+      "source": "beams_dark_oak",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 0.6,
+      "normal_strength": 3.5
+    },
+    "wet_wood": {
+      "source": "wet_alpine_timber_trial",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 0.75,
+      "normal_strength": 3.0
+    },
+    "roof_slate": {
+      "source": "roof_tiles_graphite",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 0.6,
+      "normal_strength": 4.0
+    },
+    "stone_masonry": {
+      "source": "stone_masonry_wet",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 0.5,
+      "normal_strength": 4.0
+    },
+    "brass": {
+      "source": "brass_bronze",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 1.0,
+      "normal_strength": 1.2
+    },
+    "rock_moss": {
+      "source": "alpine_rock_moss",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 0.5,
+      "normal_strength": 5.0
+    },
+    "fir_needles": {
+      "source": "fir_needles",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 0.5,
+      "normal_strength": 3.0
+    },
+    "peak_rock": {
+      "source": "peak_rock_snow",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 0.5,
+      "normal_strength": 4.5
+    },
+    "meadow": {
+      "source": "alpine_meadow",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 0.5,
+      "normal_strength": 2.5
+    },
+    "wood_board": {
+      "source": "deck_planks",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "layout": "8 single-board bands stacked in V (gap rows [136, 345, 557, 768, 982, 1196, 1413, 1626, 1839] removed)"
+    },
+    "waterfall_streaks": {
+      "source": "waterfall_streaks",
+      "maps": [
+        "rgba (alpha from luminance)",
+        "foam mask",
+        "normal"
+      ]
+    },
+    "near_rocks_plants": {
+      "source": "near_rocks_plants",
+      "maps": [
+        "rgba (alpha keyed from white background)"
+      ]
+    },
+    "mid_forest_slopes": {
+      "source": "mid_forest_slopes",
+      "maps": [
+        "rgba (alpha keyed from white background)"
+      ]
+    },
+    "cloud_bank": {
+      "source": "cloud_bank_black",
+      "maps": [
+        "rgba (alpha keyed from black background)"
+      ]
+    },
+    "sky_clouds": {
+      "source": "sky_clouds",
+      "maps": [
+        "rgb"
+      ]
+    }
+  },
+  "derivation_note": "Normal, roughness, alpha and foam maps are computed by tools/textures/process_luma_level05.py from the colour images (band-passed luminance height, central differences, per-material remaps). They are plausible approximations for stylised rendering, not scanned/measured physical data."
+}

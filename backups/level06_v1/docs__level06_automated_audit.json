@@ -1,0 +1,43 @@
+{
+  "passed": true,
+  "checks": {
+    "required_objects_present": true,
+    "metric_scene_units": true,
+    "tube_T01_outer_diameter": true,
+    "tube_T01_inner_diameter": true,
+    "tube_T01_ball_clearance": true,
+    "tube_T02_outer_diameter": true,
+    "platform_P01_diameter": true,
+    "platform_P02_diameter": true,
+    "flywheel_diameter": true,
+    "lift_L01_travel": true,
+    "lift_L02_travel": true,
+    "B01_Deck_width": true,
+    "B02_Deck_width": true,
+    "B03_Deck_width": true,
+    "B04_Movable_width": true,
+    "B05_Deck_width": true,
+    "lift_L01_animation_range": true,
+    "lift_L02_animation_range": true,
+    "ten_animation_categories": true
+  },
+  "missing_objects": [],
+  "actions": [
+    "ANIM_01_Main_Flywheel_Rotation_Start_Stop",
+    "ANIM_02_Rotor_Start_Stop",
+    "ANIM_03_Magnetic_Lift_L01",
+    "ANIM_04_Magnetic_Lift_L02",
+    "ANIM_05_Accelerator_Coil_Pulses",
+    "ANIM_06_Power_Barriers",
+    "ANIM_06_Power_Barriers.001",
+    "ANIM_07_Extending_Bridge",
+    "ANIM_08_Secondary_Mechanisms",
+    "ANIM_09_Finish_Activation",
+    "ANIM_10_Demonstration_Ball_Route",
+    "M01_GearA_PIVOTAction",
+    "P02_ActivationRing_1Action",
+    "P02_ActivationRing_2Action"
+  ],
+  "object_count": 679,
+  "note": "This is a Blender geometry/animation audit, not a Godot physics test."
+}

@@ -1,0 +1,34 @@
+{
+  "dark_orbital_metal": {
+    "albedo": "assets/levels/level06/textures/pbr/dark_orbital_metal_albedo.jpg",
+    "roughness": "assets/levels/level06/textures/pbr/dark_orbital_metal_roughness.png",
+    "normal": "assets/levels/level06/textures/pbr/dark_orbital_metal_normal.png",
+    "map_note": "roughness and normal are derived artist maps, not measured material data"
+  },
+  "brushed_titanium": {
+    "albedo": "assets/levels/level06/textures/pbr/brushed_titanium_albedo.jpg",
+    "roughness": "assets/levels/level06/textures/pbr/brushed_titanium_roughness.png",
+    "normal": "assets/levels/level06/textures/pbr/brushed_titanium_normal.png",
+    "map_note": "roughness and normal are derived artist maps, not measured material data"
+  },
+  "aged_bronze": {
+    "albedo": "assets/levels/level06/textures/pbr/aged_bronze_albedo.jpg",
+    "roughness": "assets/levels/level06/textures/pbr/aged_bronze_roughness.png",
+    "normal": "assets/levels/level06/textures/pbr/aged_bronze_normal.png",
+    "map_note": "roughness and normal are derived artist maps, not measured material data"
+  },
+  "matte_steel": {
+    "albedo": "assets/levels/level06/textures/pbr/matte_steel_albedo.jpg",
+    "roughness": "assets/levels/level06/textures/pbr/matte_steel_roughness.png",
+    "normal": "assets/levels/level06/textures/pbr/matte_steel_normal.png",
+    "map_note": "roughness and normal are derived artist maps, not measured material data"
+  },
+  "luma": {
+    "generation_id": "3bd79b45-443f-4224-90e7-4c1006bba3f1",
+    "model": "uni-1",
+    "type": "image",
+    "price_usd_at_generation": 0.0404,
+    "source": "assets/levels/level06/textures/source/luma_dark_orbital_metal.png",
+    "prompt": "Seamless tileable PBR albedo source of dark aerospace structural metal panels for a futuristic orbital engineering station, graphite-black titanium alloy, subtle brushed grain, fine machined panel seams, restrained edge wear, sparse micro-scratches, clean maintained spacecraft, orthographic flat material scan, uniform diffuse illumination, no directional shadows, no specular highlights, no rust, no dirt piles, no bolts, no labels, no text, no perspective, physically plausible game material"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "note": "Level 05 Android backdrop, far to near. All layers are world-space (sky panorama + cylinders around the board centre), so they stay correct for any yaw of the isometric camera and for CHASE. Godot units = metres, Y up; centre = Blender (6, 6) = Godot (6, 0, -6).",
+  "centre": [6.0, 0.0, -6.0],
+  "far_alps_sky": {
+    "kind": "PanoramaSkyMaterial",
+    "texture_high": "parallax/sky_panorama.jpg",
+    "texture_low": "parallax/sky_panorama_low.jpg",
+    "source": "Cycles 360x180 render of the Blender v4 background (peaks, mountain forests, cloud banks, painted Luma sky), tools/blender/render_level05_panorama.py"
+  },
+  "rings": [
+    {"name": "Parallax_Clouds", "texture": "parallax/cloud_bank.png", "radius": 120.0, "bottom": -60.0, "top": -30.0, "repeats": 4.0, "haze": 0.08, "min_quality": 0, "content": "clouds and valley haze (Luma, alpha from black)"},
+    {"name": "Parallax_MidForest", "texture": "parallax/mid_forest_slopes.png", "radius": 82.0, "bottom": -52.0, "top": -8.0, "repeats": 5.0, "haze": 0.32, "min_quality": 0, "content": "forested rocky slopes (Luma, alpha from white)"},
+    {"name": "Parallax_NearRocks", "texture": "parallax/near_rocks_plants.png", "radius": 47.0, "bottom": -36.0, "top": -22.0, "repeats": 8.0, "haze": 0.12, "min_quality": 1, "content": "near boulders, firs and flowers below the summit rim (Luma, alpha from white)"}
+  ],
+  "fog": {"color": [0.62, 0.72, 0.86], "density": 0.0016}
+}
