@@ -16,3 +16,21 @@ dist/
 *.blend1
 
 __pycache__/
+
+# Blender/PBR source images and documentation captures are not runtime Godot
+# resources; the editor may still create sidecar imports during local QA.
+assets/luma/level05/*.import
+assets/luma/level05/parallax/*.import
+assets/luma/level05/source_v2/
+docs/media/*.import
+docs/media/level05_overhaul/**/*.import
+
+# Godot extracts embedded Level 06 GLB textures beside the source model on
+# first import. They duplicate the committed GLB/PBR sources and are rebuilt.
+assets/levels/level06/level06_orbital_mechanism_*_albedo.jpg*
+assets/levels/level06/level06_orbital_mechanism_*_normal.png*
+assets/levels/level06/level06_orbital_mechanism_*_roughness.png*
+
+# Documentation/reference images are not runtime project resources.
+docs/media/level06_orbital/**/*.import
+docs/reference/level06/*.import

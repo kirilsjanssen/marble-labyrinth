@@ -3,7 +3,7 @@
   "model": "uni-1",
   "generated": "2026-10-30",
   "credits_each": 30,
-  "credits_total": 420,
+  "credits_total": 450,
   "generations": {
     "roof_tiles_graphite": {
       "id": "f1bb33df-4812-47fc-980a-5853097e84a6",
@@ -88,6 +88,15 @@
       "model": "uni-1",
       "aspect_ratio": "1:1",
       "prompt": "Seamless tileable texture of a lush alpine meadow seen from above: short vivid green grass, cushions of moss, tiny white and yellow wildflowers, a few small grey pebbles, even diffuse lighting, no shadows, orthographic, no text, game PBR albedo"
+    },
+    "wet_alpine_timber_trial": {
+      "id": "0238b030-9085-43ec-b742-ed3c0c4b079a",
+      "model": "uni-1",
+      "type": "image",
+      "aspect_ratio": "1:1",
+      "output_format": "png",
+      "price_usd_at_generation": 0.0404,
+      "prompt": "Seamless tileable material albedo of old Alpine larch timber boards near a watermill, weathered silver-brown wood grain, damp darkened lower fibres, subtle moss traces in deep cracks, worn but structurally sound, orthographic flat surface scan, uniform diffuse overcast illumination, no directional shadows, no specular highlights, no perspective, no objects, no text, no border, physically plausible game material"
     }
   },
   "reused_from_level04": {
@@ -105,6 +114,16 @@
       ],
       "delight": 0.6,
       "normal_strength": 3.5
+    },
+    "wet_wood": {
+      "source": "wet_alpine_timber_trial",
+      "maps": [
+        "albedo",
+        "normal",
+        "rough"
+      ],
+      "delight": 0.75,
+      "normal_strength": 3.0
     },
     "roof_slate": {
       "source": "roof_tiles_graphite",

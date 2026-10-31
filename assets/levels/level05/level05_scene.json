@@ -714,10 +714,10 @@
    "mesh_objects": 97,
    "unique_meshes": 97,
    "triangles": 188936,
-   "materials": 15,
-   "surfaces_draw_calls_upper_bound": 256
+   "materials": 16,
+   "surfaces_draw_calls_upper_bound": 257
   },
-  "glb_bytes": 25051664
+  "glb_bytes": 26143432
  },
  "colliders_static_count": 206
 }

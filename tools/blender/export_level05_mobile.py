@@ -88,7 +88,7 @@ def mobile_material(group):
     nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
     col = nt.nodes.new("ShaderNodeVertexColor")
     col.layer_name = "Col"
-    textured = group in ("wood_beam", "wood_board", "stone", "rock", "meadow", "roof", "fir", "brass")
+    textured = group in ("wood_beam", "wet_wood", "wood_board", "stone", "rock", "meadow", "roof", "fir", "brass")
     if textured:
         def img(suffix, data):
             node = nt.nodes.new("ShaderNodeTexImage")
@@ -108,6 +108,12 @@ def mobile_material(group):
         nt.links.new(rough.outputs["Color"], bsdf.inputs["Roughness"])
         nrm = img("normal.png", True)
         nmap = nt.nodes.new("ShaderNodeNormalMap")
+        normal_strength = {
+            "wood_beam": 0.48, "wet_wood": 0.38, "wood_board": 0.52,
+            "stone": 0.62, "rock": 0.58, "meadow": 0.42,
+            "roof": 0.55, "fir": 0.45, "brass": 0.28,
+        }.get(group, 0.5)
+        nmap.inputs["Strength"].default_value = normal_strength
         nt.links.new(nrm.outputs["Color"], nmap.inputs["Color"])
         nt.links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
         bsdf.inputs["Metallic"].default_value = 1.0 if group == "brass" else 0.0

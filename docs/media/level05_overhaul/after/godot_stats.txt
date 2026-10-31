@@ -1,0 +1,9 @@
+Cam_01_Isometric draw_calls=453 primitives=277342 objects=453
+Cam_02_Top draw_calls=453 primitives=237416 objects=453
+Cam_03_Side draw_calls=451 primitives=280842 objects=451
+Cam_04_Mill draw_calls=194 primitives=204398 objects=194
+Cam_05_Corridor draw_calls=410 primitives=289220 objects=410
+Cam_06_Wheel draw_calls=436 primitives=286908 objects=436
+Cam_07_Lift draw_calls=389 primitives=272620 objects=389
+video_mem_mb=84.5 texture_mem_mb=66.9 buffer_mem_mb=17.6 fps_desktop=66
+report={"colliders_dynamic":8,"colliders_static":206,"conifers":613,"lamp_halos":35,"lamp_lights":3,"parallax_rings":3,"spray_emitters":11,"surfaces":257,"water_bodies":23}

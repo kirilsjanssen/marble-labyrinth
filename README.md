@@ -1,8 +1,8 @@
-# Marble Labyrinth — Clockwork Prototype
+# Head Break — Marble Labyrinth
 
-An original Android-first Godot 4.6.3 physics puzzle. The player tilts detailed miniature labyrinths and guides a real `RigidBody3D` marble through physical hazards and linked mechanical puzzles.
+An original Android-first Godot physics puzzle, currently developed and verified with **Godot 4.7.2 stable**. The player tilts detailed miniature labyrinths and guides a real `RigidBody3D` marble through physical hazards and linked mechanical puzzles.
 
-This repository contains two playable development levels and CI pipelines for Android test APKs. It has not been published to Google Play.
+This repository contains six playable development levels, Blender/GLB source assets and CI pipelines for Android test APKs. It has not been published to Google Play.
 
 ## Levels
 
@@ -84,6 +84,18 @@ The mill wheel drives the millstone through the pit wheel and wallower (16:7). T
 - Stacked cargo slid into the lanes under the 15° tilt, so it is now lashed to its decks. Only the puzzle crate is free.
 - A sharp-edged crate collider snagged on the internal edge between two floor boxes; it now uses a chamfered convex hull, as modelled.
 
+### Level 6 — Orbital Mechanism
+
+The first test integration of the high-detail orbital station v2. Android loads the optimised LOW GLB by default; the GFX button can switch to the HIGH model. The visual station is combined with simplified gameplay colliders so the 1 m metal marble can roll across the start platform, bridges and transparent transport route without using the decorative render mesh as a complex collision body.
+
+- Two separate magnetic lift platforms connect the 4 m, 9 m and 12 m decks.
+- The central flywheel, rotor, secondary gears, barriers and finish rings have runtime presentation animation.
+- The golden receiver uses the same centred-and-steady goal detector as the earlier levels.
+- Planet, stars and rim light are world-space surroundings and do not tilt with the board.
+- The continuous START → GOAL route remains a test route: the start segment, all route colliders, both lifts, reset and finish are covered automatically, while final phone play-balancing is still required.
+
+Master art and exports are under `assets/blender/`, `assets/levels/level06/` and `docs/media/level06_orbital/`. The parameterised Blender builders and audits are under `tools/blender/`.
+
 ### Smart camera
 
 `scripts/camera/smart_camera_controller.gd` owns camera modes, so `main.gd` only supplies the overview orbit pose:
@@ -125,8 +137,8 @@ For later puzzle levels, `PuzzleShapeBody` supports real **cube** and **pyramid*
 | Both | Change Auto/Touch/Sensor mode | **Control** HUD button or `G`/`M` |
 | Both | Calibrate sensor | **Calibrate** HUD button or `C` |
 | Both | Reset level | **Reset** HUD button or `R` |
-| Testing | Select level | HUD selector, `1`–`5`, or `L` |
-| Level 5 | Graphics tier LOW / HIGH | **GFX** HUD button or `Q` |
+| Testing | Select level | HUD selector, `1`–`6`, or `L` |
+| Levels 5–6 | Graphics tier LOW / HIGH | **GFX** HUD button or `Q` |
 | Completion | Continue | Completion button, `N`, or Enter |
 
 **Important:** On Android, dragging the **left half tilts the entire board**. The ball is never moved directly: gravity, collisions and inertia make it roll. Dragging the **right half changes the camera only**. After rotating the camera, left drag is interpreted relative to the current screen view so left/right feel consistent.
@@ -156,9 +168,14 @@ scripts/water/flow_water_surface.gd            Flux-driven animated water sheet
 scripts/levels/level_05.gd                     Alpine Cascade data, hydraulics and route
 scripts/levels/level05_visuals.gd              GLB scene, colliders, MultiMesh, sky, parallax, water
 scripts/mechanisms/level05_mechanisms.gd       Water network, wheels/gear trains, lift skin, crank
+scripts/levels/level_06.gd                     Orbital Mechanism test route and dimensions
+scripts/levels/level06_visuals.gd              v2 GLB wrapper, route colliders, space environment
+scripts/mechanisms/level06_mechanisms.gd       Magnetic lift gameplay and presentation state
 shaders/level05_water.gdshader                 Two-layer flux-driven channel water
 shaders/level05_waterfall.gdshader             Waterfall body / foam / spray layers
 assets/levels/level05/                         Mobile GLB, colliders, vegetation, parallax
+assets/levels/level06/                         Orbital HIGH/LOW GLBs and PBR textures
+assets/blender/                                Blender master scenes for Levels 05–06
 shaders/flow_water.gdshader                    GL Compatibility water / waterfall shader
 shaders/parallax_layer.gdshader                Seamless cylindrical backdrop layer
 assets/luma/level04/                           Luma-generated textures and panoramas
@@ -174,6 +191,8 @@ tests/level_03_smoke_test.gd                   Level 3 tiers, lift, route and ca
 tests/level_04_smoke_test.gd                   Level 4 PHYSICAL playthrough, water, parallax
 tests/level_05_smoke_test.gd                   Level 5 PHYSICAL playthrough on the GLB model
 tests/level05_visuals_test.gd                  Level 5 GLB import, pivots, textures, colliders
+tests/level_06_smoke_test.gd                   Level 6 gameplay integration and regression load
+tests/level06_visuals_test.gd                  Level 6 v2 GLB, colliders and independent backdrop
 tests/physics_lab_test.gd                      P1 physical integration test
 tests/water_network_test.gd                    P2 conservation/valve/pump test
 tests/water_buoyancy_test.gd                   P2 rigid-body water forces test
@@ -182,11 +201,33 @@ tests/water_lab_test.gd                        P2 scene and reset test
 
 Goal and shape-regression tests run in Android CI: `tests/goal_socket_test.gd` and `tests/shape_lab_test.gd`.
 
-Both levels use the same controller and marble. Level files contain layout and tuning data; the mechanism component owns reusable physical behavior. Adding a later clockwork level does not require copying `main.gd`.
+All six levels use the same controller and marble. Level files contain layout and tuning data; mechanism components own reusable physical behavior. Level 07 currently exists only as a prepared feature branch and is not registered in the game.
+
+## Clone and continue development
+
+```bash
+git clone https://github.com/kirilsjanssen/marble-labyrinth.git
+cd marble-labyrinth
+godot --path . --editor
+```
+
+The Godot project root is the repository root (`project.godot`, `scenes/main.tscn`). Use Godot 4.7.2 stable for the same environment as the latest Level 05/06 validation. The project retains 4.6 compatibility metadata; GitHub Actions is currently pinned to the verified 4.6.3 toolchain.
+
+Blender master files are stored in `assets/blender/`; runtime GLBs, PBR textures and their reports are stored in `assets/levels/level05/`, `assets/levels/level06/` and the root/report folders. Open Blender sources directly in Blender, but do not point Godot at their `.blend` files: `.gdignore` keeps source art outside runtime import.
+
+Start new work from the current remote main without rewriting existing feature history:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git switch -c feature/my-level-or-fix
+```
+
+Existing historical branches can be inspected with `git branch -a`; `feature/level-05-alpine-watermill`, `feature/level-06-orbital-mechanism`, `feature/level-06-test-integration` and the prepared `feature/level-07` remain separate remote branches.
 
 ## Run and verify
 
-Open the project with the standard Godot 4.6.3 editor:
+Open the project with the standard Godot 4.7.2 editor:
 
 ```bash
 godot --path . --editor
@@ -203,17 +244,22 @@ godot --headless --path . --fixed-fps 60 --script res://tests/level_03_smoke_tes
 godot --headless --path . --fixed-fps 60 --script res://tests/level_04_smoke_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/level_05_smoke_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/level05_visuals_test.gd
+godot --headless --path . --fixed-fps 60 --script res://tests/level06_visuals_test.gd
+godot --headless --path . --fixed-fps 60 --script res://tests/level_06_smoke_test.gd
+godot --headless --path . --fixed-fps 60 --script res://tests/mobile_controls_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/physics_lab_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/water_network_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/water_buoyancy_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tests/water_lab_test.gd
+godot --headless --path . --fixed-fps 60 --script res://tests/goal_socket_test.gd
+godot --headless --path . --fixed-fps 60 --script res://tests/shape_lab_test.gd
 ```
 
-The tests cover both level definitions, scene loading, the rigid marble, static floor and wall collisions, tilt and movement, Level 1 forces and hazards, gear teeth, rotating shafts, a platform carrying the marble, bridge, lift, timer gate, mechanism reset, completion UI and Level 1 → Level 2 transition. P1 additionally checks seven ball profiles, nine surfaces, pair-dependent stopping and bounce, wind, selective magnetism and zero gravity using real rigid bodies.
+The 15 test scripts cover all six level definitions, scene loading, the rigid marble, collisions, tilt and movement, linked mechanisms, water conservation, cameras, reset and completion. Level 04 and Level 05 have full physical automated playthroughs; Level 06 checks a real rolling segment, route collision structure, both lifts, goal/reset, LOW/HIGH assets and regression loading of Levels 01–05.
 
 ## Android debug APK
 
-The repository includes an **Android Debug APK** GitHub Actions workflow. It installs Android SDK 36, downloads Godot 4.6.3 and its official export templates, verifies the Godot downloads against the published SHA-512 values, runs both level tests plus Physics Lab, builds and verifies a signed debug APK, and publishes it as a workflow artifact.
+The repository includes an **Android Debug APK** GitHub Actions workflow. It installs Android SDK 36, downloads the pinned Godot 4.6.3 compatibility runner and official export templates, verifies the downloads against published SHA-512 values, runs its validation suite, builds and verifies a signed debug APK, and publishes it as a workflow artifact. Local Level 05/06 release-candidate validation is performed with Godot 4.7.2.
 
 To download it:
 

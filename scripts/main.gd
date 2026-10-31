@@ -7,6 +7,7 @@ const Level02 = preload("res://scripts/levels/level_02.gd")
 const Level03 = preload("res://scripts/levels/level_03.gd")
 const Level04 = preload("res://scripts/levels/level_04.gd")
 const Level05 = preload("res://scripts/levels/level_05.gd")
+const Level06 = preload("res://scripts/levels/level_06.gd")
 const WatermillMechanismsScript = preload("res://scripts/mechanisms/watermill_mechanisms.gd")
 const AlpineParallaxControllerScript = preload("res://scripts/environment/alpine_parallax_controller.gd")
 const ClockworkMechanismsScript = preload("res://scripts/components/clockwork_mechanisms.gd")
@@ -16,7 +17,9 @@ const TiltStickIndicatorScript = preload("res://scripts/components/tilt_stick_in
 const GoalSocketDetectorScript = preload("res://scripts/components/goal_socket_detector.gd")
 const Level05MechanismsScript = preload("res://scripts/mechanisms/level05_mechanisms.gd")
 const Level05VisualsScript = preload("res://scripts/levels/level05_visuals.gd")
-const LEVEL_SOURCES := [Level01, Level02, Level03, Level04, Level05]
+const Level06MechanismsScript = preload("res://scripts/mechanisms/level06_mechanisms.gd")
+const Level06VisualsScript = preload("res://scripts/levels/level06_visuals.gd")
+const LEVEL_SOURCES := [Level01, Level02, Level03, Level04, Level05, Level06]
 ## Default key-light pose of the studio levels; Level 05 aims it like its Blender sun.
 const KEY_LIGHT_ROTATION := Vector3(-58.0, -32.0, -18.0)
 
@@ -73,6 +76,7 @@ var goal_detector: GoalSocketDetector
 var clockwork: ClockworkMechanisms
 ## Finished-art levels (Level 05): the GLB scene mounted on the board.
 var level_visuals: Level05Visuals
+var level06_visuals: Level06Visuals
 ## Level 05 graphics tier: LOW on phones by default, HIGH on desktop (GFX button).
 var graphics_high := true
 var graphics_button: Button
@@ -129,7 +133,7 @@ func _physics_process(delta: float) -> void:
 	if not game_won:
 		elapsed += delta
 		_apply_environment_forces()
-		if ball.global_position.y < -2.5 or ball.global_position.length() > 25.0:
+		if ball.global_position.y < -2.5 or ball.global_position.length() > float(level_data.get("respawn_radius", 25.0)):
 			respawn_queued = true
 
 
@@ -194,6 +198,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_load_level(3)
 			KEY_5:
 				_load_level(4)
+			KEY_6:
+				_load_level(5)
 			KEY_Q:
 				_toggle_graphics()
 			KEY_V:
@@ -340,7 +346,9 @@ func _build_materials() -> void:
 		"brass": _metal(Color("b58a43"), 0.92, 0.20),
 		"brass_dark": _metal(Color("735126"), 0.86, 0.29),
 		"copper": _metal(Color("9e5638"), 0.88, 0.24),
-		"marble": _metal(Color("d9e7ef"), 0.92, 0.08),
+		# Brushed high-grade steel: still metallic, but broad highlights keep the
+		# sphere readable instead of mirroring the entire sky as a white spot.
+		"marble": _metal(Color("a5b2bd"), 0.88, 0.24),
 		"rubber": _metal(Color("11161c"), 0.15, 0.72),
 		"wind": _emissive_material(Color("42c9ff"), 1.5),
 		"magnet": _emissive_material(Color("c071ff"), 1.45),
@@ -412,6 +420,7 @@ func _load_level(index: int) -> void:
 	level_data = LEVEL_SOURCES[index].definition()
 	clockwork = null
 	level_visuals = null
+	level06_visuals = null
 	wind_rotor = null
 	magnet_light = null
 	magnet_ring = null
@@ -430,7 +439,14 @@ func _load_level(index: int) -> void:
 	_build_ball()
 	goal_detector.target_body = ball
 	_update_alpine_environment()
-	if level_data.has("level05"):
+	if level_data.has("level06"):
+		var orbital := Level06MechanismsScript.new() as Level06Mechanisms
+		orbital.name = "Level06Mechanisms"
+		board.add_child(orbital)
+		orbital.setup_level06(level_data["level06"], materials, ball, level06_visuals)
+		orbital.state_changed.connect(_on_mechanism_message)
+		clockwork = orbital
+	elif level_data.has("level05"):
 		var cascade := Level05MechanismsScript.new() as Level05Mechanisms
 		cascade.name = "Level05Mechanisms"
 		board.add_child(cascade)
@@ -491,7 +507,10 @@ func _update_alpine_environment() -> void:
 		if studio_light:
 			# The finished-art level carries its own lamps; studio lights would
 			# double-light it and cost extra passes in GL Compatibility.
-			studio_light.visible = level_visuals == null
+			studio_light.visible = level_visuals == null and level06_visuals == null
+	if world_environment and level06_visuals:
+		level06_visuals.configure_environment(world_environment, key_light)
+		return
 	if world_environment and level_visuals:
 		level_visuals.configure_environment(world_environment, key_light)
 		return
@@ -526,7 +545,7 @@ func _update_level_lighting() -> void:
 	var warm_light := get_node_or_null("WarmBenchLight") as OmniLight3D
 	var rim_light := get_node_or_null("CoolRimLight") as OmniLight3D
 	var key_light := get_node_or_null("KeyLight") as DirectionalLight3D
-	if level_visuals:
+	if level_visuals or level06_visuals:
 		# Sun colour, energy and direction come from the Blender v4 scene.
 		return
 	if key_light:
@@ -560,6 +579,8 @@ func _build_board() -> void:
 
 	if level_data.get("scene", "") == "level05":
 		_build_scene_level()
+	elif level_data.get("scene", "") == "level06":
+		_build_level06_scene()
 	elif level_data.has("floor_tiles"):
 		_add_box_part("FactoryUnderframe", Vector3(0.0, -0.52, 0.0), Vector3(9.65, 0.12, 9.65), materials.frame, false)
 		_add_box_part("FactoryBrassBand", Vector3(0.0, -0.60, 0.0), Vector3(9.82, 0.08, 9.82), materials.brass_dark, false)
@@ -604,10 +625,19 @@ func _build_scene_level() -> void:
 	board.add_child(level_visuals)
 
 
+func _build_level06_scene() -> void:
+	level06_visuals = Level06VisualsScript.new() as Level06Visuals
+	level06_visuals.name = "Level06Visuals"
+	level06_visuals.quality = Level06Visuals.Quality.HIGH if graphics_high else Level06Visuals.Quality.LOW
+	level06_visuals.collider_parent = board
+	level06_visuals.world_parent = self
+	board.add_child(level06_visuals)
+
+
 func _toggle_graphics() -> void:
 	graphics_high = not graphics_high
 	_update_graphics_button()
-	if level_visuals:
+	if level_visuals or level06_visuals:
 		_load_level(current_level_index)
 	_show_message("GRAPHICS: %s" % ("HIGH" if graphics_high else "LOW"), 2.5)
 
@@ -821,6 +851,8 @@ func _build_ball() -> void:
 	var sphere_mesh := SphereMesh.new()
 	sphere_mesh.radius = BALL_RADIUS
 	sphere_mesh.height = BALL_RADIUS * 2.0
+	sphere_mesh.radial_segments = 48
+	sphere_mesh.rings = 24
 	shell.mesh = sphere_mesh
 	shell.material_override = materials.marble
 	ball.add_child(shell)
@@ -830,6 +862,8 @@ func _build_ball() -> void:
 	var band_mesh := TorusMesh.new()
 	band_mesh.inner_radius = BALL_RADIUS * 0.82
 	band_mesh.outer_radius = BALL_RADIUS * 0.99
+	band_mesh.rings = 32
+	band_mesh.ring_segments = 12
 	band.mesh = band_mesh
 	band.material_override = materials.brass
 	ball.add_child(band)
@@ -923,6 +957,7 @@ func _build_hud() -> void:
 	level_selector.add_item("LEVEL 3 — LIFTWORKS")
 	level_selector.add_item("LEVEL 4 — WATERMILL")
 	level_selector.add_item("LEVEL 5 — CASCADE")
+	level_selector.add_item("LEVEL 6 — ORBITAL")
 	level_selector.item_selected.connect(_on_level_selected)
 	button_row.add_child(level_selector)
 	mode_button = _hud_button("BOARD: DRAG", Vector2(155.0, 44.0))
