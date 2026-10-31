@@ -14,9 +14,9 @@ enum Preference { AUTO, OVERVIEW, CHASE }
 const OCCLUDED_ENTER_SECONDS := 0.35
 const VISIBLE_EXIT_SECONDS := 0.90
 const BLEND_SPEED := 2.4
-const CHASE_DISTANCE := 1.90
-const CHASE_HEIGHT := 0.55
-const CHASE_LOOK_AHEAD := 1.30
+const CHASE_DISTANCE := 2.25
+const CHASE_HEIGHT := 0.92
+const CHASE_LOOK_AHEAD := 1.18
 const CAMERA_CLEARANCE := 0.18
 const CHASE_FOLLOW_SHARPNESS := 9.0
 const HEADING_TURN_RATE := 1.7
@@ -26,8 +26,8 @@ const PROBE_TOP_OFFSET := 0.24
 ## Chase placements tried in order (distance behind, height above the marble).
 ## A placement is skipped while a moving part (gear hub, shutter) would fill
 ## the frame; the smoothing below hides the hand-over between placements.
-const CHASE_PLACEMENTS: Array[Vector2] = [Vector2(1.90, 0.55), Vector2(1.55, 0.66), Vector2(1.20, 0.66), Vector2(0.85, 0.52)]
-const SIGHT_RADIUS := 0.10
+const CHASE_PLACEMENTS: Array[Vector2] = [Vector2(2.55, 1.20), Vector2(2.25, 0.92), Vector2(1.90, 1.05), Vector2(1.55, 0.82), Vector2(1.18, 0.72)]
+const SIGHT_RADIUS := 0.14
 
 var camera: Camera3D
 var target: RigidBody3D

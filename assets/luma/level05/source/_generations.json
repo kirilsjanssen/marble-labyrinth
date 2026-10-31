@@ -1,0 +1,11 @@
+{
+  "wet_alpine_timber_trial": {
+    "id": "0238b030-9085-43ec-b742-ed3c0c4b079a",
+    "model": "uni-1",
+    "type": "image",
+    "aspect_ratio": "1:1",
+    "output_format": "png",
+    "price_usd_at_generation": 0.0404,
+    "prompt": "Seamless tileable material albedo of old Alpine larch timber boards near a watermill, weathered silver-brown wood grain, damp darkened lower fibres, subtle moss traces in deep cracks, worn but structurally sound, orthographic flat surface scan, uniform diffuse overcast illumination, no directional shadows, no specular highlights, no perspective, no objects, no text, no border, physically plausible game material"
+  }
+}

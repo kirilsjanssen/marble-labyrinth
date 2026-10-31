@@ -28,6 +28,7 @@ BINS = 16
 # group: (source key, size, base role)
 GROUPS = {
     "wood_beam": ("wood_beam", 1024, "Wood_Frame"),
+    "wet_wood": ("wet_wood", 1024, "Wood_Weathered"),
     "wood_board": ("wood_board", 1024, "Deck_Board"),
     "stone": ("stone_masonry", 1024, "Stone_Masonry"),
     "rock": ("rock_moss", 1024, "Rock_Moss"),
@@ -37,22 +38,22 @@ GROUPS = {
 }
 # Blender v4 grades: role -> (group, hue offset, saturation, value, jitter (h, s, v)).
 ROLES = {
-    "Wood_Frame": ("wood_beam", 0.012, 1.3, 1.95, (0.012, 0.12, 0.3)),
+    "Wood_Frame": ("wood_beam", 0.008, 1.05, 1.36, (0.010, 0.08, 0.18)),
     "Wood_Dark": ("wood_beam", 0.0, 1.1, 0.8, (0.01, 0.1, 0.2)),
-    "Wood_Weathered": ("wood_beam", 0.0, 1.0, 1.45, (0.01, 0.12, 0.3)),
+    "Wood_Weathered": ("wet_wood", 0.01, 0.78, 0.72, (0.008, 0.06, 0.12)),
     "Bark": ("wood_beam", 0.0, 0.9, 0.7, (0.015, 0.1, 0.2)),
-    "Deck_Board": ("wood_board", 0.0, 1.2, 1.08, (0.015, 0.12, 0.3)),
-    "Wood_Plank": ("wood_board", 0.0, 1.15, 1.0, (0.012, 0.1, 0.25)),
+    "Deck_Board": ("wood_board", 0.0, 0.94, 0.86, (0.012, 0.08, 0.18)),
+    "Wood_Plank": ("wood_board", 0.0, 0.90, 0.80, (0.010, 0.07, 0.15)),
     "Stone_Masonry": ("stone", 0.0, 1.05, 1.0, (0.015, 0.15, 0.32)),
     "Stone_Wet": ("stone", 0.0, 1.15, 0.6, (0.01, 0.1, 0.2)),
     "Slate_Floor": ("stone", 0.0, 0.7, 0.5, (0.01, 0.1, 0.2)),
     "Rock_Moss": ("rock", 0.0, 1.0, 0.85, (0.01, 0.1, 0.15)),
     "Mortar_Moss": ("rock", 0.02, 1.2, 0.42, (0.01, 0.1, 0.1)),
-    "Meadow": ("meadow", 0.0, 1.0, 1.0, (0.01, 0.08, 0.15)),
+    "Meadow": ("meadow", 0.0, 0.82, 0.78, (0.01, 0.06, 0.10)),
     "Roof_Slate": ("roof", 0.0, 0.95, 0.4, (0.03, 0.2, 0.3)),
     "Roof_Shingle": ("roof", 0.03, 1.5, 0.34, (0.03, 0.2, 0.2)),
-    "Fir_Needles": ("fir", -0.01, 1.25, 1.7, (0.025, 0.15, 0.35)),
-    "Fir_Needles_Far": ("fir", 0.03, 0.9, 1.6, (0.02, 0.1, 0.3)),
+    "Fir_Needles": ("fir", -0.01, 1.00, 1.28, (0.020, 0.10, 0.22)),
+    "Fir_Needles_Far": ("fir", 0.03, 0.78, 1.20, (0.018, 0.08, 0.18)),
 }
 # Untextured roles: flat linear colours in vertex colour (M_Painted / M_Iron / M_Glow).
 FLAT = {
@@ -178,7 +179,7 @@ def main():
             tints[role] = {"group": group, "tint_bins": table}
     # Brass: clean golden F0 with 20 % texture variation, exactly as mat_brass.
     lin = srgb_to_linear(load(os.path.join(SRC, "brass_albedo.jpg"), (512, 512)))
-    gold = np.array([0.95, 0.64, 0.24]) * 0.8 + 0.2 * lin * np.array([1.05, 0.83, 0.55])
+    gold = np.array([0.72, 0.46, 0.17]) * 0.78 + 0.22 * lin * np.array([0.92, 0.72, 0.45])
     save_rgb(linear_to_srgb(gold), os.path.join(PBR, "brass_albedo.jpg"))
     for suffix in ("normal.png", "rough.jpg"):
         Image.open(os.path.join(SRC, "brass_" + suffix)).resize((256, 256), Image.LANCZOS).save(os.path.join(PBR, "brass_" + suffix))

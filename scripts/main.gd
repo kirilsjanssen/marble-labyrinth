@@ -340,7 +340,9 @@ func _build_materials() -> void:
 		"brass": _metal(Color("b58a43"), 0.92, 0.20),
 		"brass_dark": _metal(Color("735126"), 0.86, 0.29),
 		"copper": _metal(Color("9e5638"), 0.88, 0.24),
-		"marble": _metal(Color("d9e7ef"), 0.92, 0.08),
+		# Brushed high-grade steel: still metallic, but broad highlights keep the
+		# sphere readable instead of mirroring the entire sky as a white spot.
+		"marble": _metal(Color("a5b2bd"), 0.88, 0.24),
 		"rubber": _metal(Color("11161c"), 0.15, 0.72),
 		"wind": _emissive_material(Color("42c9ff"), 1.5),
 		"magnet": _emissive_material(Color("c071ff"), 1.45),
@@ -821,6 +823,8 @@ func _build_ball() -> void:
 	var sphere_mesh := SphereMesh.new()
 	sphere_mesh.radius = BALL_RADIUS
 	sphere_mesh.height = BALL_RADIUS * 2.0
+	sphere_mesh.radial_segments = 48
+	sphere_mesh.rings = 24
 	shell.mesh = sphere_mesh
 	shell.material_override = materials.marble
 	ball.add_child(shell)
@@ -830,6 +834,8 @@ func _build_ball() -> void:
 	var band_mesh := TorusMesh.new()
 	band_mesh.inner_radius = BALL_RADIUS * 0.82
 	band_mesh.outer_radius = BALL_RADIUS * 0.99
+	band_mesh.rings = 32
+	band_mesh.ring_segments = 12
 	band.mesh = band_mesh
 	band.material_override = materials.brass
 	ball.add_child(band)

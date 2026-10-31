@@ -14,10 +14,10 @@ uniform float tile_u = 0.6;
 uniform float tile_v = 1.2;
 uniform float speed_a = 1.7;
 uniform float speed_b = 2.4;
-uniform vec4 water_color : source_color = vec4(0.13, 0.71, 0.75, 1.0);
-uniform vec4 foam_color : source_color = vec4(0.95, 0.98, 1.0, 1.0);
+uniform vec4 water_color : source_color = vec4(0.075, 0.41, 0.44, 1.0);
+uniform vec4 foam_color : source_color = vec4(0.88, 0.94, 0.96, 1.0);
 uniform float opacity = 1.0;
-uniform float glow = 0.6;
+uniform float glow = 0.10;
 uniform float phase_a = 0.0;
 uniform float phase_b = 0.0;
 
@@ -45,11 +45,11 @@ void fragment() {
 		vec4 a = texture(layer_texture, uv_a);
 		vec4 b = texture(layer_texture, uv_b);
 		if (mode == 0) {
-			vec3 color = mix(mix(a.rgb, b.rgb, 0.5), water_color.rgb, 0.25);
+			vec3 color = mix(mix(a.rgb, b.rgb, 0.5), water_color.rgb, 0.48);
 			ALBEDO = color;
-			ALPHA = clamp(max(a.a, b.a) * 0.95, 0.0, 1.0) * opacity;
+			ALPHA = clamp(max(a.a, b.a) * 0.78, 0.0, 1.0) * opacity;
 			EMISSION = color * glow;
-			ROUGHNESS = 0.12;
+			ROUGHNESS = 0.20;
 		} else {
 			float mask = clamp(max(a.r, b.r) * 1.25, 0.0, 1.0);
 			ALBEDO = foam_color.rgb;

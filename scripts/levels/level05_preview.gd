@@ -27,6 +27,8 @@ func _ready() -> void:
 	for arg in args:
 		if arg.begins_with("--capture="):
 			_capture(arg.get_slice("=", 1))
+		elif arg == "--demo":
+			_demo()
 
 
 func _use_camera(i: int) -> void:
@@ -74,4 +76,15 @@ func _capture(out_dir: String) -> void:
 	var file := FileAccess.open(out_dir.path_join("godot_stats.txt"), FileAccess.WRITE)
 	file.store_string("\n".join(lines))
 	print("\n".join(lines))
+	get_tree().quit()
+
+
+## Ten-second in-engine camera tour for Movie Maker.  Water and spray keep
+## running between cuts, so this validates the moving Godot presentation rather
+## than producing another static Blender render.
+func _demo() -> void:
+	for i in CAMERAS.size():
+		_use_camera(i)
+		for frame in 45:
+			await get_tree().process_frame
 	get_tree().quit()

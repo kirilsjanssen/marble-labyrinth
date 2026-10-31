@@ -125,6 +125,21 @@ def rough_board(a, h):
     return 0.52 + 0.14 * np.clip(-h, 0, 3) / 3 - 0.08 * np.clip(h, 0, 3) / 3
 
 
+def rough_wet_wood(a, h):
+    """Plausible (not measured) wet-timber roughness.
+
+    The Luma image is colour-only.  Dark, broad damp areas are treated as a
+    smoother clear water film while open grain remains rough.  This is kept
+    deliberately subtle so Godot lighting, rather than baked highlights,
+    describes the moisture.
+    """
+    lum = luminance(a)
+    broad = blur(lum, 28)
+    damp = smoothstep(0.05, 0.16, broad.mean() - broad)
+    grain = np.clip(np.abs(h), 0, 3) / 3
+    return np.clip(0.68 - 0.26 * damp + 0.10 * grain, 0.34, 0.82)
+
+
 def rough_roof(a, h):
     return 0.48 + 0.12 * np.clip(-h, 0, 3) / 3 + 0.3 * moss_mask(a)
 
@@ -159,6 +174,7 @@ def rough_meadow(a, h):
 MATERIALS = [
     # key, raw name, de-light strength, normal strength, roughness fn, albedo target mean (linear-ish sRGB) or None
     ("wood_beam", "beams_dark_oak", 0.6, 3.5, rough_wood_beam, None),
+    ("wet_wood", "wet_alpine_timber_trial", 0.75, 3.0, rough_wet_wood, None),
     ("roof_slate", "roof_tiles_graphite", 0.6, 4.0, rough_roof, None),
     ("stone_masonry", "stone_masonry_wet", 0.5, 4.0, rough_masonry, None),
     # Brass: the photo-like hot spots are lighting, not material - flatten finer.
@@ -265,10 +281,19 @@ def main(raw_dirs):
 
     # Untouched originals for provenance (Godot must not import them).
     gens = {}
+    previous_provenance = os.path.join(OUT, "PROVENANCE.json")
+    if os.path.exists(previous_provenance):
+        try:
+            gens.update(json.load(open(previous_provenance, encoding="utf-8")).get("generations", {}))
+        except (OSError, ValueError, TypeError):
+            pass
     for d in raw_dirs:
         for f in os.listdir(d):
             if f.endswith((".jpg", ".png")):
-                shutil.copy2(os.path.join(d, f), os.path.join(OUT, "source", f))
+                source_file = os.path.abspath(os.path.join(d, f))
+                target_file = os.path.abspath(os.path.join(OUT, "source", f))
+                if source_file != target_file:
+                    shutil.copy2(source_file, target_file)
         meta = os.path.join(d, "_generations.json")
         if os.path.exists(meta):
             gens.update(json.load(open(meta, encoding="utf-8")))

@@ -387,7 +387,7 @@ WATER_LAYERS = {
     "fall_body": {"tile_u": 0.6, "tile_v": 1.2, "speed_a": 1.7, "speed_b": 2.4},
     "fall_foam": {"tile_u": 0.5, "tile_v": 0.9, "speed_a": 2.8, "speed_b": 2.1},
 }
-WATER_COLOR = (0.015, 0.46, 0.52)       # v4: brighter alpine turquoise
+WATER_COLOR = (0.025, 0.30, 0.34)       # v5: natural glacier teal, not neon
 
 
 def mat_water_surface(name, layers):
@@ -423,7 +423,7 @@ def mat_water_surface(name, layers):
     facing.inputs["Blend"].default_value = 0.35
     deep = _mix(mat, facing.outputs["Facing"], _mix(mat, 1.0, body, (0.45, 0.75, 0.8), "MULTIPLY"), body)
     links.new(deep, bsdf.inputs["Emission Color"])
-    _set(bsdf, "Emission Strength", 0.75)
+    _set(bsdf, "Emission Strength", 0.12)
     ripples = nodes.new("ShaderNodeTexNoise")
     ripples.noise_dimensions = "4D"
     ripples.inputs["Scale"].default_value = 5.0
@@ -460,14 +460,14 @@ def mat_waterfall(name, layer):
         alpha = _math(mat, "MULTIPLY", _math(mat, "MAXIMUM", tex_a.outputs["Alpha"], tex_b.outputs["Alpha"]), 0.95, clamp=True)
         links.new(color, bsdf.inputs["Base Color"])
         links.new(color, bsdf.inputs["Emission Color"])
-        _set(bsdf, "Emission Strength", 0.65)
+        _set(bsdf, "Emission Strength", 0.16)
         _set(bsdf, "Roughness", 0.12)
         _set(bsdf, "Transmission Weight", 0.35)
     else:
         alpha = _math(mat, "MULTIPLY", _math(mat, "MAXIMUM", tex_a.outputs["Color"], tex_b.outputs["Color"]), 1.25, clamp=True)
         _set(bsdf, "Base Color", (0.95, 0.98, 1.0, 1.0))
         _set(bsdf, "Emission Color", (0.88, 0.96, 1.0, 1.0))
-        _set(bsdf, "Emission Strength", 0.7)
+        _set(bsdf, "Emission Strength", 0.18)
         _set(bsdf, "Roughness", 0.45)
     links.new(alpha, bsdf.inputs["Alpha"])
     _set(bsdf, "IOR", 1.333)
@@ -594,11 +594,11 @@ def build_materials():
     # Timber: aged dark oak (Luma) graded per role; decks use the board atlas.
     # v4 roles: railings/frames warm honey oak with worn arrises; deck boards
     # saturated and oiled (coat); structural beams and joists dark heavy oak.
-    mat_pbr("Wood_Frame", "wood_beam", 1.0, hue=0.012, sat=1.3, val=1.95, jitter=(0.012, 0.12, 0.3), normal=0.75, ao=0.45, wear=0.35, coat=0.12)
-    mat_pbr("Wood_Plank", "wood_board", board=True, sat=1.15, val=1.0, jitter=(0.012, 0.1, 0.25), normal=1.0, ao=0.4, coat=0.2)
-    mat_pbr("Deck_Board", "wood_board", board=True, sat=1.2, val=1.08, jitter=(0.015, 0.12, 0.3), normal=1.0, ao=0.5, wear=0.2, coat=0.25, rough=(0.85, 0.0))
+    mat_pbr("Wood_Frame", "wood_beam", 1.0, hue=0.008, sat=1.05, val=1.36, jitter=(0.010, 0.08, 0.18), normal=0.75, ao=0.45, wear=0.25, coat=0.08)
+    mat_pbr("Wood_Plank", "wood_board", board=True, sat=0.90, val=0.80, jitter=(0.010, 0.07, 0.15), normal=1.0, ao=0.4, coat=0.12)
+    mat_pbr("Deck_Board", "wood_board", board=True, sat=0.94, val=0.86, jitter=(0.012, 0.08, 0.18), normal=1.0, ao=0.5, wear=0.15, coat=0.14, rough=(0.92, 0.02))
     mat_pbr("Wood_Dark", "wood_beam", 1.4, sat=1.1, val=0.8, jitter=(0.01, 0.1, 0.2), normal=1.2, ao=0.5)
-    mat_pbr("Wood_Weathered", "wood_beam", 1.2, hue=0.0, sat=1.0, val=1.45, jitter=(0.01, 0.12, 0.3), rough=(1.0, 0.06), normal=1.2, ao=0.5, wear=0.25)
+    mat_pbr("Wood_Weathered", "wet_wood", 1.2, hue=0.01, sat=0.78, val=0.72, jitter=(0.008, 0.06, 0.12), rough=(0.92, 0.02), normal=1.0, ao=0.5, wear=0.12, coat=0.10)
     # Stone: wet granite masonry with mossy joints; corridor flags polished darker.
     # Stone: deeper normals, AO in the joints, moss creeping over block tops.
     mat_pbr("Slate_Floor", "stone_masonry", 1.6, sat=0.7, val=0.5, jitter=(0.01, 0.1, 0.2), rough=(0.5, 0.0), normal=1.2, ao=0.4)
@@ -627,8 +627,8 @@ def build_materials():
     grass = mat_simple("Grass", (0.07, 0.17, 0.03), 0.85)
     _set(grass.node_tree.nodes["Principled BSDF"], "Subsurface Weight", 0.1)
     mat_pbr("Bark", "wood_beam", 0.7, sat=0.9, val=0.7)
-    mat_pbr("Fir_Needles", "fir_needles", 0.3, hue=-0.01, sat=1.25, val=1.7, jitter=(0.025, 0.15, 0.35))
-    mat_pbr("Fir_Needles_Far", "fir_needles", 0.5, hue=0.03, sat=0.9, val=1.6, jitter=(0.02, 0.1, 0.3))
+    mat_pbr("Fir_Needles", "fir_needles", 0.3, hue=-0.01, sat=1.00, val=1.28, jitter=(0.020, 0.10, 0.22))
+    mat_pbr("Fir_Needles_Far", "fir_needles", 0.5, hue=0.03, sat=0.78, val=1.20, jitter=(0.018, 0.08, 0.18))
     mat_water_surface("Water", "channel")
     mat_water_surface("Water_Still", "still")
     mat_waterfall("Waterfall_Body", "fall_body")
@@ -639,7 +639,7 @@ def build_materials():
     mat_mountain("Mountain_Snow")
     mat_card("Cloud_Card", os.path.join(TEX_DIR, "parallax", "cloud_bank.png"), 2.6, haze=0.0)
     mat_card("Forest_Card", os.path.join(TEX_DIR, "parallax", "mid_forest_slopes.png"), 0.55, haze=0.4)
-    mat_simple("Marble_Steel", (0.8, 0.82, 0.85), 0.08, metal=1.0)
+    mat_simple("Marble_Steel", (0.62, 0.67, 0.72), 0.24, metal=0.92)
 
 
 # ----------------------------------------------------------------------------

@@ -16,3 +16,11 @@ dist/
 *.blend1
 
 __pycache__/
+
+# Blender/PBR source images and documentation captures are not runtime Godot
+# resources; the editor may still create sidecar imports during local QA.
+assets/luma/level05/*.import
+assets/luma/level05/parallax/*.import
+assets/luma/level05/source_v2/
+docs/media/*.import
+docs/media/level05_overhaul/**/*.import

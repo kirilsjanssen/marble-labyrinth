@@ -24,9 +24,9 @@ const CENTRE := Vector3(6.0, 0.0, -6.0)
 const PRESETS := {
 	# GL Compatibility draws every omni light as an extra pass over the meshes it
 	# touches, so real lamp lights stay few; the halos carry the look.
-	Quality.LOW: {"veg": 0.35, "shadows": false, "shadow_splits": 0, "lamp_lights": 0, "spray": 0, "sky": "sky_panorama_low.jpg", "glow": false, "water_detail": 0.0},
-	Quality.MEDIUM: {"veg": 0.65, "shadows": true, "shadow_splits": 1, "lamp_lights": 0, "spray": 14, "sky": "sky_panorama_low.jpg", "glow": false, "water_detail": 1.0},
-	Quality.HIGH: {"veg": 1.0, "shadows": true, "shadow_splits": 2, "lamp_lights": 3, "spray": 28, "sky": "sky_panorama.jpg", "glow": true, "water_detail": 1.0},
+	Quality.LOW: {"veg": 0.35, "shadows": false, "shadow_splits": 0, "lamp_lights": 0, "spray": 0, "sky": "sky_panorama_v2_low.jpg", "glow": false, "water_detail": 0.0},
+	Quality.MEDIUM: {"veg": 0.65, "shadows": true, "shadow_splits": 1, "lamp_lights": 0, "spray": 14, "sky": "sky_panorama_v2_low.jpg", "glow": false, "water_detail": 1.0},
+	Quality.HIGH: {"veg": 1.0, "shadows": true, "shadow_splits": 2, "lamp_lights": 3, "spray": 28, "sky": "sky_panorama_v2.jpg", "glow": true, "water_detail": 1.0},
 }
 ## Mechanism nodes whose simple local colliders this class adds by itself. The
 ## lift, crates and wheels get their physics from Level05Mechanisms instead.
@@ -171,8 +171,13 @@ func _apply_materials(root: Node, preset: Dictionary) -> void:
 					shader_material.set_shader_parameter("opacity", 0.75)
 				"M_Glow":
 					var glow := StandardMaterial3D.new()
-					glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-					glow.albedo_color = Color(1.0, 0.55, 0.18)
+					# Lit glass instead of a flat unshaded orange card.  The halo and
+					# limited omni lights provide the bloom; this surface keeps shape.
+					glow.albedo_color = Color(0.18, 0.075, 0.025)
+					glow.roughness = 0.36
+					glow.emission_enabled = true
+					glow.emission = Color(1.0, 0.48, 0.14)
+					glow.emission_energy_multiplier = 0.72
 					mesh_instance.set_surface_override_material(i, glow)
 				_:
 					var standard := material as BaseMaterial3D
@@ -328,22 +333,33 @@ func configure_environment(environment: Environment, sun: DirectionalLight3D) ->
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	environment.ambient_light_energy = 0.75
+	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	environment.ambient_light_energy = 0.70
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.tonemap_exposure = 1.0
+	environment.tonemap_exposure = 0.96
+	environment.adjustment_enabled = true
+	environment.adjustment_brightness = 1.04
+	environment.adjustment_contrast = 0.94
+	environment.adjustment_saturation = 0.92
 	environment.fog_enabled = true
-	environment.fog_light_color = Color(0.62, 0.72, 0.86)
-	environment.fog_density = 0.0016
-	environment.fog_sky_affect = 0.0
+	environment.fog_light_color = Color(0.66, 0.73, 0.80)
+	environment.fog_density = 0.0017
+	environment.fog_aerial_perspective = 0.24
+	environment.fog_sky_affect = 0.10
 	environment.glow_enabled = preset["glow"]
-	environment.glow_intensity = 0.5
-	environment.glow_hdr_threshold = 1.1
+	environment.glow_intensity = 0.24
+	environment.glow_hdr_threshold = 1.35
 	var sun_data: Dictionary = scene_data.get("sun", {})
 	if sun_data.has("xform"):
 		sun.basis = xform(sun_data["xform"]).basis
 	var color: Array = sun_data.get("color", [1.0, 0.8, 0.55])
 	sun.light_color = Color(color[0], color[1], color[2])
-	sun.light_energy = 1.55
+	# A softer warm morning key keeps the mill readable without clipping the
+	# sun-facing timber or crushing the three lower tiers into black.
+	sun.light_color = sun.light_color.lerp(Color(1.0, 0.88, 0.72), 0.55)
+	sun.light_energy = 1.34
+	sun.light_indirect_energy = 0.88
+	sun.light_angular_distance = 0.55
 	sun.shadow_enabled = preset["shadows"]
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL if int(preset["shadow_splits"]) <= 1 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	sun.directional_shadow_max_distance = 32.0
@@ -378,7 +394,7 @@ func _ring(ring_name: String, texture: String, radius: float, bottom: float, top
 	material.set_shader_parameter("use_texture", true)
 	material.set_shader_parameter("repeats", repeats)
 	material.set_shader_parameter("haze", haze)
-	material.set_shader_parameter("haze_color", Color(0.62, 0.72, 0.86))
+	material.set_shader_parameter("haze_color", Color(0.66, 0.73, 0.80))
 	var ring := MeshInstance3D.new()
 	ring.name = ring_name
 	ring.mesh = mesh
@@ -404,7 +420,7 @@ func _build_lamps(preset: Dictionary) -> void:
 	glow.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	glow.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	glow.albedo_texture = sprite_texture
-	glow.albedo_color = Color(1.0, 0.55, 0.2, 0.55)
+	glow.albedo_color = Color(1.0, 0.58, 0.25, 0.34)
 	var quad := QuadMesh.new()
 	quad.size = Vector2(0.55, 0.55)
 	quad.material = glow
@@ -428,8 +444,8 @@ func _build_lamps(preset: Dictionary) -> void:
 	for lamp in ranked.slice(0, int(preset["lamp_lights"])):
 		var p: Array = lamp["pos"]
 		var omni := OmniLight3D.new()
-		omni.light_color = Color(1.0, 0.58, 0.25)
-		omni.light_energy = 1.4
+		omni.light_color = Color(1.0, 0.66, 0.38)
+		omni.light_energy = 0.50
 		omni.omni_range = 2.6
 		omni.shadow_enabled = false
 		omni.position = Vector3(p[0], p[1], p[2])
